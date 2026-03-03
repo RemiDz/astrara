@@ -16,6 +16,10 @@ import PlayButton from '@/components/PlayButton';
 import ShareCard from '@/components/ShareCard';
 import EcosystemBadge from '@/components/EcosystemBadge';
 
+function Divider() {
+  return <div className="w-16 h-px bg-[var(--border)] mx-auto my-10" />;
+}
+
 function PortraitContent() {
   const searchParams = useSearchParams();
   const { t, lang } = useLanguage();
@@ -41,15 +45,10 @@ function PortraitContent() {
     );
   }
 
-  const moonPlanet = chart.planets.find((p) => p.planet === 'Moon');
-  const moonSign = moonPlanet ? t(moonPlanet.sign as TranslationKey) : '';
-
   const dominantDesc = t('dominantDesc')
-    .replace('{freq}', chart.dominantPlanet.frequency.toFixed(2))
     .replace('{planet}', t(chart.dominantPlanet.planet as TranslationKey))
     .replace('{sign}', t(chart.dominantPlanet.sign as TranslationKey));
 
-  // Top 5 strongest aspects (smallest orb = tightest = strongest)
   const topAspects = [...chart.aspects]
     .sort((a, b) => a.orb - b.orb)
     .slice(0, 5);
@@ -60,32 +59,10 @@ function PortraitContent() {
     <main className="relative min-h-screen pb-12">
       <StarField />
 
-      {/* Fixed back button — top left */}
-      <Link
-        href="/"
-        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans"
-      >
-        ← {t('newPortrait')}
-      </Link>
-
-      {/* Section A: Visualisation */}
-      <section className="relative z-10 flex flex-col items-center justify-center px-6 pt-16 pb-6">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-          className="text-center mb-6"
-        >
-          <p className="text-sm tracking-[0.3em] uppercase text-[var(--text-secondary)] font-serif mb-2">
-            {t('brand')}
-          </p>
-          <h1 className="text-lg font-serif italic text-[var(--text-secondary)]">
-            {t('cosmicPortrait')}
-          </h1>
-        </motion.div>
-
-        {/* Wheel with subtle background gradient */}
-        <div className="relative">
+      {/* Cosmic Wheel section */}
+      <section className="relative z-10 flex flex-col items-center px-4 pt-22 pb-4">
+        {/* Wheel */}
+        <div className="relative w-full max-w-[380px] md:max-w-[500px] mx-auto">
           <div
             className="absolute inset-0 rounded-full -m-4"
             style={{
@@ -95,31 +72,58 @@ function PortraitContent() {
           <CosmicWheel chart={chart} isPlaying={isPlaying} />
         </div>
 
+        {/* Birth info */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-6 text-center font-mono text-xs text-[var(--text-dim)]"
+          className="mt-4 text-center"
         >
-          <p>{formattedDate} · {chart.time} · {chart.location}</p>
+          <p className="text-sm text-[var(--text-secondary)] font-sans">
+            {formattedDate} · {chart.time} · {chart.location}
+          </p>
         </motion.div>
 
-        {/* Play button — inline below wheel */}
-        <div className="mt-8">
+        {/* Play button */}
+        <div className="mt-6 mb-8">
           <PlayButton isPlaying={isPlaying} onToggle={toggle} />
         </div>
       </section>
 
-      {/* Section B: Frequency Breakdown */}
-      <section className="relative z-10 max-w-lg mx-auto px-4 pt-12 space-y-6 mb-12">
+      <Divider />
+
+      {/* Your Cosmic Sound section */}
+      <section className="relative z-10 max-w-md mx-auto px-6 py-10">
         <motion.h2
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="text-xl md:text-2xl font-serif text-[var(--text-primary)] text-center"
+          className="text-xl font-serif text-[var(--text-primary)] text-center mb-3"
         >
-          {t('frequencySignature')}
+          {t('cosmicSound')}
         </motion.h2>
+
+        <p className="text-sm text-[var(--text-secondary)] text-center max-w-md mx-auto mb-8 font-sans">
+          {t('cosmicSoundIntro')}
+        </p>
+
+        {/* Dominant Tone — above planet cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="rounded-2xl border border-[var(--border-active)] bg-[var(--space-surface)] p-5 text-center mb-6"
+        >
+          <p className="text-xs uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+            {t('dominantTone')}
+          </p>
+          <p className="text-2xl font-serif mb-1" style={{ color: `var(--planet-${chart.dominantPlanet.planet.toLowerCase()})` }}>
+            {t(chart.dominantPlanet.planet as TranslationKey)} · {chart.dominantPlanet.frequency.toFixed(2)} Hz
+          </p>
+          <p className="text-sm text-[var(--text-secondary)] font-sans">
+            {dominantDesc}
+          </p>
+        </motion.div>
 
         {/* Planet cards */}
         <div className="space-y-3">
@@ -127,74 +131,71 @@ function PortraitContent() {
             <PlanetCard key={planet.planet} planet={planet} index={i} />
           ))}
         </div>
+      </section>
 
-        {/* Dominant tone */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="rounded-xl border-2 border-[var(--accent)] bg-[var(--space-card)] p-6 text-center"
-        >
-          <h3 className="text-lg font-serif text-[var(--accent)] mb-2">
-            {t('dominantTone')}
-          </h3>
-          <p className="text-3xl font-mono text-[var(--text-primary)] mb-2">
-            {chart.dominantPlanet.frequency.toFixed(2)} Hz
-          </p>
-          <p className="text-sm text-[var(--text-secondary)] font-sans">
-            {dominantDesc}
-          </p>
-        </motion.div>
+      {/* Harmonic Connections section */}
+      {topAspects.length > 0 && (
+        <>
+          <Divider />
 
-        {/* Aspects — top 5 only */}
-        {topAspects.length > 0 && (
-          <>
+          <section className="relative z-10 max-w-md mx-auto px-6 py-10">
             <motion.h2
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-xl font-serif text-[var(--text-primary)] text-center pt-4"
+              className="text-xl font-serif text-[var(--text-primary)] text-center mb-3"
             >
-              {t('harmonicAspects')}
+              {t('harmonicConnections')}
             </motion.h2>
-            <div className="space-y-2">
+
+            <p className="text-sm text-[var(--text-secondary)] text-center max-w-md mx-auto mb-6 font-sans">
+              {t('harmonicConnectionsIntro')}
+            </p>
+
+            <div className="space-y-3">
               {topAspects.map((aspect, i) => (
                 <AspectCard key={`${aspect.planet1}-${aspect.planet2}`} aspect={aspect} index={i} />
               ))}
             </div>
-          </>
-        )}
-      </section>
+          </section>
+        </>
+      )}
 
-      {/* Section C: Share & Explore */}
-      <section className="relative z-10 max-w-lg mx-auto px-4 space-y-6 mb-12">
+      <Divider />
+
+      {/* Share & Explore */}
+      <section className="relative z-10 max-w-md mx-auto px-6 py-10 space-y-6">
         <ShareCard />
-        <EcosystemBadge moonSign={moonSign} />
 
-        {/* Prominent "Create Another" button */}
-        <div className="flex justify-center pt-4">
+        {/* Create Another — outlined button */}
+        <div className="flex justify-center">
           <Link
             href="/"
-            className="block w-full max-w-sm rounded-xl py-3 text-center text-white font-medium transition-all hover:brightness-110 hover:scale-[1.01] font-sans"
-            style={{
-              background: 'linear-gradient(135deg, var(--accent), var(--accent-cool))',
-            }}
+            className="w-full rounded-xl py-3 text-center text-sm border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-active)] transition-colors font-sans"
           >
             {t('createAnother')}
           </Link>
         </div>
-
-        <footer className="text-center pt-8 pb-4">
-          <a
-            href="https://harmonicwaves.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors font-sans"
-          >
-            {t('builtBy')}
-          </a>
-        </footer>
       </section>
+
+      <Divider />
+
+      {/* Ecosystem */}
+      <section className="relative z-10 max-w-md mx-auto px-6 py-10">
+        <EcosystemBadge />
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 text-center py-8">
+        <a
+          href="https://harmonicwaves.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors font-sans"
+        >
+          {t('builtBy')}
+        </a>
+      </footer>
     </main>
   );
 }

@@ -27,7 +27,7 @@ export default function LanguageToggle() {
   }, []);
 
   return (
-    <div ref={ref} className="fixed top-4 right-4 z-50">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--space-card)] px-3 py-1.5 text-sm font-sans text-[var(--text-primary)] hover:border-[var(--border-active)] transition-colors"
@@ -54,7 +54,7 @@ export default function LanguageToggle() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-2xl overflow-hidden"
+            className="absolute right-0 mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-2xl overflow-hidden z-50"
           >
             {LANGUAGES.map((l) => (
               <button

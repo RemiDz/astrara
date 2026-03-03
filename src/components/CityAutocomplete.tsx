@@ -57,28 +57,30 @@ export default function CityAutocomplete({ onSelect, selected }: Props) {
         onChange={(e) => handleInput(e.target.value)}
         onFocus={() => query.length >= 2 && results.length > 0 && setOpen(true)}
         placeholder={t('cityPlaceholder')}
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--space-surface)] px-4 py-3.5 text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:ring-1 focus:ring-[var(--border-active)] focus:outline-none transition-colors font-sans"
+        className="w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:ring-1 focus:ring-[var(--border-active)] focus:outline-none transition-all duration-200 font-sans"
         autoComplete="off"
       />
       {open && (
-        <ul className="absolute z-40 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-2xl max-h-64 overflow-y-auto">
+        <ul className="absolute z-40 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-xl shadow-black/30 max-h-48 overflow-y-auto">
           {loading && results.length === 0 && (
-            <li className="px-4 py-3 text-sm text-[var(--text-dim)] flex items-center gap-2">
-              <span className="w-3 h-3 border-2 border-[var(--text-dim)]/30 border-t-[var(--text-dim)] rounded-full animate-spin" />
+            <li className="px-4 py-3 text-sm text-[var(--text-dim)] italic text-center">
               Searching...
             </li>
           )}
           {!loading && results.length === 0 && query.length >= 2 && (
-            <li className="px-4 py-3 text-sm text-[var(--text-dim)]">
+            <li className="px-4 py-3 text-sm text-[var(--text-dim)] text-center">
               No cities found
             </li>
           )}
           {results.map((city, i) => (
-            <li key={`${city.name}-${city.lat}-${city.lng}-${i}`}>
+            <li
+              key={`${city.name}-${city.lat}-${city.lng}-${i}`}
+              className={i < results.length - 1 ? 'border-b border-[var(--border)]' : ''}
+            >
               <button
                 type="button"
                 onClick={() => handleSelect(city)}
-                className="w-full px-4 py-3 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--space-hover)] transition-colors"
+                className="w-full px-4 py-3 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--space-hover)] transition-colors cursor-pointer"
               >
                 {city.name}
               </button>

@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion';
 import { PlanetPosition, PLANET_SYMBOLS, PlanetName } from '@/types';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
-import FrequencyBar from './FrequencyBar';
 
 const PLANET_COLORS: Record<PlanetName, string> = {
   Sun: '#FCD34D',
@@ -26,40 +25,50 @@ interface Props {
 export default function PlanetCard({ planet, index }: Props) {
   const { t } = useLanguage();
   const color = PLANET_COLORS[planet.planet];
+  const descKey = `desc_${planet.planet}` as TranslationKey;
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08 }}
-      className="rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4 overflow-hidden"
-      style={{ borderLeftColor: color, borderLeftWidth: '3px' }}
+      className="rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4"
     >
-      <div className="flex items-center justify-between mb-2">
+      {/* Top row: planet name + zodiac info */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
-            className="w-3 h-3 rounded-full"
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: color }}
           />
-          <span className="font-medium text-[var(--text-primary)] font-sans">
+          <span className="text-sm font-medium text-[var(--text-primary)] font-sans">
             {t(planet.planet as TranslationKey)}
           </span>
-          <span className="text-[var(--text-dim)] text-sm">
+          <span className="text-[var(--text-dim)] text-xs">
             {PLANET_SYMBOLS[planet.planet]}
           </span>
         </div>
-        <div className="text-right">
-          <span className="text-sm text-[var(--text-secondary)] font-mono">
-            {t(planet.sign as TranslationKey)} {planet.degree.toFixed(1)}°
-          </span>
-        </div>
+        <span className="text-sm text-[var(--text-secondary)] font-sans">
+          {t(planet.sign as TranslationKey)} {planet.degree.toFixed(1)}°
+        </span>
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-mono text-[var(--text-dim)]">
+
+      {/* Second row: frequency */}
+      <div className="flex items-center justify-end mt-1">
+        <span
+          className="text-lg font-medium font-mono"
+          style={{ color }}
+        >
           {planet.frequency.toFixed(2)} Hz
         </span>
       </div>
-      <FrequencyBar frequency={planet.frequency} color={color} />
+
+      {/* Description */}
+      <div className="mt-2 pt-2 border-t border-[var(--border)]">
+        <p className="text-xs text-[var(--text-dim)] italic font-sans">
+          {t(descKey)}
+        </p>
+      </div>
     </motion.div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/lib/i18n';
-import LanguageToggle from '@/components/LanguageToggle';
+import Header from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Astrara — Your Cosmic Frequency Portrait',
@@ -42,7 +42,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[var(--space)]">
         <LanguageProvider>
-          <LanguageToggle />
+          <Header />
           {children}
         </LanguageProvider>
       </body>

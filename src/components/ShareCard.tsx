@@ -6,7 +6,7 @@ import { useLanguage } from '@/lib/i18n';
 
 function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDone, 2500);
+    const timer = setTimeout(onDone, 2000);
     return () => clearTimeout(timer);
   }, [onDone]);
 
@@ -16,9 +16,9 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.3 }}
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-[var(--border-active)] bg-[var(--space-card)] px-5 py-3 text-sm text-[var(--text-primary)] font-sans shadow-2xl flex items-center gap-2"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-5 py-3 text-sm text-[var(--text-primary)] font-sans shadow-2xl flex items-center gap-2"
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
         <path d="M20 6L9 17l-5-5" />
       </svg>
       {message}
@@ -50,16 +50,16 @@ export default function ShareCard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
-        className="rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-6 text-center"
+        className="rounded-2xl border border-[var(--border)] bg-[var(--space-card)] p-6 text-center"
       >
-        <h3 className="text-lg font-serif text-[var(--text-primary)] mb-4">
+        <h3 className="text-sm font-serif text-[var(--text-primary)] mb-4">
           {t('shareTitle')}
         </h3>
         <button
           onClick={handleCopy}
-          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--space-hover)] px-6 py-3 text-sm text-[var(--text-primary)] hover:border-[var(--border-active)] transition-colors font-sans"
+          className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-8 py-3 text-sm text-white font-sans hover:brightness-110 transition-all"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="9" y="9" width="13" height="13" rx="2" />
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>

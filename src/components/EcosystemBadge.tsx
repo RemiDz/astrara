@@ -31,11 +31,7 @@ const APPS: EcosystemApp[] = [
   },
 ];
 
-interface Props {
-  moonSign?: string;
-}
-
-export default function EcosystemBadge({ moonSign }: Props) {
+export default function EcosystemBadge() {
   const { t } = useLanguage();
 
   return (
@@ -43,39 +39,49 @@ export default function EcosystemBadge({ moonSign }: Props) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.8 }}
-      className="space-y-3"
     >
-      {APPS.map((app) => {
-        let desc = t(app.descKey);
-        if (moonSign) {
-          desc = desc.replace('{sign}', moonSign);
-        }
-
-        return (
+      <p className="text-xs uppercase tracking-wider text-[var(--text-secondary)] text-center mb-4 font-sans">
+        {t('exploreEcosystem')}
+      </p>
+      <div className="space-y-3">
+        {APPS.map((app) => (
           <a
             key={app.name}
             href={app.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4 hover:border-[var(--border-active)] transition-colors"
+            className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4 hover:border-[var(--border-active)] transition-colors"
           >
             <div className="flex items-center gap-3">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                 style={{ backgroundColor: `${app.color}15`, color: app.color }}
               >
                 {app.name[0]}
               </div>
               <div>
-                <span className="text-sm font-medium text-[var(--text-primary)] font-sans">
+                <span className="text-sm font-medium text-[var(--text-primary)] font-sans block">
                   {app.name}
                 </span>
-                <p className="text-xs text-[var(--text-dim)] font-sans">{desc}</p>
+                <span className="text-xs text-[var(--text-secondary)] font-sans">
+                  {t(app.descKey)}
+                </span>
               </div>
             </div>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-dim)"
+              strokeWidth="2"
+              className="flex-shrink-0"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </a>
-        );
-      })}
+        ))}
+      </div>
     </motion.div>
   );
 }

@@ -18,16 +18,16 @@ export default function LandingPage() {
   const { t } = useLanguage();
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center px-4 py-12">
+    <main className="relative min-h-screen flex items-center justify-center px-6 pt-20 pb-12">
       <StarField />
 
-      <div className="relative z-10 w-full max-w-lg mx-auto flex flex-col items-center">
-        {/* Cosmic ring */}
+      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col items-center">
+        {/* Cosmic ring — 160px */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, ease: 'easeOut' }}
-          className="relative w-[200px] h-[200px] mb-8"
+          className="relative w-[160px] h-[160px] mb-8"
         >
           <svg
             viewBox="0 0 200 200"
@@ -78,41 +78,40 @@ export default function LandingPage() {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="text-center mb-10"
         >
-          <p className="text-xs tracking-[0.4em] uppercase text-[var(--text-secondary)] font-serif mb-4">
+          <p className="text-xs tracking-[0.4em] uppercase text-[var(--text-secondary)] font-serif mb-2">
             {t('brand')}
           </p>
-          <h1 className="text-3xl md:text-5xl font-serif italic text-[var(--text-primary)] mb-5 leading-tight">
+          <h1 className="text-2xl md:text-4xl font-serif italic text-[var(--text-primary)] mb-3 leading-tight">
             {t('tagline')}
           </h1>
-          <p className="text-[var(--text-secondary)] font-sans text-base font-light max-w-sm mx-auto">
+          <p className="text-sm text-[var(--text-secondary)] font-sans max-w-xs mx-auto">
             {t('subtitle')}
           </p>
         </motion.div>
 
-        {/* Form */}
+        {/* Form card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="w-full"
+          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--space-surface)] p-6 md:p-8"
         >
           <BirthForm />
         </motion.div>
 
-        {/* Below form */}
+        {/* Below card */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-10 flex flex-col items-center gap-4"
+          className="mt-8 flex flex-col items-center gap-4"
         >
           <Link
             href="/about"
-            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans"
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans flex items-center gap-1"
           >
-            {t('howItWorks')} →
+            {t('howItWorks')} <span>→</span>
           </Link>
-          <div className="w-16 h-px bg-[var(--border)] opacity-50" />
           <a
             href="https://harmonicwaves.app"
             target="_blank"
