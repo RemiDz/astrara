@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
-import { motion } from 'framer-motion';
 import { City } from '@/types';
 import { useLanguage } from '@/lib/i18n';
 import CityAutocomplete from './CityAutocomplete';
+
+const inputClass =
+  'w-full rounded-lg border border-[var(--border)] bg-[var(--space-surface)] px-4 py-3.5 text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:ring-1 focus:ring-[var(--border-active)] focus:outline-none transition-colors font-sans';
 
 export default function BirthForm() {
   const router = useRouter();
@@ -44,43 +46,37 @@ export default function BirthForm() {
   }
 
   return (
-    <motion.form
-      onSubmit={handleSubmit}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      className="w-full space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="w-full space-y-5">
       <div>
-        <label className="block text-sm text-[var(--text-secondary)] mb-1.5 font-sans">
+        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
           {t('dateLabel')}
         </label>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--border-active)] focus:outline-none transition-colors font-sans"
+          className={inputClass}
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm text-[var(--text-secondary)] mb-1.5 font-sans">
+        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
           {t('timeLabel')}
         </label>
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--border-active)] focus:outline-none transition-colors font-sans"
+          className={inputClass}
           required
         />
-        <p className="text-xs text-[var(--text-dim)] mt-1">{t('timeHint')}</p>
+        <p className="text-xs text-[var(--text-dim)] mt-1.5">{t('timeHint')}</p>
       </div>
 
       {!manualCoords ? (
         <div>
-          <label className="block text-sm text-[var(--text-secondary)] mb-1.5 font-sans">
+          <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
             {t('cityLabel')}
           </label>
           <CityAutocomplete onSelect={setCity} selected={city} />
@@ -96,7 +92,7 @@ export default function BirthForm() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-[var(--text-secondary)] mb-1.5 font-sans">
+              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
                 {t('latLabel')}
               </label>
               <input
@@ -105,11 +101,11 @@ export default function BirthForm() {
                 value={lat}
                 onChange={(e) => setLat(e.target.value)}
                 placeholder="51.5074"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:outline-none transition-colors font-sans"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-sm text-[var(--text-secondary)] mb-1.5 font-sans">
+              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
                 {t('lngLabel')}
               </label>
               <input
@@ -118,7 +114,7 @@ export default function BirthForm() {
                 value={lng}
                 onChange={(e) => setLng(e.target.value)}
                 placeholder="-0.1278"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:outline-none transition-colors font-sans"
+                className={inputClass}
               />
             </div>
           </div>
@@ -135,17 +131,23 @@ export default function BirthForm() {
       <button
         type="submit"
         disabled={!isValid || loading}
-        className="w-full rounded-xl bg-[var(--accent)] py-4 text-white font-medium transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed font-sans"
+        className="w-full rounded-xl py-4 text-white font-medium transition-all hover:brightness-110 hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 font-sans"
+        style={{
+          background: 'linear-gradient(135deg, var(--accent), var(--accent-cool))',
+        }}
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
             {t('generating')}
           </span>
         ) : (
           t('generateButton')
         )}
       </button>
-    </motion.form>
+    </form>
   );
 }

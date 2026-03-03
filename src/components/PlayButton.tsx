@@ -20,7 +20,7 @@ export default function PlayButton({ isPlaying, onToggle }: Props) {
         className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
           isPlaying
             ? 'bg-[var(--accent-warm)] shadow-[var(--accent-warm)]/20'
-            : 'bg-[var(--accent)] shadow-[var(--accent)]/20'
+            : 'bg-[var(--accent)] shadow-[var(--accent)]/20 animate-gentle-pulse'
         }`}
       >
         {isPlaying ? (

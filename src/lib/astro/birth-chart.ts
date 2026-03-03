@@ -17,6 +17,9 @@ const ASTRONOMY_BODIES: Record<string, Astronomy.Body> = {
 };
 
 function getEclipticLongitude(planet: PlanetName, time: Astronomy.AstroTime): number {
+  if (planet === 'Sun') {
+    return Astronomy.SunPosition(time).elon;
+  }
   if (planet === 'Moon') {
     return Astronomy.EclipticGeoMoon(time).lon;
   }

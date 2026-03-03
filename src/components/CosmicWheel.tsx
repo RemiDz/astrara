@@ -160,6 +160,7 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
     }
 
     // Planet dots
+    const now = Date.now() / 1000;
     chart.planets.forEach((planet, i) => {
       const planetFade = Math.min(Math.max((fade - i * 0.05) * 2, 0), 1);
       if (planetFade <= 0) return;
@@ -169,17 +170,24 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       const px = cx + Math.cos(angle) * r;
       const py = cy + Math.sin(angle) * r;
 
-      const size = planet.planet === 'Sun' || planet.planet === 'Moon' ? 6
+      const baseSize = planet.planet === 'Sun' || planet.planet === 'Moon' ? 6
         : ['Mercury', 'Venus', 'Mars'].includes(planet.planet) ? 4 : 3;
 
+      // When playing, pulse the dot size more visibly
+      const pulseAmp = isPlaying ? 0.08 : 0.02;
+      const pulse = 1 + Math.sin(now * 2 + i * 0.7) * pulseAmp;
+      const size = baseSize * pulse;
+
       // Glow
-      const gradient = ctx.createRadialGradient(px, py, 0, px, py, size * 3);
+      const glowRadius = isPlaying ? size * 4 : size * 3;
+      const glowOpacity = isPlaying ? 0.5 : 0.4;
+      const gradient = ctx.createRadialGradient(px, py, 0, px, py, glowRadius);
       const color = PLANET_COLORS[planet.planet];
-      gradient.addColorStop(0, color.replace(')', `, ${0.4 * planetFade})`).replace('rgb', 'rgba'));
+      gradient.addColorStop(0, color.replace(')', `, ${glowOpacity * planetFade})`).replace('rgb', 'rgba'));
       gradient.addColorStop(1, 'transparent');
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(px, py, size * 3, 0, Math.PI * 2);
+      ctx.arc(px, py, glowRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Dot
@@ -269,7 +277,9 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className="w-[85vmin] h-[85vmin] md:w-[60vmin] md:h-[60vmin] mx-auto"
+      className={`w-[85vmin] h-[85vmin] md:w-[60vmin] md:h-[60vmin] mx-auto rounded-full ${
+        isPlaying ? 'animate-wheel-glow' : ''
+      }`}
     />
   );
 }

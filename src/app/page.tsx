@@ -6,6 +6,14 @@ import StarField from '@/components/StarField';
 import BirthForm from '@/components/BirthForm';
 import { useLanguage } from '@/lib/i18n';
 
+const RING_PLANETS = [
+  { angle: 30, color: '#FCD34D', size: 5 },
+  { angle: 105, color: '#F9A8D4', size: 4 },
+  { angle: 195, color: '#EF4444', size: 5 },
+  { angle: 260, color: '#A5B4FC', size: 4 },
+  { angle: 330, color: '#FB923C', size: 6 },
+];
+
 export default function LandingPage() {
   const { t } = useLanguage();
 
@@ -13,38 +21,98 @@ export default function LandingPage() {
     <main className="relative min-h-screen flex items-center justify-center px-4 py-12">
       <StarField />
 
-      <div className="relative z-10 w-full max-w-md mx-auto">
+      <div className="relative z-10 w-full max-w-lg mx-auto flex flex-col items-center">
+        {/* Cosmic ring */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-8"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          className="relative w-[200px] h-[200px] mb-8"
         >
-          <p className="text-sm tracking-[0.3em] uppercase text-[var(--text-secondary)] font-serif mb-3">
+          <svg
+            viewBox="0 0 200 200"
+            className="w-full h-full animate-cosmic-rotate"
+          >
+            <circle
+              cx="100"
+              cy="100"
+              r="90"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="0.75"
+              strokeDasharray="6 4"
+              opacity="0.2"
+            />
+            <circle
+              cx="100"
+              cy="100"
+              r="70"
+              fill="none"
+              stroke="var(--accent-cool)"
+              strokeWidth="0.5"
+              strokeDasharray="3 6"
+              opacity="0.1"
+            />
+            {RING_PLANETS.map((p, i) => {
+              const rad = (p.angle * Math.PI) / 180;
+              const cx = 100 + Math.cos(rad) * 90;
+              const cy = 100 + Math.sin(rad) * 90;
+              return (
+                <circle
+                  key={i}
+                  cx={cx}
+                  cy={cy}
+                  r={p.size / 2}
+                  fill={p.color}
+                  opacity="0.8"
+                />
+              );
+            })}
+          </svg>
+        </motion.div>
+
+        {/* Title block */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className="text-center mb-10"
+        >
+          <p className="text-xs tracking-[0.4em] uppercase text-[var(--text-secondary)] font-serif mb-4">
             {t('brand')}
           </p>
-          <h1 className="text-3xl md:text-5xl font-serif italic text-[var(--text-primary)] mb-4 leading-tight">
+          <h1 className="text-3xl md:text-5xl font-serif italic text-[var(--text-primary)] mb-5 leading-tight">
             {t('tagline')}
           </h1>
-          <p className="text-[var(--text-secondary)] font-sans text-sm md:text-base">
+          <p className="text-[var(--text-secondary)] font-sans text-base font-light max-w-sm mx-auto">
             {t('subtitle')}
           </p>
         </motion.div>
 
-        <BirthForm />
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="w-full"
+        >
+          <BirthForm />
+        </motion.div>
 
+        {/* Below form */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="mt-8 flex flex-col items-center gap-3"
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="mt-10 flex flex-col items-center gap-4"
         >
           <Link
             href="/about"
-            className="text-sm text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors font-sans"
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans"
           >
             {t('howItWorks')} →
           </Link>
+          <div className="w-16 h-px bg-[var(--border)] opacity-50" />
           <a
             href="https://harmonicwaves.app"
             target="_blank"

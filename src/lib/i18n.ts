@@ -7,8 +7,8 @@ type TranslationKey = keyof typeof translations.en;
 const translations = {
   en: {
     brand: "ASTRARA",
-    tagline: "Your Cosmic Frequency Portrait",
-    subtitle: "Enter your birth details to hear the music of your stars",
+    tagline: "What does your birth chart sound like?",
+    subtitle: "Every person has a unique cosmic frequency. Discover yours.",
     dateLabel: "Date of Birth",
     timeLabel: "Time of Birth",
     timeHint: "Don't know? Use 12:00",
@@ -59,8 +59,8 @@ const translations = {
   },
   lt: {
     brand: "ASTRARA",
-    tagline: "Tavo Kosminis Dažnių Portretas",
-    subtitle: "Įvesk savo gimimo duomenis ir išgirsk savo žvaigždžių muziką",
+    tagline: "Kaip skamba tavo gimimo horoskopas?",
+    subtitle: "Kiekvienas žmogus turi unikalų kosminį dažnį. Atrask savąjį.",
     dateLabel: "Gimimo data",
     timeLabel: "Gimimo laikas",
     timeHint: "Nežinai? Naudok 12:00",
