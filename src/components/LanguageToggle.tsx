@@ -30,7 +30,7 @@ export default function LanguageToggle() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--space-card)] px-3 py-1.5 text-sm font-sans text-[var(--text-primary)] hover:border-[var(--border-active)] transition-colors"
+        className="flex items-center gap-1.5 rounded-lg border border-[#1E1F2E] bg-[#0F1019] px-3 py-1.5 text-sm font-sans text-[#E8ECF4] hover:border-[#3B4BDB] transition-colors"
       >
         <span>{current.flag}</span>
         <span>{current.code.toUpperCase()}</span>
@@ -54,7 +54,7 @@ export default function LanguageToggle() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-2xl overflow-hidden z-50"
+            className="absolute right-0 mt-1 w-40 rounded-lg border border-[#1E1F2E] bg-[#0F1019] shadow-2xl overflow-hidden z-50"
           >
             {LANGUAGES.map((l) => (
               <button
@@ -63,10 +63,10 @@ export default function LanguageToggle() {
                   setLang(l.code);
                   setOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-sans transition-colors hover:bg-[var(--space-hover)] ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-sans transition-colors hover:bg-[#161722] ${
                   lang === l.code
-                    ? 'text-[var(--text-primary)] border-l-2 border-l-[var(--accent)]'
-                    : 'text-[var(--text-secondary)]'
+                    ? 'text-[#E8ECF4] border-l-2 border-l-[#3B82F6]'
+                    : 'text-[#6B7194]'
                 }`}
               >
                 <span>{l.flag}</span>

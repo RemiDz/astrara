@@ -1,42 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
-:root {
-  --space: #04040A;
-  --space-surface: #0A0B14;
-  --space-card: #0F1019;
-  --space-hover: #161722;
-  --border: #1E1F2E;
-  --border-active: #3B4BDB;
-  --accent: #3B82F6;
-  --accent-warm: #F59E0B;
-  --accent-cool: #8B5CF6;
-  --accent-luna: #E2E8F0;
-  --text-primary: #E8ECF4;
-  --text-secondary: #6B7194;
-  --text-dim: #3D4167;
-  --planet-sun: #FCD34D;
-  --planet-moon: #E2E8F0;
-  --planet-mercury: #A5B4FC;
-  --planet-venus: #F9A8D4;
-  --planet-mars: #EF4444;
-  --planet-jupiter: #FB923C;
-  --planet-saturn: #A78BFA;
-  --planet-uranus: #22D3EE;
-  --planet-neptune: #6366F1;
-  --planet-pluto: #9CA3AF;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme {
+  --color-space: #04040A;
+  --color-space-surface: #0A0B14;
+  --color-space-card: #0F1019;
+  --color-space-hover: #161722;
+  --color-border: #1E1F2E;
+  --color-border-active: #3B4BDB;
+  --color-accent: #3B82F6;
+  --color-accent-warm: #F59E0B;
+  --color-accent-cool: #8B5CF6;
+  --color-text-primary: #E8ECF4;
+  --color-text-secondary: #6B7194;
+  --color-text-dim: #3D4167;
+  --color-planet-sun: #FCD34D;
+  --color-planet-moon: #E2E8F0;
+  --color-planet-mercury: #A5B4FC;
+  --color-planet-venus: #F9A8D4;
+  --color-planet-mars: #EF4444;
+  --color-planet-jupiter: #FB923C;
+  --color-planet-saturn: #A78BFA;
+  --color-planet-uranus: #22D3EE;
+  --color-planet-neptune: #6366F1;
+  --color-planet-pluto: #9CA3AF;
 }
 
 html,
 body {
-  background-color: var(--space);
-  color: var(--text-primary);
+  background-color: #04040A;
+  color: #E8ECF4;
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

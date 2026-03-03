@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n';
 import CityAutocomplete from './CityAutocomplete';
 
 const inputClass =
-  'w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:ring-1 focus:ring-[var(--border-active)] focus:outline-none transition-all duration-200 font-sans';
+  'w-full bg-[#0F1019] border border-[#1E1F2E] rounded-lg py-3 px-4 text-sm text-[#E8ECF4] placeholder-[#3D4167] focus:border-[#3B4BDB] focus:outline-none transition-colors font-sans';
 
 export default function BirthForm() {
   const router = useRouter();
@@ -48,7 +48,7 @@ export default function BirthForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+        <label className="block text-xs uppercase tracking-wider font-medium text-[#6B7194] mb-2 font-sans">
           {t('dateLabel')}
         </label>
         <input
@@ -61,7 +61,7 @@ export default function BirthForm() {
       </div>
 
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+        <label className="block text-xs uppercase tracking-wider font-medium text-[#6B7194] mb-2 font-sans">
           {t('timeLabel')}
         </label>
         <input
@@ -71,19 +71,19 @@ export default function BirthForm() {
           className={inputClass}
           required
         />
-        <p className="text-xs text-[var(--text-dim)] mt-1.5">{t('timeHint')}</p>
+        <p className="text-xs text-[#3D4167] mt-1.5">{t('timeHint')}</p>
       </div>
 
       {!manualCoords ? (
         <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+          <label className="block text-xs uppercase tracking-wider font-medium text-[#6B7194] mb-2 font-sans">
             {t('cityLabel')}
           </label>
           <CityAutocomplete onSelect={setCity} selected={city} />
           <button
             type="button"
             onClick={() => setManualCoords(true)}
-            className="text-xs text-[var(--text-dim)] hover:text-[var(--text-secondary)] mt-2 transition-colors"
+            className="text-xs text-[#3D4167] hover:text-[#6B7194] mt-2 transition-colors"
           >
             {t('coordsToggle')}
           </button>
@@ -92,7 +92,7 @@ export default function BirthForm() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+              <label className="block text-xs uppercase tracking-wider font-medium text-[#6B7194] mb-2 font-sans">
                 {t('latLabel')}
               </label>
               <input
@@ -105,7 +105,7 @@ export default function BirthForm() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-sans">
+              <label className="block text-xs uppercase tracking-wider font-medium text-[#6B7194] mb-2 font-sans">
                 {t('lngLabel')}
               </label>
               <input
@@ -121,7 +121,7 @@ export default function BirthForm() {
           <button
             type="button"
             onClick={() => setManualCoords(false)}
-            className="text-xs text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors"
+            className="text-xs text-[#3D4167] hover:text-[#6B7194] transition-colors"
           >
             ← {t('cityLabel')}
           </button>
@@ -132,10 +132,7 @@ export default function BirthForm() {
         <button
           type="submit"
           disabled={!isValid || loading}
-          className="w-full rounded-xl py-3.5 text-sm text-white font-medium transition-all hover:brightness-110 hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 font-sans"
-          style={{
-            background: 'linear-gradient(135deg, var(--accent), var(--accent-cool))',
-          }}
+          className="w-full py-3.5 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed font-sans"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">

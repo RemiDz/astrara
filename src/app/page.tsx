@@ -38,7 +38,7 @@ export default function LandingPage() {
               cy="100"
               r="90"
               fill="none"
-              stroke="var(--accent)"
+              stroke="#3B82F6"
               strokeWidth="0.75"
               strokeDasharray="6 4"
               opacity="0.2"
@@ -48,7 +48,7 @@ export default function LandingPage() {
               cy="100"
               r="70"
               fill="none"
-              stroke="var(--accent-cool)"
+              stroke="#8B5CF6"
               strokeWidth="0.5"
               strokeDasharray="3 6"
               opacity="0.1"
@@ -78,13 +78,13 @@ export default function LandingPage() {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="text-center mb-10"
         >
-          <p className="text-xs tracking-[0.4em] uppercase text-[var(--text-secondary)] font-serif mb-2">
+          <p className="text-xs tracking-[0.4em] uppercase text-[#6B7194] font-serif mb-2">
             {t('brand')}
           </p>
-          <h1 className="text-2xl md:text-4xl font-serif italic text-[var(--text-primary)] mb-3 leading-tight">
+          <h1 className="text-2xl md:text-4xl font-serif italic text-[#E8ECF4] mb-3 leading-tight">
             {t('tagline')}
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] font-sans max-w-xs mx-auto">
+          <p className="text-sm text-[#6B7194] font-sans max-w-xs mx-auto">
             {t('subtitle')}
           </p>
         </motion.div>
@@ -94,7 +94,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--space-surface)] p-6 md:p-8"
+          className="w-full bg-[#0A0B14] border border-[#1E1F2E] rounded-2xl p-6 md:p-8"
         >
           <BirthForm />
         </motion.div>
@@ -108,7 +108,7 @@ export default function LandingPage() {
         >
           <Link
             href="/about"
-            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans flex items-center gap-1"
+            className="text-sm text-[#6B7194] hover:text-[#E8ECF4] transition-colors font-sans flex items-center gap-1"
           >
             {t('howItWorks')} <span>→</span>
           </Link>
@@ -116,7 +116,7 @@ export default function LandingPage() {
             href="https://harmonicwaves.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors font-sans"
+            className="text-xs text-[#3D4167] hover:text-[#6B7194] transition-colors font-sans"
           >
             {t('partOfEcosystem')}
           </a>

@@ -40,7 +40,7 @@ export default function RootLayout({
           src="https://plausible.io/js/script.js"
         />
       </head>
-      <body className="min-h-screen bg-[var(--space)]">
+      <body className="min-h-screen bg-[#04040A]">
         <LanguageProvider>
           <Header />
           {children}

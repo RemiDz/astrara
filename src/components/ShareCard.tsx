@@ -16,9 +16,9 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.3 }}
-      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-[var(--border)] bg-[var(--space-card)] px-5 py-3 text-sm text-[var(--text-primary)] font-sans shadow-2xl flex items-center gap-2"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-[#1E1F2E] bg-[#0F1019] px-5 py-3 text-sm text-[#E8ECF4] font-sans shadow-2xl flex items-center gap-2"
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
         <path d="M20 6L9 17l-5-5" />
       </svg>
       {message}
@@ -50,14 +50,14 @@ export default function ShareCard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
-        className="rounded-2xl border border-[var(--border)] bg-[var(--space-card)] p-6 text-center"
+        className="bg-[#0F1019] border border-[#1E1F2E] rounded-2xl p-6 text-center"
       >
-        <h3 className="text-sm font-serif text-[var(--text-primary)] mb-4">
+        <p className="text-sm font-medium text-[#E8ECF4] mb-4 font-sans">
           {t('shareTitle')}
-        </h3>
+        </p>
         <button
           onClick={handleCopy}
-          className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-8 py-3 text-sm text-white font-sans hover:brightness-110 transition-all"
+          className="inline-flex items-center gap-2 px-8 py-3 bg-[#3B82F6] text-white text-sm rounded-xl font-sans hover:brightness-110 transition-all"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="9" y="9" width="13" height="13" rx="2" />

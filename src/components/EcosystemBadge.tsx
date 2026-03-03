@@ -40,7 +40,7 @@ export default function EcosystemBadge() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.8 }}
     >
-      <p className="text-xs uppercase tracking-wider text-[var(--text-secondary)] text-center mb-4 font-sans">
+      <p className="text-xs uppercase tracking-wider text-[#6B7194] text-center mb-4 font-sans">
         {t('exploreEcosystem')}
       </p>
       <div className="space-y-3">
@@ -50,7 +50,7 @@ export default function EcosystemBadge() {
             href={app.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4 hover:border-[var(--border-active)] transition-colors"
+            className="bg-[#0F1019] border border-[#1E1F2E] rounded-xl p-4 mb-3 flex items-center justify-between hover:border-[#6B7194] transition-colors"
           >
             <div className="flex items-center gap-3">
               <div
@@ -60,25 +60,15 @@ export default function EcosystemBadge() {
                 {app.name[0]}
               </div>
               <div>
-                <span className="text-sm font-medium text-[var(--text-primary)] font-sans block">
+                <span className="text-sm font-medium text-[#E8ECF4] font-sans block">
                   {app.name}
                 </span>
-                <span className="text-xs text-[var(--text-secondary)] font-sans">
+                <span className="text-xs text-[#6B7194] font-sans">
                   {t(app.descKey)}
                 </span>
               </div>
             </div>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-dim)"
-              strokeWidth="2"
-              className="flex-shrink-0"
-            >
-              <path d="M9 18l6-6-6-6" />
-            </svg>
+            <span className="text-[#3D4167] flex-shrink-0">›</span>
           </a>
         ))}
       </div>

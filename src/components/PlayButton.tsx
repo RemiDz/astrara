@@ -19,12 +19,12 @@ export default function PlayButton({ isPlaying, onToggle }: Props) {
         whileTap={{ scale: 0.95 }}
         className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
           isPlaying
-            ? 'bg-[var(--accent-warm)] shadow-[var(--accent-warm)]/20'
-            : 'bg-[var(--accent)] shadow-[var(--accent)]/20 animate-gentle-pulse'
+            ? 'bg-[#F59E0B]'
+            : 'bg-[#3B82F6] animate-gentle-pulse'
         }`}
       >
         {isPlaying && (
-          <span className="absolute inset-0 rounded-full border-2 border-[var(--accent-warm)] animate-ping opacity-20" />
+          <span className="absolute inset-0 rounded-full border-2 border-[#F59E0B] animate-ping opacity-20" />
         )}
         {isPlaying ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
@@ -37,7 +37,7 @@ export default function PlayButton({ isPlaying, onToggle }: Props) {
           </svg>
         )}
       </motion.button>
-      <span className="text-xs text-[var(--text-dim)] font-sans">
+      <span className="text-xs text-[#3D4167] font-sans">
         {isPlaying ? t('sessionComplete') : t('listenCTA')}
       </span>
     </div>

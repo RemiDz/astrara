@@ -32,7 +32,7 @@ export default function PlanetCard({ planet, index }: Props) {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08 }}
-      className="rounded-xl border border-[var(--border)] bg-[var(--space-card)] p-4"
+      className="bg-[#0F1019] border border-[#1E1F2E] rounded-xl p-4 mb-3"
     >
       {/* Top row: planet name + zodiac info */}
       <div className="flex items-center justify-between">
@@ -41,14 +41,14 @@ export default function PlanetCard({ planet, index }: Props) {
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: color }}
           />
-          <span className="text-sm font-medium text-[var(--text-primary)] font-sans">
+          <span className="text-sm font-medium text-[#E8ECF4] font-sans">
             {t(planet.planet as TranslationKey)}
           </span>
-          <span className="text-[var(--text-dim)] text-xs">
+          <span className="text-[#3D4167] text-xs">
             {PLANET_SYMBOLS[planet.planet]}
           </span>
         </div>
-        <span className="text-sm text-[var(--text-secondary)] font-sans">
+        <span className="text-sm text-[#6B7194] font-sans">
           {t(planet.sign as TranslationKey)} {planet.degree.toFixed(1)}°
         </span>
       </div>
@@ -64,8 +64,8 @@ export default function PlanetCard({ planet, index }: Props) {
       </div>
 
       {/* Description */}
-      <div className="mt-2 pt-2 border-t border-[var(--border)]">
-        <p className="text-xs text-[var(--text-dim)] italic font-sans">
+      <div className="border-t border-[#1E1F2E] mt-3 pt-2">
+        <p className="text-xs text-[#3D4167] italic font-sans">
           {t(descKey)}
         </p>
       </div>

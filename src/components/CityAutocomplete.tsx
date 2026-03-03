@@ -57,30 +57,30 @@ export default function CityAutocomplete({ onSelect, selected }: Props) {
         onChange={(e) => handleInput(e.target.value)}
         onFocus={() => query.length >= 2 && results.length > 0 && setOpen(true)}
         placeholder={t('cityPlaceholder')}
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:border-[var(--border-active)] focus:ring-1 focus:ring-[var(--border-active)] focus:outline-none transition-all duration-200 font-sans"
+        className="w-full bg-[#0F1019] border border-[#1E1F2E] rounded-lg py-3 px-4 text-sm text-[#E8ECF4] placeholder-[#3D4167] focus:border-[#3B4BDB] focus:outline-none transition-colors font-sans"
         autoComplete="off"
       />
       {open && (
-        <ul className="absolute z-40 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--space-card)] shadow-xl shadow-black/30 max-h-48 overflow-y-auto">
+        <ul className="absolute z-40 mt-1 w-full rounded-lg border border-[#1E1F2E] bg-[#0F1019] shadow-xl shadow-black/30 max-h-48 overflow-y-auto">
           {loading && results.length === 0 && (
-            <li className="px-4 py-3 text-sm text-[var(--text-dim)] italic text-center">
+            <li className="px-4 py-3 text-sm text-[#3D4167] italic text-center">
               Searching...
             </li>
           )}
           {!loading && results.length === 0 && query.length >= 2 && (
-            <li className="px-4 py-3 text-sm text-[var(--text-dim)] text-center">
+            <li className="px-4 py-3 text-sm text-[#3D4167] text-center">
               No cities found
             </li>
           )}
           {results.map((city, i) => (
             <li
               key={`${city.name}-${city.lat}-${city.lng}-${i}`}
-              className={i < results.length - 1 ? 'border-b border-[var(--border)]' : ''}
+              className={i < results.length - 1 ? 'border-b border-[#1E1F2E]' : ''}
             >
               <button
                 type="button"
                 onClick={() => handleSelect(city)}
-                className="w-full px-4 py-3 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--space-hover)] transition-colors cursor-pointer"
+                className="w-full px-4 py-3 text-left text-sm text-[#E8ECF4] hover:bg-[#161722] transition-colors cursor-pointer"
               >
                 {city.name}
               </button>

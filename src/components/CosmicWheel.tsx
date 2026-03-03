@@ -222,7 +222,6 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
         let diff = Math.abs(labels[i].angle - labels[j].angle);
         if (diff > 180) diff = 360 - diff;
         if (diff < 15) {
-          // Offset the second one outward
           labels[j].offset = true;
         }
       }
@@ -260,12 +259,10 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       let labelX: number, labelY: number;
 
       if (info.offset) {
-        // Push label outward and draw connecting line
         const offsetR = planetR + 20;
         labelX = cx + Math.cos(drawAngle) * offsetR;
         labelY = cy + Math.sin(drawAngle) * offsetR;
 
-        // Connecting line
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(labelX, labelY);
@@ -292,12 +289,10 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
     ctx.lineWidth = 0.5;
 
-    // Centre circle
     ctx.beginPath();
     ctx.arc(cx, cy, seedCircleR, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 6 surrounding circles
     for (let i = 0; i < 6; i++) {
       const a = degToRad(i * 60 + rotation * 2);
       const sx = cx + Math.cos(a) * seedCircleR;
@@ -355,7 +350,7 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className={`w-[80vmin] h-[80vmin] md:w-[55vmin] md:h-[55vmin] mx-auto rounded-full ${
+      className={`w-full aspect-square mx-auto rounded-full ${
         isPlaying ? 'animate-wheel-glow' : ''
       }`}
     />
