@@ -5,6 +5,7 @@ import { useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { calculateBirthChart } from '@/lib/astro/birth-chart';
+import { formatBirthDate } from '@/lib/utils';
 import { useCosmicSound } from '@/hooks/useCosmicSound';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 import StarField from '@/components/StarField';
@@ -17,7 +18,7 @@ import EcosystemBadge from '@/components/EcosystemBadge';
 
 function PortraitContent() {
   const searchParams = useSearchParams();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const chart = useMemo(() => {
     const d = searchParams.get('d') || '';
@@ -48,12 +49,27 @@ function PortraitContent() {
     .replace('{planet}', t(chart.dominantPlanet.planet as TranslationKey))
     .replace('{sign}', t(chart.dominantPlanet.sign as TranslationKey));
 
+  // Top 5 strongest aspects (smallest orb = tightest = strongest)
+  const topAspects = [...chart.aspects]
+    .sort((a, b) => a.orb - b.orb)
+    .slice(0, 5);
+
+  const formattedDate = formatBirthDate(chart.date, lang);
+
   return (
-    <main className="relative min-h-screen pb-32">
+    <main className="relative min-h-screen pb-12">
       <StarField />
 
+      {/* Fixed back button — top left */}
+      <Link
+        href="/"
+        className="fixed top-4 left-4 z-50 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-sans"
+      >
+        ← {t('newPortrait')}
+      </Link>
+
       {/* Section A: Visualisation */}
-      <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <section className="relative z-10 flex flex-col items-center justify-center px-6 pt-16 pb-6">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -63,12 +79,21 @@ function PortraitContent() {
           <p className="text-sm tracking-[0.3em] uppercase text-[var(--text-secondary)] font-serif mb-2">
             {t('brand')}
           </p>
-          <h1 className="text-2xl md:text-4xl font-serif italic text-[var(--text-primary)]">
+          <h1 className="text-lg font-serif italic text-[var(--text-secondary)]">
             {t('cosmicPortrait')}
           </h1>
         </motion.div>
 
-        <CosmicWheel chart={chart} isPlaying={isPlaying} />
+        {/* Wheel with subtle background gradient */}
+        <div className="relative">
+          <div
+            className="absolute inset-0 rounded-full -m-4"
+            style={{
+              background: 'radial-gradient(circle, rgba(10, 11, 20, 0.5) 0%, transparent 70%)',
+            }}
+          />
+          <CosmicWheel chart={chart} isPlaying={isPlaying} />
+        </div>
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -76,12 +101,17 @@ function PortraitContent() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-6 text-center font-mono text-xs text-[var(--text-dim)]"
         >
-          <p>{chart.date} · {chart.time} · {chart.location}</p>
+          <p>{formattedDate} · {chart.time} · {chart.location}</p>
         </motion.div>
+
+        {/* Play button — inline below wheel */}
+        <div className="mt-8">
+          <PlayButton isPlaying={isPlaying} onToggle={toggle} />
+        </div>
       </section>
 
       {/* Section B: Frequency Breakdown */}
-      <section className="relative z-10 max-w-lg mx-auto px-4 space-y-6 mb-12">
+      <section className="relative z-10 max-w-lg mx-auto px-4 pt-12 space-y-6 mb-12">
         <motion.h2
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -116,8 +146,8 @@ function PortraitContent() {
           </p>
         </motion.div>
 
-        {/* Aspects */}
-        {chart.aspects.length > 0 && (
+        {/* Aspects — top 5 only */}
+        {topAspects.length > 0 && (
           <>
             <motion.h2
               initial={{ opacity: 0 }}
@@ -128,7 +158,7 @@ function PortraitContent() {
               {t('harmonicAspects')}
             </motion.h2>
             <div className="space-y-2">
-              {chart.aspects.map((aspect, i) => (
+              {topAspects.map((aspect, i) => (
                 <AspectCard key={`${aspect.planet1}-${aspect.planet2}`} aspect={aspect} index={i} />
               ))}
             </div>
@@ -141,12 +171,16 @@ function PortraitContent() {
         <ShareCard />
         <EcosystemBadge moonSign={moonSign} />
 
-        <div className="text-center pt-4">
+        {/* Prominent "Create Another" button */}
+        <div className="flex justify-center pt-4">
           <Link
             href="/"
-            className="text-sm text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors font-sans"
+            className="block w-full max-w-sm rounded-xl py-3 text-center text-white font-medium transition-all hover:brightness-110 hover:scale-[1.01] font-sans"
+            style={{
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-cool))',
+            }}
           >
-            ← {t('createAnother')}
+            {t('createAnother')}
           </Link>
         </div>
 
@@ -161,9 +195,6 @@ function PortraitContent() {
           </a>
         </footer>
       </section>
-
-      {/* Play button */}
-      <PlayButton isPlaying={isPlaying} onToggle={toggle} />
     </main>
   );
 }

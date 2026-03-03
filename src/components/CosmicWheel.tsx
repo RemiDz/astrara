@@ -53,6 +53,13 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
     const outerR = radius;
     const innerR = radius * 0.78;
 
+    // Subtle outer glow ring at 110% radius
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 1.1, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
     // Zodiac segments with element tints
     ZODIAC_SIGNS.forEach((sign, i) => {
       const startAngle = degToRad(i * 30 - 90 + rotation);
@@ -74,7 +81,7 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Zodiac symbol + name
+      // Zodiac symbol (prominent) + name (very subtle)
       const midAngle = degToRad(i * 30 + 15 - 90 + rotation);
       const symbolR = (outerR + innerR) / 2;
       const sx = cx + Math.cos(midAngle) * symbolR;
@@ -83,13 +90,18 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(midAngle + Math.PI / 2);
+
+      // Symbol — more prominent
       ctx.fillStyle = 'rgba(107, 113, 148, 0.7)';
       ctx.font = '14px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(ZODIAC_SYMBOLS[sign], 0, -6);
-      ctx.font = '8px "DM Sans", sans-serif';
-      ctx.fillText(t(sign as TranslationKey), 0, 8);
+      ctx.fillText(ZODIAC_SYMBOLS[sign], 0, -5);
+
+      // Name — very subtle (0.3 opacity, smaller)
+      ctx.fillStyle = 'rgba(107, 113, 148, 0.3)';
+      ctx.font = '7px "DM Sans", sans-serif';
+      ctx.fillText(t(sign as TranslationKey), 0, 7);
       ctx.restore();
     });
 
@@ -104,12 +116,16 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
     ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Aspect lines (draw after fade-in progress)
+    // Aspect lines — TOP 5 only (smallest orb = strongest)
     if (fade > 0.5) {
       const aspectFade = (fade - 0.5) * 2;
       const planetR = innerR * 0.85;
 
-      chart.aspects.forEach((aspect) => {
+      const topAspects = [...chart.aspects]
+        .sort((a, b) => a.orb - b.orb)
+        .slice(0, 5);
+
+      topAspects.forEach((aspect) => {
         const p1 = chart.planets.find((p) => p.planet === aspect.planet1);
         const p2 = chart.planets.find((p) => p.planet === aspect.planet2);
         if (!p1 || !p2) return;
@@ -159,30 +175,71 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       });
     }
 
-    // Planet dots
+    // Planet dots — with label overlap detection
     const now = Date.now() / 1000;
-    chart.planets.forEach((planet, i) => {
-      const planetFade = Math.min(Math.max((fade - i * 0.05) * 2, 0), 1);
-      if (planetFade <= 0) return;
+    const planetR = innerR * 0.85;
 
-      const angle = degToRad(planet.longitude - 90 + rotation);
-      const r = innerR * 0.85;
-      const px = cx + Math.cos(angle) * r;
-      const py = cy + Math.sin(angle) * r;
+    // Pre-calculate label positions, detect overlaps, and offset if needed
+    interface LabelInfo {
+      angle: number;
+      px: number;
+      py: number;
+      size: number;
+      labelR: number;
+      labelX: number;
+      labelY: number;
+      offset: boolean;
+    }
+
+    const labels: LabelInfo[] = chart.planets.map((planet, i) => {
+      const angle = planet.longitude;
+      const drawAngle = degToRad(angle - 90 + rotation);
+      const px = cx + Math.cos(drawAngle) * planetR;
+      const py = cy + Math.sin(drawAngle) * planetR;
 
       const baseSize = planet.planet === 'Sun' || planet.planet === 'Moon' ? 6
         : ['Mercury', 'Venus', 'Mars'].includes(planet.planet) ? 4 : 3;
 
-      // When playing, pulse the dot size more visibly
       const pulseAmp = isPlaying ? 0.08 : 0.02;
       const pulse = 1 + Math.sin(now * 2 + i * 0.7) * pulseAmp;
       const size = baseSize * pulse;
+
+      return {
+        angle,
+        px,
+        py,
+        size,
+        labelR: planetR,
+        labelX: px,
+        labelY: py - size - 6,
+        offset: false,
+      };
+    });
+
+    // Detect overlaps — if two planets within 15° of each other, offset one outward
+    for (let i = 0; i < labels.length; i++) {
+      for (let j = i + 1; j < labels.length; j++) {
+        let diff = Math.abs(labels[i].angle - labels[j].angle);
+        if (diff > 180) diff = 360 - diff;
+        if (diff < 15) {
+          // Offset the second one outward
+          labels[j].offset = true;
+        }
+      }
+    }
+
+    chart.planets.forEach((planet, i) => {
+      const planetFade = Math.min(Math.max((fade - i * 0.05) * 2, 0), 1);
+      if (planetFade <= 0) return;
+
+      const info = labels[i];
+      const { px, py, size } = info;
+      const color = PLANET_COLORS[planet.planet];
 
       // Glow
       const glowRadius = isPlaying ? size * 4 : size * 3;
       const glowOpacity = isPlaying ? 0.5 : 0.4;
       const gradient = ctx.createRadialGradient(px, py, 0, px, py, glowRadius);
-      const color = PLANET_COLORS[planet.planet];
       gradient.addColorStop(0, color.replace(')', `, ${glowOpacity * planetFade})`).replace('rgb', 'rgba'));
       gradient.addColorStop(1, 'transparent');
       ctx.fillStyle = gradient;
@@ -198,12 +255,33 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      // Label
+      // Label — offset outward if overlapping
+      const drawAngle = degToRad(planet.longitude - 90 + rotation);
+      let labelX: number, labelY: number;
+
+      if (info.offset) {
+        // Push label outward and draw connecting line
+        const offsetR = planetR + 20;
+        labelX = cx + Math.cos(drawAngle) * offsetR;
+        labelY = cy + Math.sin(drawAngle) * offsetR;
+
+        // Connecting line
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(labelX, labelY);
+        ctx.strokeStyle = `rgba(107, 113, 148, ${0.2 * planetFade})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      } else {
+        labelX = px;
+        labelY = py - size - 6;
+      }
+
       ctx.fillStyle = color;
       ctx.globalAlpha = planetFade;
       ctx.font = '10px "IBM Plex Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${PLANET_SYMBOLS[planet.planet]} ${planet.degree.toFixed(0)}°`, px, py - size - 6);
+      ctx.fillText(`${PLANET_SYMBOLS[planet.planet]} ${planet.degree.toFixed(0)}°`, labelX, labelY);
       ctx.globalAlpha = 1;
     });
 
@@ -229,7 +307,7 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-  }, [chart]);
+  }, [chart, isPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -277,7 +355,7 @@ export default function CosmicWheel({ chart, isPlaying }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className={`w-[85vmin] h-[85vmin] md:w-[60vmin] md:h-[60vmin] mx-auto rounded-full ${
+      className={`w-[80vmin] h-[80vmin] md:w-[55vmin] md:h-[55vmin] mx-auto rounded-full ${
         isPlaying ? 'animate-wheel-glow' : ''
       }`}
     />

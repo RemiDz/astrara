@@ -12,17 +12,20 @@ export default function PlayButton({ isPlaying, onToggle }: Props) {
   const { t } = useLanguage();
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-3">
       <motion.button
         onClick={onToggle}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
+        className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
           isPlaying
             ? 'bg-[var(--accent-warm)] shadow-[var(--accent-warm)]/20'
             : 'bg-[var(--accent)] shadow-[var(--accent)]/20 animate-gentle-pulse'
         }`}
       >
+        {isPlaying && (
+          <span className="absolute inset-0 rounded-full border-2 border-[var(--accent-warm)] animate-ping opacity-20" />
+        )}
         {isPlaying ? (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
             <rect x="6" y="4" width="4" height="16" rx="1" />
@@ -34,7 +37,7 @@ export default function PlayButton({ isPlaying, onToggle }: Props) {
           </svg>
         )}
       </motion.button>
-      <span className="text-xs text-[var(--text-dim)] font-sans">
+      <span className="text-sm text-[var(--text-secondary)] font-sans">
         {isPlaying ? t('sessionComplete') : t('listenCTA')}
       </span>
     </div>

@@ -21,3 +21,12 @@ export function degToRad(deg: number): number {
 export function normalizeAngle(angle: number): number {
   return ((angle % 360) + 360) % 360;
 }
+
+export function formatBirthDate(dateStr: string, lang: string): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
