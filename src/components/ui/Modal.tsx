@@ -38,14 +38,15 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
           <motion.div
             ref={contentRef}
             className="fixed z-50
-              bottom-0 left-0 right-0 max-h-[70vh] rounded-t-2xl
-              md:bottom-auto md:top-0 md:left-auto md:right-0 md:max-h-full md:h-full md:w-[400px] md:rounded-t-none md:rounded-l-2xl
-              overflow-y-auto"
+              bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl
+              md:bottom-auto md:top-0 md:left-auto md:right-0 md:max-h-full md:h-full md:w-[400px] md:rounded-t-none md:rounded-l-2xl"
             style={{
               background: 'rgba(13, 13, 26, 0.95)',
               backdropFilter: 'blur(30px)',
               WebkitBackdropFilter: 'blur(30px)',
               borderTop: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             initial={{ y: '100%', x: 0 }}
             animate={{ y: 0, x: 0 }}
@@ -59,20 +60,26 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
             }}
           >
             {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-2 md:hidden">
+            <div className="flex justify-center pt-3 pb-2 md:hidden flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors text-white/50 hover:text-white/80"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors text-white/50 hover:text-white/80 z-10"
               aria-label="Close"
             >
               ✕
             </button>
 
-            <div className="p-6 pt-2 md:pt-6">
+            <div
+              className="p-6 pt-2 md:pt-6 flex-1 min-h-0"
+              style={{
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
               {children}
             </div>
           </motion.div>
