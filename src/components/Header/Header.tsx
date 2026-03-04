@@ -86,40 +86,78 @@ export default function Header({
   const dateInputValue = `${displayDate.getFullYear()}-${String(displayDate.getMonth() + 1).padStart(2, '0')}-${String(displayDate.getDate()).padStart(2, '0')}`
 
   return (
-    <header className="relative z-30 px-4 py-3">
-      <div className="max-w-5xl mx-auto flex items-center justify-between">
-        {/* Logo + tagline + info */}
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
-            ASTRARA
-          </h1>
-          <div className="flex items-center gap-1.5">
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {t('app.tagline')}
-            </p>
+    <header className="relative z-30 px-4 pt-4 pb-2">
+      <div className="max-w-5xl mx-auto flex items-start justify-between">
+        {/* Left column: App name + subtitle + date */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
+              ASTRARA
+            </h1>
+            {/* Info button */}
             <button
               type="button"
               onClick={onAboutOpen}
-              className="w-4 h-4 rounded-full border border-white/20 text-white/30 text-[9px] flex items-center justify-center hover:text-white/50 hover:border-white/30 transition-colors select-none leading-none"
+              className="w-6 h-6 rounded-full border border-white/25
+                         flex items-center justify-center
+                         text-white/40 text-xs font-serif
+                         hover:border-white/40 hover:text-white/60
+                         active:scale-90
+                         transition-all select-none cursor-pointer"
               aria-label="About Astrara"
             >
               i
             </button>
           </div>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {t('app.tagline')}
+          </p>
+          {/* Date + Time — tappable for date picker */}
+          <div className="relative mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker()
+                } catch {
+                  dateInputRef.current?.focus()
+                }
+              }}
+              className="text-sm hover:text-purple-200 transition-colors select-none"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {dateStr}{timeStr ? ` · ${timeStr}` : ''}
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={dateInputValue}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const newDate = new Date(e.target.value + 'T12:00:00')
+                  onDateChange(newDate)
+                }
+              }}
+              className="absolute opacity-0 w-0 h-0 pointer-events-none"
+              aria-label="Select date"
+            />
+          </div>
         </div>
 
-        {/* Right side: location + language */}
-        <div className="flex items-center gap-3">
+        {/* Right column: Location + Sound + Language */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           {/* Location */}
-          <div ref={searchRef} className="relative min-w-[100px]">
+          <div ref={searchRef} className="relative">
             <button
               type="button"
               onClick={() => setSearchOpen(!searchOpen)}
-              className="flex items-center justify-end gap-1.5 text-sm hover:text-white transition-colors select-none w-full"
+              className="flex items-center gap-1 min-w-[80px] justify-end select-none"
               style={{ color: 'var(--text-secondary)' }}
             >
-              <span>📍</span>
-              <span>{locationLoading ? t('location.detecting') : (location?.city || 'Unknown')}</span>
+              <span className="text-xs">📍</span>
+              <span className="text-xs truncate max-w-[100px]" style={{ color: 'var(--text-secondary)' }}>
+                {locationLoading ? t('location.detecting') : (location?.city || 'Unknown')}
+              </span>
             </button>
 
             {searchOpen && (
@@ -143,7 +181,7 @@ export default function Header({
                             setSearchOpen(false)
                             setSearchQuery('')
                           }}
-                          className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-white/5 transition-colors select-none"
+                          className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-white/5 select-none"
                           style={{ color: 'var(--text-secondary)' }}
                         >
                           {r.city}
@@ -160,7 +198,7 @@ export default function Header({
           <button
             type="button"
             onClick={onAudioToggle}
-            className={`text-lg select-none transition-colors ${
+            className={`text-lg select-none ${
               audioPlaying
                 ? 'text-purple-400/80 hover:text-purple-300'
                 : audioWantsOn
@@ -177,12 +215,12 @@ export default function Header({
             <button
               type="button"
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1 text-sm px-2 py-1 rounded-lg hover:bg-white/5 transition-colors select-none"
+              className="flex items-center gap-1 text-xs select-none"
               style={{ color: 'var(--text-secondary)' }}
             >
               <span>{currentLang.flag}</span>
               <span>{currentLang.label}</span>
-              <span className="text-xs">▾</span>
+              <span className="text-white/30">▾</span>
             </button>
 
             {langOpen && (
@@ -192,7 +230,7 @@ export default function Header({
                     type="button"
                     key={l.code}
                     onClick={() => { setLang(l.code); setLangOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition-colors select-none ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 select-none ${
                       l.code === lang ? 'text-white' : ''
                     }`}
                     style={{ color: l.code === lang ? undefined : 'var(--text-secondary)' }}
@@ -204,41 +242,6 @@ export default function Header({
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Date + Time — tappable for date picker */}
-      <div className="max-w-5xl mx-auto mt-1 relative">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                dateInputRef.current?.showPicker()
-              } catch {
-                dateInputRef.current?.focus()
-              }
-            }}
-            className="text-sm hover:text-purple-200 transition-colors select-none flex items-center gap-1.5"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <span>{dateStr}{timeStr ? ` · ${timeStr}` : ''}</span>
-          </button>
-
-          {/* Hidden native date input */}
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={dateInputValue}
-            onChange={(e) => {
-              if (e.target.value) {
-                const newDate = new Date(e.target.value + 'T12:00:00')
-                onDateChange(newDate)
-              }
-            }}
-            className="absolute opacity-0 w-0 h-0 pointer-events-none"
-            aria-label="Select date"
-          />
         </div>
       </div>
     </header>
