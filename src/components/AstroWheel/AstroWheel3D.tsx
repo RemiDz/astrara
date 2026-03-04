@@ -41,16 +41,16 @@ function longitudeToPosition(longitude: number, radius: number): [number, number
 }
 
 const PLANET_CONFIG: Record<string, { radius: number; pulseSpeed: number }> = {
-  sun:     { radius: 0.18, pulseSpeed: 1.2 },
-  moon:    { radius: 0.15, pulseSpeed: 0.6 },
-  mercury: { radius: 0.10, pulseSpeed: 2.0 },
-  venus:   { radius: 0.12, pulseSpeed: 0.5 },
-  mars:    { radius: 0.12, pulseSpeed: 1.4 },
-  jupiter: { radius: 0.14, pulseSpeed: 0.7 },
-  saturn:  { radius: 0.13, pulseSpeed: 0.6 },
-  uranus:  { radius: 0.10, pulseSpeed: 0.8 },
-  neptune: { radius: 0.10, pulseSpeed: 0.4 },
-  pluto:   { radius: 0.08, pulseSpeed: 0.3 },
+  sun:     { radius: 0.28, pulseSpeed: 1.2 },
+  moon:    { radius: 0.22, pulseSpeed: 0.6 },
+  mercury: { radius: 0.14, pulseSpeed: 2.0 },
+  venus:   { radius: 0.17, pulseSpeed: 0.5 },
+  mars:    { radius: 0.17, pulseSpeed: 1.4 },
+  jupiter: { radius: 0.20, pulseSpeed: 0.7 },
+  saturn:  { radius: 0.19, pulseSpeed: 0.6 },
+  uranus:  { radius: 0.15, pulseSpeed: 0.8 },
+  neptune: { radius: 0.15, pulseSpeed: 0.4 },
+  pluto:   { radius: 0.12, pulseSpeed: 0.3 },
 }
 
 // ─── Animated Scale Group (lerps scale from 0 to 1) ────────────────
@@ -542,8 +542,32 @@ function PlanetOrb({
   const [visible, setVisible] = useState(false)
   const currentScale = useRef(0)
   const colour = useMemo(() => new THREE.Color(planet.colour), [planet.colour])
-  const pos = useMemo(() => longitudeToPosition(planet.eclipticLongitude, R_PLANET), [planet.eclipticLongitude])
-  const config = PLANET_CONFIG[planet.id] ?? { radius: 0.08, pulseSpeed: 0.6 }
+  const config = PLANET_CONFIG[planet.id] ?? { radius: 0.12, pulseSpeed: 0.6 }
+
+  // Overlap prevention: offset Y and radius when planets are within 8° of each other
+  const { yOffset, radiusOffset } = useMemo(() => {
+    let yOff = 0
+    let rOff = 0
+    for (const other of planets) {
+      if (other.id === planet.id) continue
+      let diff = Math.abs(planet.eclipticLongitude - other.eclipticLongitude)
+      if (diff > 180) diff = 360 - diff
+      if (diff < 8) {
+        const myIdx = planets.indexOf(planet)
+        const otherIdx = planets.indexOf(other)
+        if (otherIdx < myIdx) {
+          yOff = 0.15
+          rOff = 0.12
+        }
+      }
+    }
+    return { yOffset: yOff, radiusOffset: rOff }
+  }, [planet, planets])
+
+  const pos = useMemo(() => {
+    const [x, y, z] = longitudeToPosition(planet.eclipticLongitude, R_PLANET + radiusOffset)
+    return [x, y + yOffset, z] as [number, number, number]
+  }, [planet.eclipticLongitude, yOffset, radiusOffset])
 
   useEffect(() => {
     if (sceneReady) {
@@ -552,16 +576,17 @@ function PlanetOrb({
     }
   }, [sceneReady, entranceDelay])
 
-  const labelOffset = useMemo(() => {
-    let offset = -0.28
+  const labelYOffset = useMemo(() => {
+    // Position label below orb, scaled to planet size
+    const base = -(config.radius + 0.16)
     for (const other of planets) {
       if (other.id === planet.id) continue
       let diff = Math.abs(planet.eclipticLongitude - other.eclipticLongitude)
       if (diff > 180) diff = 360 - diff
-      if (diff < 8 && planets.indexOf(other) < planets.indexOf(planet)) offset = 0.28
+      if (diff < 8 && planets.indexOf(other) < planets.indexOf(planet)) return config.radius + 0.16
     }
-    return offset
-  }, [planet, planets])
+    return base
+  }, [planet, planets, config.radius])
 
   const handleTap = useCallback(() => {
     setIsFlashing(true)
@@ -599,21 +624,28 @@ function PlanetOrb({
         </mesh>
       )}
       <pointLight color={planet.colour} intensity={isSelected || isFlashing ? 0.7 : 0.3} distance={1.5} decay={2} />
-      <Html position={[0, labelOffset, 0]} center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', userSelect: 'none', overflow: 'visible' }}>
-        <div className="text-center whitespace-nowrap px-1.5 py-0.5 rounded-md"
+      <Html position={[0, labelYOffset, 0]} center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', userSelect: 'none', overflow: 'visible' }}>
+        <div className="whitespace-nowrap select-none pointer-events-none"
           style={{
-            fontSize: '11px', color: planet.colour,
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-            textShadow: `0 0 8px ${planet.colour}40`, fontFamily: 'var(--font-body), sans-serif',
-            opacity: visible ? 1 : 0, transition: 'opacity 0.4s ease-out',
+            fontSize: '12px', color: 'white', opacity: visible ? 0.85 : 0,
+            textShadow: `0 0 8px ${planet.colour}80, 0 1px 3px rgba(0,0,0,0.8)`,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+            padding: '2px 6px', borderRadius: '6px',
+            fontFamily: "'DM Sans', sans-serif",
+            transition: 'opacity 0.4s ease-out',
           }}>
           {planet.glyph} {planet.degreeInSign}°
         </div>
       </Html>
       <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'auto', overflow: 'visible' }}>
-        <button onClick={(e) => { e.stopPropagation(); handleTap() }} className="rounded-full cursor-pointer"
-          style={{ width: '48px', height: '48px', background: 'transparent', border: 'none', padding: 0, outline: 'none' }}
-          aria-label={`View ${planet.name} details`} />
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handleTap() }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="flex items-center justify-center select-none cursor-pointer active:scale-90 transition-transform duration-150"
+          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'transparent', border: 'none', padding: 0, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+          aria-label={`View ${planet.name} details`}
+        />
       </Html>
     </group>
   )
