@@ -16,6 +16,7 @@ interface HeaderProps {
   audioPlaying: boolean
   audioWantsOn: boolean
   onAudioToggle: () => void
+  onAboutOpen: () => void
 }
 
 const LANGUAGES: { code: Language; flag: string; label: string }[] = [
@@ -34,6 +35,7 @@ export default function Header({
   audioPlaying,
   audioWantsOn,
   onAudioToggle,
+  onAboutOpen,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang, setLang } = useLanguage()
@@ -86,14 +88,24 @@ export default function Header({
   return (
     <header className="relative z-30 px-4 py-3">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
-        {/* Logo + tagline */}
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
-            ASTRARA
-          </h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {t('app.tagline')}
-          </p>
+        {/* Logo + tagline + info */}
+        <div className="flex items-center gap-2">
+          <div>
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
+              ASTRARA
+            </h1>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {t('app.tagline')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onAboutOpen}
+            className="text-white/30 hover:text-white/60 transition-colors select-none text-sm self-start mt-1"
+            aria-label="About Astrara"
+          >
+            ℹ️
+          </button>
         </div>
 
         {/* Right side: location + language */}

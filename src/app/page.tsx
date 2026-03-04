@@ -16,6 +16,7 @@ import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
 import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelTooltip'
 import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
 import EarthPanel from '@/components/EarthPanel/EarthPanel'
+import AboutModal from '@/components/AboutModal/AboutModal'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -28,6 +29,7 @@ function HomePage() {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
   const [showBirthInput, setShowBirthInput] = useState(false)
   const [showEarthPanel, setShowEarthPanel] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
   const [birthCityQuery, setBirthCityQuery] = useState('')
@@ -139,6 +141,7 @@ function HomePage() {
           audioPlaying={audioPlaying}
           audioWantsOn={wantsAudio}
           onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
+          onAboutOpen={() => { setShowAbout(true); trackEvent('about-open') }}
         />
 
         <main className="max-w-5xl mx-auto px-4 pb-12">
@@ -253,6 +256,9 @@ function HomePage() {
 
       {/* Earth Panel */}
       <EarthPanel isOpen={showEarthPanel} onClose={() => setShowEarthPanel(false)} />
+
+      {/* About Modal */}
+      <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
 
       {/* Headphones hint toast */}
       {showHeadphoneHint && (
