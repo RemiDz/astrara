@@ -100,5 +100,8 @@
   "earth.practice": "Practice",
   "earth.deepDive": "Deep dive → Earth Pulse",
   "earth.loading": "Listening to Earth...",
-  "earth.error": "Unable to reach Earth sensors. Showing base values."
+  "earth.error": "Unable to reach Earth sensors. Showing base values.",
+  "audio.on": "Cosmic soundscape on",
+  "audio.off": "Sound off",
+  "audio.headphones": "Best with headphones \uD83C\uDFA7"
 }

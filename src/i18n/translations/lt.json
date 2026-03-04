@@ -100,5 +100,8 @@
   "earth.practice": "Praktika",
   "earth.deepDive": "Giliau → Žemės Pulsas",
   "earth.loading": "Klausomės Žemės...",
-  "earth.error": "Nepavyko pasiekti Žemės jutiklių. Rodomi baziniai duomenys."
+  "earth.error": "Nepavyko pasiekti Žemės jutiklių. Rodomi baziniai duomenys.",
+  "audio.on": "Kosminis garsovaizdis įjungtas",
+  "audio.off": "Garsas išjungtas",
+  "audio.headphones": "Geriausia su ausinėmis \uD83C\uDFA7"
 }

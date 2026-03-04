@@ -113,6 +113,17 @@ body::-webkit-scrollbar {
   animation: slide-up 0.3s ease-out;
 }
 
+@keyframes fade-in-out {
+  0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease-in-out forwards;
+}
+
 /* Prevent text selection on interactive elements — app should feel native */
 button, a, [role="button"] {
   -webkit-user-select: none;

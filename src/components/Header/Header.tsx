@@ -13,6 +13,9 @@ interface HeaderProps {
   isToday: boolean
   onLocationChange: (loc: UserLocation) => void
   onDateChange: (date: Date) => void
+  audioPlaying: boolean
+  audioWantsOn: boolean
+  onAudioToggle: () => void
 }
 
 const LANGUAGES: { code: Language; flag: string; label: string }[] = [
@@ -28,6 +31,9 @@ export default function Header({
   isToday,
   onLocationChange,
   onDateChange,
+  audioPlaying,
+  audioWantsOn,
+  onAudioToggle,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang, setLang } = useLanguage()
@@ -137,6 +143,22 @@ export default function Header({
               </div>
             )}
           </div>
+
+          {/* Sound toggle */}
+          <button
+            type="button"
+            onClick={onAudioToggle}
+            className={`text-lg select-none transition-colors ${
+              audioPlaying
+                ? 'text-purple-400/80 hover:text-purple-300'
+                : audioWantsOn
+                  ? 'text-white/40 hover:text-white/70 animate-pulse'
+                  : 'text-white/40 hover:text-white/70'
+            }`}
+            aria-label={audioPlaying ? 'Mute cosmic soundscape' : 'Play cosmic soundscape'}
+          >
+            {audioPlaying ? '\uD83D\uDD08' : '\uD83D\uDD07'}
+          </button>
 
           {/* Language switcher */}
           <div ref={langRef} className="relative">

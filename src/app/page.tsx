@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { LanguageProvider } from '@/i18n/LanguageContext'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useRealTime } from '@/hooks/useRealTime'
 import { useLocation } from '@/hooks/useLocation'
 import { useAstroData } from '@/hooks/useAstroData'
+import { useCosmicAudio } from '@/audio/useCosmicAudio'
 import { searchCity, type UserLocation } from '@/lib/location'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import Starfield from '@/components/Starfield/Starfield'
@@ -49,14 +50,33 @@ function HomePage() {
 
   const astroData = useAstroData(targetDate, lat, lng)
 
+  const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
+  const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap } = useCosmicAudio(astroData?.planets ?? [], moonSign)
+  const [showHeadphoneHint, setShowHeadphoneHint] = useState(false)
+
+  const handleAudioToggle = useCallback(async () => {
+    await toggleAudio()
+    // Show headphones hint on first enable
+    if (!audioPlaying && typeof window !== 'undefined') {
+      const hintShown = localStorage.getItem('astrara-audio-hint')
+      if (!hintShown) {
+        setShowHeadphoneHint(true)
+        localStorage.setItem('astrara-audio-hint', '1')
+        setTimeout(() => setShowHeadphoneHint(false), 3000)
+      }
+    }
+  }, [toggleAudio, audioPlaying])
+
   const handlePlanetTap = useCallback((planet: PlanetPosition) => {
     setSelectedPlanet(planet.id)
     setTooltip({ type: 'planet', data: planet })
-  }, [])
+    audioOnPlanetTap(planet.id)
+  }, [audioOnPlanetTap])
 
   const handleSignTap = useCallback((signId: string) => {
     setTooltip({ type: 'sign', data: signId })
-  }, [])
+    audioOnSignTap(signId)
+  }, [audioOnSignTap])
 
   const handleAspectTap = useCallback((aspect: AspectData) => {
     setTooltip({ type: 'aspect', data: aspect })
@@ -116,6 +136,9 @@ function HomePage() {
             setDayOffset(0)
             trackEvent('date-pick', { date: date.toISOString().split('T')[0] })
           }}
+          audioPlaying={audioPlaying}
+          audioWantsOn={wantsAudio}
+          onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
         />
 
         <main className="max-w-5xl mx-auto px-4 pb-12">
@@ -230,6 +253,13 @@ function HomePage() {
 
       {/* Earth Panel */}
       <EarthPanel isOpen={showEarthPanel} onClose={() => setShowEarthPanel(false)} />
+
+      {/* Headphones hint toast */}
+      {showHeadphoneHint && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-black/80 backdrop-blur-sm border border-white/10 text-white/60 text-xs animate-fade-in-out select-none">
+          {t('audio.headphones')}
+        </div>
+      )}
 
       {/* Birth Details Modal */}
       {showBirthInput && (
