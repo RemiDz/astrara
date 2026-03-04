@@ -371,29 +371,136 @@ const OuterHalo = memo(function OuterHalo() {
   )
 })
 
+// ─── Procedural Earth Texture ────────────────────────────────────────
+function createEarthTexture(): THREE.CanvasTexture {
+  const w = 512, h = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = w; canvas.height = h
+  const ctx = canvas.getContext('2d')!
+
+  // Ocean gradient
+  const bg = ctx.createLinearGradient(0, 0, 0, h)
+  bg.addColorStop(0, '#0a2a5a')
+  bg.addColorStop(0.3, '#0e3d7a')
+  bg.addColorStop(0.5, '#1a5a9e')
+  bg.addColorStop(0.7, '#0e3d7a')
+  bg.addColorStop(1, '#0a2a5a')
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, w, h)
+
+  // Polar ice
+  ctx.fillStyle = 'rgba(200, 220, 240, 0.5)'
+  ctx.fillRect(0, 0, w, 18)
+  ctx.fillRect(0, h - 18, w, 18)
+
+  // Draw simplified continent shapes (equirectangular projection)
+  ctx.fillStyle = '#1a5c2a'
+  ctx.strokeStyle = '#2a7a3a'
+  ctx.lineWidth = 1
+
+  // Africa
+  ctx.beginPath()
+  ctx.moveTo(260, 85); ctx.lineTo(275, 75); ctx.lineTo(290, 80); ctx.lineTo(295, 95)
+  ctx.lineTo(290, 115); ctx.lineTo(285, 140); ctx.lineTo(278, 160); ctx.lineTo(270, 170)
+  ctx.lineTo(262, 165); ctx.lineTo(255, 145); ctx.lineTo(248, 125); ctx.lineTo(250, 105)
+  ctx.lineTo(255, 90); ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // Europe
+  ctx.beginPath()
+  ctx.moveTo(250, 55); ctx.lineTo(260, 48); ctx.lineTo(275, 45); ctx.lineTo(285, 50)
+  ctx.lineTo(290, 58); ctx.lineTo(285, 68); ctx.lineTo(275, 72); ctx.lineTo(265, 75)
+  ctx.lineTo(255, 72); ctx.lineTo(248, 65); ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // Asia
+  ctx.beginPath()
+  ctx.moveTo(290, 42); ctx.lineTo(320, 38); ctx.lineTo(350, 40); ctx.lineTo(380, 48)
+  ctx.lineTo(400, 55); ctx.lineTo(410, 65); ctx.lineTo(400, 80); ctx.lineTo(385, 90)
+  ctx.lineTo(370, 95); ctx.lineTo(350, 98); ctx.lineTo(335, 92); ctx.lineTo(320, 85)
+  ctx.lineTo(305, 80); ctx.lineTo(295, 70); ctx.lineTo(290, 58); ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // India
+  ctx.beginPath()
+  ctx.moveTo(340, 95); ctx.lineTo(350, 100); ctx.lineTo(348, 118); ctx.lineTo(340, 128)
+  ctx.lineTo(332, 118); ctx.lineTo(334, 100); ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // North America
+  ctx.beginPath()
+  ctx.moveTo(80, 35); ctx.lineTo(110, 30); ctx.lineTo(140, 38); ctx.lineTo(155, 50)
+  ctx.lineTo(150, 65); ctx.lineTo(140, 80); ctx.lineTo(128, 90); ctx.lineTo(115, 95)
+  ctx.lineTo(100, 88); ctx.lineTo(85, 78); ctx.lineTo(75, 65); ctx.lineTo(70, 50)
+  ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // Central America
+  ctx.beginPath()
+  ctx.moveTo(110, 95); ctx.lineTo(118, 100); ctx.lineTo(115, 112); ctx.lineTo(108, 118)
+  ctx.lineTo(102, 112); ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // South America
+  ctx.beginPath()
+  ctx.moveTo(145, 120); ctx.lineTo(160, 115); ctx.lineTo(170, 125); ctx.lineTo(172, 145)
+  ctx.lineTo(168, 165); ctx.lineTo(160, 185); ctx.lineTo(148, 195); ctx.lineTo(140, 188)
+  ctx.lineTo(135, 170); ctx.lineTo(132, 150); ctx.lineTo(135, 135); ctx.closePath()
+  ctx.fill(); ctx.stroke()
+
+  // Australia
+  ctx.beginPath()
+  ctx.moveTo(400, 155); ctx.lineTo(420, 148); ctx.lineTo(440, 152); ctx.lineTo(445, 165)
+  ctx.lineTo(438, 178); ctx.lineTo(420, 182); ctx.lineTo(405, 175); ctx.lineTo(398, 165)
+  ctx.closePath(); ctx.fill(); ctx.stroke()
+
+  // Add subtle cloud wisps
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+  for (let i = 0; i < 12; i++) {
+    const cx = (i * 43 + 20) % w
+    const cy = 40 + Math.sin(i * 1.7) * 60
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, 30 + Math.random() * 20, 6 + Math.random() * 4, Math.random() * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.wrapT = THREE.ClampToEdgeWrapping
+  return tex
+}
+
 // ─── Earth Centre ───────────────────────────────────────────────────
 function EarthCentre() {
   const earthRef = useRef<THREE.Mesh>(null!)
-  const landRef = useRef<THREE.Mesh>(null!)
+  const earthTexture = useMemo(() => createEarthTexture(), [])
+
   useFrame((_, delta) => {
     if (earthRef.current) earthRef.current.rotation.y += delta * 0.1
-    if (landRef.current) landRef.current.rotation.y += delta * 0.1
   })
+
   return (
     <group>
+      {/* Textured Earth sphere */}
       <mesh ref={earthRef}>
         <sphereGeometry args={[0.15, 32, 32]} />
-        <meshPhysicalMaterial color="#1a4a7a" emissive="#0d2847" emissiveIntensity={0.4} roughness={0.6} metalness={0.1} clearcoat={0.5} clearcoatRoughness={0.3} />
+        <meshStandardMaterial
+          map={earthTexture}
+          emissive="#0a1a3a"
+          emissiveIntensity={0.3}
+          roughness={0.7}
+          metalness={0.05}
+        />
       </mesh>
-      <mesh ref={landRef} rotation={[0.4, 0, 0.2]}>
-        <icosahedronGeometry args={[0.152, 2]} />
-        <meshBasicMaterial color="#2d5a1e" transparent opacity={0.25} wireframe />
-      </mesh>
+
+      {/* Atmosphere glow — inside-out sphere */}
       <mesh>
-        <sphereGeometry args={[0.18, 32, 32]} />
-        <meshBasicMaterial color="#4a9eff" transparent opacity={0.12} side={THREE.BackSide} />
+        <sphereGeometry args={[0.175, 32, 32]} />
+        <meshBasicMaterial color="#4a9eff" transparent opacity={0.1} side={THREE.BackSide} />
       </mesh>
+
+      {/* Outer atmosphere halo */}
+      <mesh>
+        <sphereGeometry args={[0.2, 32, 32]} />
+        <meshBasicMaterial color="#6ab5ff" transparent opacity={0.05} side={THREE.BackSide} />
+      </mesh>
+
       <pointLight color="#4a9eff" intensity={0.3} distance={1.5} decay={2} />
+
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
         <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
           style={{ fontSize: '8px', color: 'rgba(74, 158, 255, 0.35)', textShadow: '0 0 8px rgba(74, 158, 255, 0.3)', fontFamily: 'var(--font-body), sans-serif' }}>
