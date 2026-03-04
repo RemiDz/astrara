@@ -70,5 +70,15 @@
   "aspect.trine": "Trine",
   "aspect.square": "Square",
   "aspect.sextile": "Sextile",
-  "loading.stars": "Reading the stars..."
+  "loading.stars": "Reading the stars...",
+  "sign.details": "About This Sign",
+  "sign.rulingPlanet": "Ruling Planet",
+  "sign.bodyArea": "Body Area",
+  "sign.themes": "Themes",
+  "sign.shadow": "Shadow Side",
+  "sign.soundHealing": "Sound Healing Connection",
+  "sign.frequency": "Frequency",
+  "sign.instruments": "Instruments",
+  "sign.keynote": "Keynote",
+  "sign.dateRange": "Dates"
 }

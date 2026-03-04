@@ -18,7 +18,21 @@ interface ContentData {
   planetMeanings: Record<string, Record<string, PlanetInsight>>
   aspectMeanings: Record<string, { name: string; symbol: string; nature: string; generalMeaning: string }>
   planetPairAspects: Record<string, Record<string, string>>
-  signMeanings: Record<string, { whatItFeelsLike: string; keywords: string[] }>
+  signMeanings: Record<string, {
+    whatItFeelsLike: string
+    keywords: string[]
+    energyDescription: string
+    noPlanetsMessage: string
+    elementDescription: string
+    modalityDescription: string
+    rulingPlanet: string
+    bodyArea: string
+    themes: string
+    shadow: string
+    frequency: string
+    instruments: string
+    keynote: string
+  }>
   phaseMeanings: Record<string, { meaning: string; guidance: string }>
 }
 

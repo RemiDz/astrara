@@ -70,5 +70,15 @@
   "aspect.trine": "Trinas",
   "aspect.square": "Kvadratūra",
   "aspect.sextile": "Sekstilis",
-  "loading.stars": "Skaitome žvaigždes..."
+  "loading.stars": "Skaitome žvaigždes...",
+  "sign.details": "Apie Šį Ženklą",
+  "sign.rulingPlanet": "Valdanti Planeta",
+  "sign.bodyArea": "Kūno Sritis",
+  "sign.themes": "Temos",
+  "sign.shadow": "Šešėlinė Pusė",
+  "sign.soundHealing": "Garso Terapijos Ryšys",
+  "sign.frequency": "Dažnis",
+  "sign.instruments": "Instrumentai",
+  "sign.keynote": "Pagrindinis Tonas",
+  "sign.dateRange": "Datos"
 }

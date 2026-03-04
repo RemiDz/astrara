@@ -114,51 +114,115 @@ function SignDetail({ signId, planets, t, content }: { signId: string; planets: 
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-4xl" style={{ color: sign.colour }}>{sign.glyph}</span>
-        <div>
-          <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-white">
-            {t(`zodiac.${signId}`)}
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {sign.dateRange}
-          </p>
-        </div>
+      {/* Header */}
+      <div className="text-center mb-5">
+        <div className="text-4xl mb-2" style={{ color: sign.colour }}>{sign.glyph}</div>
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-white tracking-wide">
+          {t(`zodiac.${signId}`).toUpperCase()}
+        </h2>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+          {t(`element.${sign.element}`)} · {t(`modality.${sign.modality}`)}
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+          {sign.dateRange}
+        </p>
       </div>
 
-      <div className="flex gap-3 mb-4">
-        <span className="glass-card px-2 py-1 text-xs" style={{ color: sign.colour }}>
-          {t('sign.element')}: {t(`element.${sign.element}`)}
-        </span>
-        <span className="glass-card px-2 py-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          {t('sign.modality')}: {t(`modality.${sign.modality}`)}
-        </span>
-      </div>
+      <div className="w-full h-px bg-white/8 mb-4" />
 
+      {/* Energy description */}
       {signInsight && (
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
+        <>
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
             {t('sign.whatItFeelsLike')}
           </h3>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            {signInsight.whatItFeelsLike}
+          <p className="font-[family-name:var(--font-display)] text-sm italic leading-relaxed mb-5" style={{ color: 'var(--text-secondary)' }}>
+            &ldquo;{signInsight.energyDescription}&rdquo;
           </p>
-        </div>
+
+          <div className="w-full h-px bg-white/8 mb-4" />
+        </>
       )}
 
-      {planetsInSign.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
-            {t('sign.planetsHere')}
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {planetsInSign.map(p => (
-              <span key={p.id} className="glass-card px-2 py-1 text-sm" style={{ color: p.colour }}>
-                {p.glyph} {t(`planet.${p.id}`)} {p.degreeInSign}°
-              </span>
-            ))}
-          </div>
+      {/* Planets currently in this sign */}
+      <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+        {t('sign.planetsHere')}
+      </h3>
+      {planetsInSign.length > 0 ? (
+        <div className="space-y-2.5 mb-5">
+          {planetsInSign.map(p => (
+            <div key={p.id} className="flex items-start gap-3">
+              <span className="text-lg" style={{ color: p.colour }}>{p.glyph}</span>
+              <div>
+                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                  {t(`planet.${p.id}`)} at {p.degreeInSign}°
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
+      ) : (
+        <p className="text-sm italic mb-5" style={{ color: 'var(--text-muted)' }}>
+          {signInsight?.noPlanetsMessage}
+        </p>
+      )}
+
+      {signInsight && (
+        <>
+          <div className="w-full h-px bg-white/8 mb-4" />
+
+          {/* Sign details */}
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+            {t('sign.details')}
+          </h3>
+          <div className="space-y-2 text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.element')}</span>
+              <span className="text-right">{t(`element.${sign.element}`)} — {signInsight.elementDescription}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.modality')}</span>
+              <span className="text-right">{t(`modality.${sign.modality}`)} — {signInsight.modalityDescription}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.rulingPlanet')}</span>
+              <span>{signInsight.rulingPlanet}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.bodyArea')}</span>
+              <span className="text-right">{signInsight.bodyArea}</span>
+            </div>
+            <div>
+              <span className="block mb-1" style={{ color: 'var(--text-muted)' }}>{t('sign.themes')}</span>
+              <span>{signInsight.themes}</span>
+            </div>
+            <div>
+              <span className="block mb-1" style={{ color: 'var(--text-muted)' }}>{t('sign.shadow')}</span>
+              <span>{signInsight.shadow}</span>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-white/8 mb-4" />
+
+          {/* Sound healing connection */}
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+            {t('sign.soundHealing')}
+          </h3>
+          <div className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.frequency')}</span>
+              <span>{signInsight.frequency}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.instruments')}</span>
+              <span className="text-right">{signInsight.instruments}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span style={{ color: 'var(--text-muted)' }}>{t('sign.keynote')}</span>
+              <span>{signInsight.keynote}</span>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
