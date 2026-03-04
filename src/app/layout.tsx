@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google'
+import { Cormorant_Garamond, DM_Sans, DM_Mono } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 
@@ -14,6 +14,13 @@ const dmSans = DM_Sans({
   variable: '--font-body',
   subsets: ['latin', 'latin-ext'],
   weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
+
+const dmMono = DM_Mono({
+  variable: '--font-mono',
+  subsets: ['latin', 'latin-ext'],
+  weight: ['300', '400'],
   display: 'swap',
 })
 
@@ -53,7 +60,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body className={`${cormorant.variable} ${dmSans.variable} font-[family-name:var(--font-body)] antialiased`}>
+      <body className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable} font-[family-name:var(--font-body)] antialiased`}>
         {children}
       </body>
     </html>

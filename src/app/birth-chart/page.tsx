@@ -18,7 +18,7 @@ function BirthChartPage() {
           ← Back to Astrara
         </Link>
 
-        <GlassCard className="p-8">
+        <GlassCard>
           <div className="text-5xl mb-4">☽</div>
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-3 text-white">
             Personal Birth Chart

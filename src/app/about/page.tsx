@@ -26,7 +26,7 @@ function AboutPage() {
         </h1>
 
         <div className="space-y-6">
-          <GlassCard className="p-6">
+          <GlassCard>
             <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold mb-3 text-white">
               Real Astronomy, Real Positions
             </h2>
@@ -38,7 +38,7 @@ function AboutPage() {
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6">
+          <GlassCard>
             <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold mb-3 text-white">
               The Zodiac Wheel
             </h2>
@@ -51,7 +51,7 @@ function AboutPage() {
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6">
+          <GlassCard>
             <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold mb-3 text-white">
               Aspects
             </h2>
@@ -63,7 +63,7 @@ function AboutPage() {
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6">
+          <GlassCard>
             <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold mb-3 text-white">
               Privacy
             </h2>

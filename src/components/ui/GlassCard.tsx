@@ -11,14 +11,20 @@ interface GlassCardProps {
 export default function GlassCard({ children, className = '', onClick }: GlassCardProps) {
   return (
     <div
-      className={`glass-card rounded-2xl transition-colors duration-200 ${onClick ? 'cursor-pointer' : ''} ${className}`}
-      style={{
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}
+      className={`glass-card breathing ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
     >
-      {children}
+      <div
+        className="glass-tint"
+        style={{
+          backdropFilter: 'blur(16px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(16px) saturate(1.3)',
+        }}
+      />
+      <div className="glass-border" />
+      <div className="glass-card-inner">
+        {children}
+      </div>
     </div>
   )
 }

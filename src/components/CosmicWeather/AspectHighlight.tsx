@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import type { AspectData } from '@/lib/astronomy'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
@@ -23,31 +22,25 @@ export default function AspectHighlight({ aspect, index, onClick }: AspectHighli
   const generalInsight = content?.aspectMeanings?.[aspect.type]
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.05 * index }}
-    >
-      <GlassCard onClick={onClick} className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span style={{ color: aspect.colour }} className="text-lg">{aspect.planet1Glyph}</span>
-          <span style={{ color: aspect.colour }} className="text-sm">{aspect.symbol}</span>
-          <span style={{ color: aspect.colour }} className="text-lg">{aspect.planet2Glyph}</span>
-          <span className="text-sm text-white/85 ml-1">
-            {t(`planet.${aspect.planet1}`)} {t(`aspect.${aspect.type}`).toLowerCase()} {t(`planet.${aspect.planet2}`)}
-          </span>
-        </div>
+    <GlassCard onClick={onClick}>
+      <div className="flex items-center gap-2 mb-2">
+        <span style={{ color: aspect.colour }} className="text-lg">{aspect.planet1Glyph}</span>
+        <span style={{ color: aspect.colour }} className="text-sm">{aspect.symbol}</span>
+        <span style={{ color: aspect.colour }} className="text-lg">{aspect.planet2Glyph}</span>
+        <span className="text-sm text-white/85 ml-1">
+          {t(`planet.${aspect.planet1}`)} {t(`aspect.${aspect.type}`).toLowerCase()} {t(`planet.${aspect.planet2}`)}
+        </span>
+      </div>
 
-        <p className="text-[13px] text-white/40 leading-relaxed">
-          {specificInsight || generalInsight?.generalMeaning || ''}
-        </p>
+      <p className="text-[13px] text-white/40 leading-relaxed">
+        {specificInsight || generalInsight?.generalMeaning || ''}
+      </p>
 
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-white/25">
-            {aspect.isApplying ? t('aspect.applying') : t('aspect.separating')} · {aspect.orb}°
-          </span>
-        </div>
-      </GlassCard>
-    </motion.div>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-xs text-white/25">
+          {aspect.isApplying ? t('aspect.applying') : t('aspect.separating')} · {aspect.orb}°
+        </span>
+      </div>
+    </GlassCard>
   )
 }
