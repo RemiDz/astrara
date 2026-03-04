@@ -1,127 +1,195 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import StarField from '@/components/StarField';
-import BirthForm from '@/components/BirthForm';
-import { useLanguage } from '@/lib/i18n';
+import { useState, useMemo, useCallback } from 'react'
+import { LanguageProvider } from '@/i18n/LanguageContext'
+import { useTranslation } from '@/i18n/useTranslation'
+import { useRealTime } from '@/hooks/useRealTime'
+import { useLocation } from '@/hooks/useLocation'
+import { useAstroData } from '@/hooks/useAstroData'
+import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import Starfield from '@/components/Starfield/Starfield'
+import Header from '@/components/Header/Header'
+import AstroWheel from '@/components/AstroWheel/AstroWheel'
+import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelTooltip'
+import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
+import Shimmer from '@/components/ui/Shimmer'
 
-const RING_PLANETS = [
-  { angle: 30, color: '#FCD34D', size: 5 },
-  { angle: 105, color: '#F9A8D4', size: 4 },
-  { angle: 195, color: '#EF4444', size: 5 },
-  { angle: 260, color: '#A5B4FC', size: 4 },
-  { angle: 330, color: '#FB923C', size: 6 },
-];
+function HomePage() {
+  const { t } = useTranslation()
+  const now = useRealTime(60000)
+  const { location, loading: locationLoading, setLocation } = useLocation()
+  const [dayOffset, setDayOffset] = useState(0)
+  const [tooltip, setTooltip] = useState<TooltipData>(null)
+  const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
 
-export default function LandingPage() {
-  const { t } = useLanguage();
+  const targetDate = useMemo(() => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + dayOffset)
+    return d
+  }, [now, dayOffset])
+
+  const lat = location?.lat ?? 51.5074
+  const lng = location?.lng ?? -0.1278
+
+  const astroData = useAstroData(targetDate, lat, lng)
+
+  const handlePlanetTap = useCallback((planet: PlanetPosition) => {
+    setSelectedPlanet(planet.id)
+    setTooltip({ type: 'planet', data: planet })
+  }, [])
+
+  const handleSignTap = useCallback((signId: string) => {
+    setTooltip({ type: 'sign', data: signId })
+  }, [])
+
+  const handleAspectTap = useCallback((aspect: AspectData) => {
+    setTooltip({ type: 'aspect', data: aspect })
+  }, [])
+
+  const handleCloseTooltip = useCallback(() => {
+    setTooltip(null)
+    setSelectedPlanet(null)
+  }, [])
+
+  const trackEvent = (name: string, props?: Record<string, string>) => {
+    if (typeof window !== 'undefined' && (window as unknown as { plausible?: (name: string, opts?: { props: Record<string, string> }) => void }).plausible) {
+      (window as unknown as { plausible: (name: string, opts?: { props: Record<string, string> }) => void }).plausible(name, props ? { props } : undefined)
+    }
+  }
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center px-6 pt-20 pb-12">
-      <StarField />
+    <div className="min-h-screen relative">
+      <Starfield />
 
-      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col items-center">
-        {/* Cosmic ring — 160px */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, ease: 'easeOut' }}
-          className="relative w-[160px] h-[160px] mb-8"
-        >
-          <svg
-            viewBox="0 0 200 200"
-            className="w-full h-full animate-cosmic-rotate"
-          >
-            <circle
-              cx="100"
-              cy="100"
-              r="90"
-              fill="none"
-              stroke="#3B82F6"
-              strokeWidth="0.75"
-              strokeDasharray="6 4"
-              opacity="0.2"
-            />
-            <circle
-              cx="100"
-              cy="100"
-              r="70"
-              fill="none"
-              stroke="#8B5CF6"
-              strokeWidth="0.5"
-              strokeDasharray="3 6"
-              opacity="0.1"
-            />
-            {RING_PLANETS.map((p, i) => {
-              const rad = (p.angle * Math.PI) / 180;
-              const cx = 100 + Math.cos(rad) * 90;
-              const cy = 100 + Math.sin(rad) * 90;
-              return (
-                <circle
-                  key={i}
-                  cx={cx}
-                  cy={cy}
-                  r={p.size / 2}
-                  fill={p.color}
-                  opacity="0.8"
+      <div className="relative z-10">
+        <Header
+          location={location}
+          locationLoading={locationLoading}
+          now={now}
+          onLocationChange={(loc) => {
+            setLocation(loc)
+            trackEvent('location-detected', { city: loc.city })
+          }}
+        />
+
+        <main className="max-w-5xl mx-auto px-4 pb-12">
+          {/* Desktop layout: wheel left, weather right */}
+          <div className="lg:flex lg:gap-8 lg:items-start">
+            {/* Astro Wheel */}
+            <div className="lg:flex-1 lg:sticky lg:top-4 py-4">
+              {astroData ? (
+                <AstroWheel
+                  planets={astroData.planets}
+                  aspects={astroData.aspects}
+                  onPlanetTap={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
+                  onSignTap={(s) => { handleSignTap(s); trackEvent('sign-tap', { sign: s }) }}
+                  onAspectTap={(a) => { handleAspectTap(a); trackEvent('aspect-tap', { aspect: `${a.planet1}-${a.type}-${a.planet2}` }) }}
+                  selectedPlanet={selectedPlanet}
                 />
-              );
-            })}
-          </svg>
-        </motion.div>
+              ) : (
+                <div className="w-full max-w-[90vw] md:max-w-[60vw] lg:max-w-[min(500px,45vw)] mx-auto aspect-square flex items-center justify-center">
+                  <Shimmer className="w-full h-full rounded-full" />
+                </div>
+              )}
+            </div>
 
-        {/* Title block */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-center mb-10"
-        >
-          <p className="text-xs tracking-[0.4em] uppercase text-[#6B7194] font-serif mb-2">
-            {t('brand')}
-          </p>
-          <h1 className="text-2xl md:text-4xl font-serif italic text-[#E8ECF4] mb-3 leading-tight">
-            {t('tagline')}
-          </h1>
-          <p className="text-sm text-[#6B7194] font-sans max-w-xs mx-auto">
-            {t('subtitle')}
-          </p>
-        </motion.div>
+            {/* Cosmic Weather Panel */}
+            <div className="lg:w-[400px] lg:flex-shrink-0 mt-6 lg:mt-4">
+              {astroData ? (
+                <CosmicWeather
+                  planets={astroData.planets}
+                  moon={astroData.moon}
+                  notableAspects={astroData.notableAspects}
+                  onPlanetClick={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
+                  onAspectClick={(a) => { handleAspectTap(a); trackEvent('aspect-tap', { aspect: `${a.planet1}-${a.type}-${a.planet2}` }) }}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <Shimmer className="h-24 w-full" />
+                  <Shimmer className="h-20 w-full" />
+                  <Shimmer className="h-20 w-full" />
+                  <Shimmer className="h-20 w-full" />
+                </div>
+              )}
+            </div>
+          </div>
 
-        {/* Form card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="w-full bg-[#0A0B14] border border-[#1E1F2E] rounded-2xl p-6 md:p-8"
-        >
-          <BirthForm />
-        </motion.div>
+          {/* Day Navigation */}
+          <div className="flex items-center justify-center gap-4 mt-8 mb-8">
+            <button
+              onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'yesterday' }) }}
+              className="px-4 py-2 text-sm rounded-lg hover:bg-white/5 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              ← {t('nav.yesterday')}
+            </button>
+            <button
+              onClick={() => setDayOffset(0)}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                dayOffset === 0 ? 'bg-white/10 text-white' : 'hover:bg-white/5'
+              }`}
+              style={dayOffset !== 0 ? { color: 'var(--text-secondary)' } : undefined}
+            >
+              {t('nav.today')}
+            </button>
+            <button
+              onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'tomorrow' }) }}
+              className="px-4 py-2 text-sm rounded-lg hover:bg-white/5 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {t('nav.tomorrow')} →
+            </button>
+          </div>
 
-        {/* Below card */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-8 flex flex-col items-center gap-4"
-        >
-          <Link
-            href="/about"
-            className="text-sm text-[#6B7194] hover:text-[#E8ECF4] transition-colors font-sans flex items-center gap-1"
-          >
-            {t('howItWorks')} <span>→</span>
-          </Link>
-          <a
-            href="https://harmonicwaves.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-[#3D4167] hover:text-[#6B7194] transition-colors font-sans"
-          >
-            {t('partOfEcosystem')}
-          </a>
-        </motion.div>
+          {/* Birth Chart CTA */}
+          <div className="glass-card p-6 text-center mb-8">
+            <p className="font-[family-name:var(--font-display)] text-lg mb-3 text-white">
+              {t('cta.birthChart')}
+            </p>
+            <button
+              onClick={() => trackEvent('birth-chart-cta')}
+              className="px-6 py-2.5 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent-purple), #6D28D9)',
+                color: 'white',
+              }}
+            >
+              {t('cta.birthChartButton')} →
+            </button>
+          </div>
+
+          {/* Footer */}
+          <footer className="text-center py-6 border-t border-white/5">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {t('footer.partOf')}{' '}
+              <a
+                href="https://harmonicwaves.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors"
+                style={{ color: 'var(--accent-purple)' }}
+              >
+                Harmonic Waves
+              </a>
+            </p>
+          </footer>
+        </main>
       </div>
-    </main>
-  );
+
+      {/* Tooltip / Detail Panel */}
+      <WheelTooltip
+        tooltip={tooltip}
+        planets={astroData?.planets ?? []}
+        onClose={handleCloseTooltip}
+      />
+    </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <LanguageProvider>
+      <HomePage />
+    </LanguageProvider>
+  )
 }

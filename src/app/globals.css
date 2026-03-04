@@ -1,132 +1,96 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --color-space: #04040A;
-  --color-space-surface: #0A0B14;
-  --color-space-card: #0F1019;
-  --color-space-hover: #161722;
-  --color-border: #1E1F2E;
-  --color-border-active: #3B4BDB;
-  --color-accent: #3B82F6;
-  --color-accent-warm: #F59E0B;
-  --color-accent-cool: #8B5CF6;
-  --color-text-primary: #E8ECF4;
-  --color-text-secondary: #6B7194;
-  --color-text-dim: #3D4167;
-  --color-planet-sun: #FCD34D;
-  --color-planet-moon: #E2E8F0;
-  --color-planet-mercury: #A5B4FC;
-  --color-planet-venus: #F9A8D4;
-  --color-planet-mars: #EF4444;
-  --color-planet-jupiter: #FB923C;
-  --color-planet-saturn: #A78BFA;
-  --color-planet-uranus: #22D3EE;
-  --color-planet-neptune: #6366F1;
-  --color-planet-pluto: #9CA3AF;
+@theme inline {
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --color-bg-deep: #07070F;
+  --color-bg-surface: #0D0D1A;
+  --color-accent-purple: #8B5CF6;
+  --color-accent-gold: #FFD700;
+  --color-fire: #FF6B4A;
+  --color-earth: #4ADE80;
+  --color-air: #60A5FA;
+  --color-water: #A78BFA;
 }
 
-html,
+:root {
+  --bg-deep: #07070F;
+  --bg-surface: #0D0D1A;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+  --text-primary: rgba(255, 255, 255, 0.90);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-muted: rgba(255, 255, 255, 0.30);
+  --accent-purple: #8B5CF6;
+  --accent-gold: #FFD700;
+  --fire: #FF6B4A;
+  --earth: #4ADE80;
+  --air: #60A5FA;
+  --water: #A78BFA;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background-color: #04040A;
-  color: #E8ECF4;
-  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100dvh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
 }
 
-/* Hide all scrollbars */
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-*::-webkit-scrollbar {
-  display: none;
-}
-
-/* Typography */
-.font-serif {
-  font-family: 'Instrument Serif', serif;
+/* Glassmorphism */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
 }
 
-.font-sans {
-  font-family: 'DM Sans', sans-serif;
+.glass-card:hover {
+  background: var(--glass-hover);
 }
 
-.font-mono {
-  font-family: 'IBM Plex Mono', monospace;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
 }
 
-/* Twinkle animation */
-@keyframes twinkle {
+/* Animations */
+@keyframes pulse-glow {
   0%, 100% { opacity: 0.2; }
-  50% { opacity: 0.9; }
+  50% { opacity: 0.4; }
 }
 
-.animate-twinkle {
-  animation: twinkle 3s ease-in-out infinite;
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
-/* Gentle pulse for play button */
-@keyframes gentle-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.animate-gentle-pulse {
-  animation: gentle-pulse 2.5s ease-in-out infinite;
-}
-
-/* Cosmic wheel glow when playing */
-@keyframes wheel-glow {
-  0%, 100% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.05); }
-  50% { box-shadow: 0 0 60px rgba(59, 130, 246, 0.12); }
-}
-
-.animate-wheel-glow {
-  animation: wheel-glow 3s ease-in-out infinite;
-}
-
-/* Cosmic ring rotation */
-@keyframes cosmic-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-cosmic-rotate {
-  animation: cosmic-rotate 60s linear infinite;
-}
-
-/* Toast slide up */
-@keyframes toast-in {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-@keyframes toast-out {
-  from { opacity: 1; transform: translate(-50%, 0); }
-  to { opacity: 0; transform: translate(-50%, 20px); }
-}
-
-/* Date/time input styling for dark theme */
-input[type="date"],
-input[type="time"] {
-  color-scheme: dark;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
-  cursor: pointer;
-}
-
-/* Spin animation */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin {
-  animation: spin 0.8s linear infinite;
+/* Selection */
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: white;
 }

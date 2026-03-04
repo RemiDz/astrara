@@ -1,51 +1,58 @@
-import type { Metadata, Viewport } from 'next';
-import './globals.css';
-import { LanguageProvider } from '@/lib/i18n';
-import Header from '@/components/Header';
+import type { Metadata, Viewport } from 'next'
+import { Cormorant_Garamond, DM_Sans } from 'next/font/google'
+import Script from 'next/script'
+import './globals.css'
+
+const cormorant = Cormorant_Garamond({
+  variable: '--font-display',
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
+
+const dmSans = DM_Sans({
+  variable: '--font-body',
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'Astrara — Your Cosmic Frequency Portrait',
-  description: 'Enter your birth details to hear the music of your stars. Each planet becomes a frequency, and their relationships create harmonics unique to you.',
+  title: 'Astrara — Live Cosmic Intelligence',
+  description: 'See the sky right now. Understand how planetary positions affect your day. A live astrological guide by Harmonic Waves.',
+  keywords: 'astrology, planetary positions, cosmic weather, daily horoscope, birth chart, zodiac',
   openGraph: {
-    title: 'Astrara — Your Cosmic Frequency Portrait',
-    description: 'Discover your unique cosmic sound based on the exact planetary positions at the moment of your birth.',
+    title: 'Astrara — What does the sky say right now?',
+    description: 'Live planetary positions and cosmic weather. Your daily astrological guide.',
+    url: 'https://astrara.app',
     siteName: 'Astrara',
     type: 'website',
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Astrara — Your Cosmic Frequency Portrait',
-    description: 'Discover your unique cosmic sound.',
-  },
-};
+  manifest: '/manifest.json',
+}
 
 export const viewport: Viewport = {
-  themeColor: '#3B82F6',
-  width: 'device-width',
-  initialScale: 1,
-};
+  themeColor: '#07070F',
+}
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
     <html lang="en">
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <script
+        <Script
           defer
           data-domain="astrara.app"
           src="https://plausible.io/js/script.js"
+          strategy="afterInteractive"
         />
       </head>
-      <body className="min-h-screen bg-[#04040A]">
-        <LanguageProvider>
-          <Header />
-          {children}
-        </LanguageProvider>
+      <body className={`${cormorant.variable} ${dmSans.variable} font-[family-name:var(--font-body)] antialiased`}>
+        {children}
       </body>
     </html>
-  );
+  )
 }

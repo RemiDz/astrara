@@ -1,11 +1,13 @@
 {
-  "name": "Astrara",
+  "name": "Astrara — Live Cosmic Intelligence",
   "short_name": "Astrara",
-  "description": "Your Cosmic Frequency Portrait",
+  "description": "Live planetary positions and cosmic weather. Your daily astrological guide.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#04040A",
-  "theme_color": "#3B82F6",
+  "background_color": "#07070F",
+  "theme_color": "#07070F",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "education"],
   "icons": [
     {
       "src": "/icon-192.png",
