@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useMemo, memo } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useRef, useMemo, useState, useEffect, memo, useCallback } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Html, Line } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
@@ -17,7 +17,6 @@ interface AstroWheel3DProps {
   selectedPlanet: string | null
 }
 
-// Element colours for zodiac segments
 const ELEMENT_COLOURS: Record<string, string> = {
   fire: '#FF6B4A',
   earth: '#4ADE80',
@@ -25,128 +24,111 @@ const ELEMENT_COLOURS: Record<string, string> = {
   water: '#A78BFA',
 }
 
-// Convert ecliptic longitude to 3D position on the wheel plane
+// Radii
+const R_OUTER = 2.2
+const R_OUTER_INNER = 2.05
+const R_MID_OUTER = 1.95
+const R_MID_INNER = 1.7
+const R_TRACK = 1.6
+const R_PLANET = 1.5
+
 function longitudeToPosition(longitude: number, radius: number): [number, number, number] {
   const rad = (longitude - 90) * (Math.PI / 180)
   return [Math.cos(rad) * radius, 0, Math.sin(rad) * radius]
 }
 
-// ─── Particle Field ─────────────────────────────────────────────────
-const ParticleField = memo(function ParticleField() {
-  const ref = useRef<THREE.Points>(null!)
-  const count = 250
+// Planet sizes and pulse speeds per spec
+const PLANET_CONFIG: Record<string, { radius: number; pulseSpeed: number }> = {
+  sun:     { radius: 0.18, pulseSpeed: 1.2 },
+  moon:    { radius: 0.15, pulseSpeed: 0.6 },
+  mercury: { radius: 0.10, pulseSpeed: 2.0 },
+  venus:   { radius: 0.12, pulseSpeed: 0.5 },
+  mars:    { radius: 0.12, pulseSpeed: 1.4 },
+  jupiter: { radius: 0.14, pulseSpeed: 0.7 },
+  saturn:  { radius: 0.13, pulseSpeed: 0.6 },
+  uranus:  { radius: 0.10, pulseSpeed: 0.8 },
+  neptune: { radius: 0.10, pulseSpeed: 0.4 },
+  pluto:   { radius: 0.08, pulseSpeed: 0.3 },
+}
 
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-      const r = 3.5 + Math.random() * 2.5
-      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta)
-      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.4
-      pos[i * 3 + 2] = r * Math.cos(phi)
-    }
-    return pos
-  }, [])
-
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      ref.current.rotation.y = clock.getElapsedTime() * 0.02
-    }
-  })
-
+// ─── Ring Edge (torus glow line) ────────────────────────────────────
+const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: number; opacity?: number }) {
   return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.02}
-        color="#ffffff"
-        transparent
-        opacity={0.15}
-        sizeAttenuation
-      />
-    </points>
+    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[radius, 0.005, 8, 128]} />
+      <meshBasicMaterial color="#8B5CF6" transparent opacity={opacity} />
+    </mesh>
   )
 })
 
-// ─── Zodiac Ring ────────────────────────────────────────────────────
-const ZodiacRing = memo(function ZodiacRing({
+// ─── Outer Zodiac Ring (Ring 1) ─────────────────────────────────────
+const OuterZodiacRing = memo(function OuterZodiacRing({
   onSignTap,
 }: {
   onSignTap: (signId: string) => void
 }) {
-  const outerRadius = 2.2
-  const innerRadius = 1.9
-  const segments = 64
-
-  // Build ring segments for each zodiac sign
-  const ringSegments = useMemo(() => {
+  const segments = useMemo(() => {
     return ZODIAC_SIGNS.map((sign, i) => {
       const startAngle = (i * 30 - 90) * (Math.PI / 180)
       const endAngle = ((i + 1) * 30 - 90) * (Math.PI / 180)
-      const colour = new THREE.Color(ELEMENT_COLOURS[sign.element])
 
       // Create segment shape
       const shape = new THREE.Shape()
-      const segs = Math.ceil(segments / 12)
-
-      // Outer arc
+      const segs = 8
       for (let j = 0; j <= segs; j++) {
         const a = startAngle + (endAngle - startAngle) * (j / segs)
-        const x = Math.cos(a) * outerRadius
-        const z = Math.sin(a) * outerRadius
+        const x = Math.cos(a) * R_OUTER
+        const z = Math.sin(a) * R_OUTER
         if (j === 0) shape.moveTo(x, z)
         else shape.lineTo(x, z)
       }
-      // Inner arc (reverse)
       for (let j = segs; j >= 0; j--) {
         const a = startAngle + (endAngle - startAngle) * (j / segs)
-        const x = Math.cos(a) * innerRadius
-        const z = Math.sin(a) * innerRadius
+        const x = Math.cos(a) * R_OUTER_INNER
+        const z = Math.sin(a) * R_OUTER_INNER
         shape.lineTo(x, z)
       }
       shape.closePath()
 
-      // Glyph position (midpoint of segment)
       const midAngle = (startAngle + endAngle) / 2
-      const glyphRadius = (outerRadius + innerRadius) / 2
-      const gx = Math.cos(midAngle) * glyphRadius
-      const gz = Math.sin(midAngle) * glyphRadius
+      const glyphR = (R_OUTER + R_OUTER_INNER) / 2
+      const gx = Math.cos(midAngle) * glyphR
+      const gz = Math.sin(midAngle) * glyphR
 
-      return { sign, shape, colour, gx, gz }
+      return { sign, shape, gx, gz }
     })
   }, [])
 
   return (
     <group>
-      {ringSegments.map(({ sign, shape, colour, gx, gz }) => (
+      {segments.map(({ sign, shape, gx, gz }) => (
         <group key={sign.id}>
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
             <shapeGeometry args={[shape]} />
-            <meshStandardMaterial
-              color={colour}
+            <meshPhysicalMaterial
+              color="#1a1a2e"
               transparent
-              opacity={0.15}
+              opacity={0.25}
+              roughness={0.1}
+              metalness={0.8}
+              clearcoat={1.0}
+              clearcoatRoughness={0.1}
               side={THREE.DoubleSide}
-              emissive={colour}
-              emissiveIntensity={0.1}
+              emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])}
+              emissiveIntensity={0.08}
             />
           </mesh>
           <Html
-            position={[gx, 0.05, gz]}
+            position={[gx, 0.06, gz]}
             center
             style={{
-              fontSize: '14px',
-              color: 'rgba(255,255,255,0.6)',
+              fontSize: '13px',
+              color: 'rgba(255,255,255,0.55)',
               pointerEvents: 'auto',
               cursor: 'pointer',
               userSelect: 'none',
               fontFamily: 'serif',
+              textShadow: '0 0 6px rgba(139,92,246,0.4)',
             }}
             onClick={() => onSignTap(sign.id)}
           >
@@ -155,78 +137,87 @@ const ZodiacRing = memo(function ZodiacRing({
         </group>
       ))}
 
-      {/* Outer edge ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[outerRadius - 0.01, outerRadius, 64]} />
-        <meshStandardMaterial
-          color="#8B5CF6"
-          transparent
-          opacity={0.3}
-          emissive="#8B5CF6"
-          emissiveIntensity={0.4}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Inner edge ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[innerRadius, innerRadius + 0.01, 64]} />
-        <meshStandardMaterial
-          color="#8B5CF6"
-          transparent
-          opacity={0.2}
-          emissive="#8B5CF6"
-          emissiveIntensity={0.3}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
       {/* Segment dividers */}
       {ZODIAC_SIGNS.map((_, i) => {
         const angle = (i * 30 - 90) * (Math.PI / 180)
-        const x1 = Math.cos(angle) * innerRadius
-        const z1 = Math.sin(angle) * innerRadius
-        const x2 = Math.cos(angle) * outerRadius
-        const z2 = Math.sin(angle) * outerRadius
+        const x1 = Math.cos(angle) * R_OUTER_INNER
+        const z1 = Math.sin(angle) * R_OUTER_INNER
+        const x2 = Math.cos(angle) * R_OUTER
+        const z2 = Math.sin(angle) * R_OUTER
         return (
           <Line
-            key={`div-${i}`}
+            key={`div1-${i}`}
             points={[[x1, 0, z1], [x2, 0, z2]]}
             color="#8B5CF6"
             lineWidth={0.5}
             transparent
-            opacity={0.2}
+            opacity={0.12}
           />
         )
       })}
+
+      {/* Torus edges */}
+      <RingEdge radius={R_OUTER} opacity={0.4} />
+      <RingEdge radius={R_OUTER_INNER} opacity={0.25} />
     </group>
   )
 })
 
-// ─── Degree Track ───────────────────────────────────────────────────
-const DegreeTrack = memo(function DegreeTrack() {
-  const radius = 1.85
+// ─── Middle Degree Ring (Ring 2) ────────────────────────────────────
+const MiddleRing = memo(function MiddleRing() {
+  const segments = useMemo(() => {
+    return ZODIAC_SIGNS.map((sign, i) => {
+      const startAngle = (i * 30 - 90) * (Math.PI / 180)
+      const endAngle = ((i + 1) * 30 - 90) * (Math.PI / 180)
+
+      const shape = new THREE.Shape()
+      const segs = 8
+      for (let j = 0; j <= segs; j++) {
+        const a = startAngle + (endAngle - startAngle) * (j / segs)
+        const x = Math.cos(a) * R_MID_OUTER
+        const z = Math.sin(a) * R_MID_OUTER
+        if (j === 0) shape.moveTo(x, z)
+        else shape.lineTo(x, z)
+      }
+      for (let j = segs; j >= 0; j--) {
+        const a = startAngle + (endAngle - startAngle) * (j / segs)
+        const x = Math.cos(a) * R_MID_INNER
+        const z = Math.sin(a) * R_MID_INNER
+        shape.lineTo(x, z)
+      }
+      shape.closePath()
+
+      return { sign, shape }
+    })
+  }, [])
 
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[radius - 0.005, radius + 0.005, 64]} />
-        <meshStandardMaterial
-          color="#8B5CF6"
-          transparent
-          opacity={0.15}
-          emissive="#8B5CF6"
-          emissiveIntensity={0.2}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {segments.map(({ sign, shape }) => (
+        <mesh key={sign.id} rotation={[-Math.PI / 2, 0, 0]}>
+          <shapeGeometry args={[shape]} />
+          <meshPhysicalMaterial
+            color="#1a1a2e"
+            transparent
+            opacity={0.2}
+            roughness={0.1}
+            metalness={0.8}
+            clearcoat={1.0}
+            clearcoatRoughness={0.1}
+            side={THREE.DoubleSide}
+            emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])}
+            emissiveIntensity={0.05}
+          />
+        </mesh>
+      ))}
+
       {/* Tick marks every 30° */}
       {Array.from({ length: 12 }).map((_, i) => {
         const angle = (i * 30 - 90) * (Math.PI / 180)
-        const x1 = Math.cos(angle) * (radius - 0.04)
-        const z1 = Math.sin(angle) * (radius - 0.04)
-        const x2 = Math.cos(angle) * (radius + 0.04)
-        const z2 = Math.sin(angle) * (radius + 0.04)
+        const x1 = Math.cos(angle) * R_MID_INNER
+        const z1 = Math.sin(angle) * R_MID_INNER
+        const x2 = Math.cos(angle) * R_MID_OUTER
+        const z2 = Math.sin(angle) * R_MID_OUTER
         return (
           <Line
             key={`tick-${i}`}
@@ -234,139 +225,192 @@ const DegreeTrack = memo(function DegreeTrack() {
             color="#8B5CF6"
             lineWidth={0.5}
             transparent
-            opacity={0.25}
+            opacity={0.12}
           />
         )
       })}
+
+      <RingEdge radius={R_MID_OUTER} opacity={0.25} />
+      <RingEdge radius={R_MID_INNER} opacity={0.2} />
     </group>
   )
 })
 
-// ─── Planet Orb ─────────────────────────────────────────────────────
-function PlanetOrb({
-  planet,
-  index,
-  isSelected,
-  onTap,
-}: {
-  planet: PlanetPosition
-  index: number
-  isSelected: boolean
-  onTap: () => void
-}) {
-  const meshRef = useRef<THREE.Mesh>(null!)
-  const colour = new THREE.Color(planet.colour)
-  const planetRadius = 1.5
-  const pos = longitudeToPosition(planet.eclipticLongitude, planetRadius)
+// ─── Inner Track Ring (Ring 3) ──────────────────────────────────────
+const InnerTrackRing = memo(function InnerTrackRing() {
+  return (
+    <group>
+      <RingEdge radius={R_TRACK} opacity={0.15} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[R_TRACK - 0.015, R_TRACK + 0.015, 128]} />
+        <meshPhysicalMaterial
+          color="#1a1a2e"
+          transparent
+          opacity={0.08}
+          roughness={0.1}
+          metalness={0.8}
+          clearcoat={1.0}
+          clearcoatRoughness={0.1}
+          side={THREE.DoubleSide}
+          emissive="#8B5CF6"
+          emissiveIntensity={0.03}
+        />
+      </mesh>
+    </group>
+  )
+})
 
-  // Planet size hierarchy
-  const sizeMap: Record<string, number> = {
-    sun: 0.12,
-    moon: 0.10,
-    mercury: 0.07,
-    venus: 0.07,
-    mars: 0.07,
-    jupiter: 0.06,
-    saturn: 0.06,
-    uranus: 0.06,
-    neptune: 0.06,
-    pluto: 0.06,
-  }
-  const size = sizeMap[planet.id] ?? 0.06
+// ─── Sacred Geometry (Metatron's Cube) ──────────────────────────────
+const SacredGeometry = memo(function SacredGeometry() {
+  const ref = useRef<THREE.Group>(null!)
 
   useFrame(({ clock }) => {
-    if (meshRef.current) {
-      const t = clock.getElapsedTime()
-      const breath = 0.3 + Math.sin(t * 0.8 + index * 1.2) * 0.15
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = isSelected ? breath * 2.5 : breath
+    if (ref.current) {
+      ref.current.rotation.y = -clock.getElapsedTime() * 0.03
+    }
+  })
+
+  // Metatron's cube: 13 circles connected by lines
+  const r = 0.9
+  const points = useMemo(() => {
+    const pts: [number, number, number][] = [[0, 0, 0]]
+    // Inner ring (6 points)
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60) * (Math.PI / 180)
+      pts.push([Math.cos(a) * r * 0.45, 0, Math.sin(a) * r * 0.45])
+    }
+    // Outer ring (6 points)
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60 + 30) * (Math.PI / 180)
+      pts.push([Math.cos(a) * r * 0.8, 0, Math.sin(a) * r * 0.8])
+    }
+    return pts
+  }, [])
+
+  // Connect all points to each other
+  const lines = useMemo(() => {
+    const result: [number, number, number][][] = []
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        result.push([points[i], points[j]])
+      }
+    }
+    return result
+  }, [points])
+
+  return (
+    <group ref={ref}>
+      {lines.map((pair, i) => (
+        <Line
+          key={`sg-${i}`}
+          points={pair}
+          color="#8B5CF6"
+          lineWidth={0.3}
+          transparent
+          opacity={0.04}
+        />
+      ))}
+    </group>
+  )
+})
+
+// ─── Background Particle Field ──────────────────────────────────────
+const BackgroundParticles = memo(function BackgroundParticles() {
+  const ref = useRef<THREE.Points>(null!)
+  const count = 200
+
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos(2 * Math.random() - 1)
+      const r = 3.5 + Math.random() * 2.5
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.3
+      pos[i * 3 + 2] = r * Math.cos(phi)
+    }
+    return pos
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.rotation.y = clock.getElapsedTime() * 0.015
     }
   })
 
   return (
-    <group position={pos}>
-      <mesh ref={meshRef} onClick={(e) => { e.stopPropagation(); onTap() }}>
-        <sphereGeometry args={[size, 16, 16]} />
-        <meshStandardMaterial
-          color={colour}
-          emissive={colour}
-          emissiveIntensity={0.3}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      <pointLight
-        color={planet.colour}
-        intensity={isSelected ? 0.6 : 0.25}
-        distance={1.5}
-        decay={2}
-      />
-      <Html
-        position={[0, 0.18, 0]}
-        center
-        style={{
-          fontSize: '11px',
-          color: 'rgba(255,255,255,0.8)',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'auto',
-          cursor: 'pointer',
-          userSelect: 'none',
-          textShadow: '0 0 6px rgba(0,0,0,0.8)',
-        }}
-        onClick={onTap}
-      >
-        {planet.glyph} {planet.degreeInSign}°
-      </Html>
-    </group>
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.02} color="#ffffff" transparent opacity={0.12} sizeAttenuation />
+    </points>
   )
-}
+})
 
-// ─── Aspect Lines ───────────────────────────────────────────────────
-function AspectLines3D({
-  aspects,
-  planets,
-  selectedPlanet,
-  onAspectTap,
-}: {
-  aspects: AspectData[]
-  planets: PlanetPosition[]
-  selectedPlanet: string | null
-  onAspectTap: (aspect: AspectData) => void
-}) {
-  const planetRadius = 1.5
+// ─── Inner Dust Particles ───────────────────────────────────────────
+const InnerDust = memo(function InnerDust() {
+  const ref = useRef<THREE.Points>(null!)
+  const count = 80
 
-  const visibleAspects = selectedPlanet
-    ? aspects.filter(a => a.planet1 === selectedPlanet || a.planet2 === selectedPlanet)
-    : aspects
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const r = 0.3 + Math.random() * 1.2
+      pos[i * 3] = Math.cos(angle) * r
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 0.15
+      pos[i * 3 + 2] = Math.sin(angle) * r
+    }
+    return pos
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.rotation.y = clock.getElapsedTime() * 0.05
+    }
+  })
 
   return (
-    <group>
-      {visibleAspects.map((aspect, i) => {
-        const p1 = planets.find(p => p.id === aspect.planet1)
-        const p2 = planets.find(p => p.id === aspect.planet2)
-        if (!p1 || !p2) return null
-
-        const pos1 = longitudeToPosition(p1.eclipticLongitude, planetRadius)
-        const pos2 = longitudeToPosition(p2.eclipticLongitude, planetRadius)
-        const isHighlighted = selectedPlanet
-          ? aspect.planet1 === selectedPlanet || aspect.planet2 === selectedPlanet
-          : false
-
-        return (
-          <Line
-            key={`aspect-${i}`}
-            points={[pos1, pos2]}
-            color={aspect.colour}
-            lineWidth={1}
-            transparent
-            opacity={selectedPlanet ? (isHighlighted ? 0.7 : 0.1) : 0.3}
-            onClick={(e) => { e.stopPropagation(); onAspectTap(aspect) }}
-          />
-        )
-      })}
-    </group>
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.015} color="#C4B5FD" transparent opacity={0.15} sizeAttenuation />
+    </points>
   )
-}
+})
+
+// ─── Outer Glow Halo ────────────────────────────────────────────────
+const OuterHalo = memo(function OuterHalo() {
+  const texture = useMemo(() => {
+    const size = 256
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.3)')
+    gradient.addColorStop(0.4, 'rgba(139, 92, 246, 0.08)')
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, size, size)
+    const tex = new THREE.CanvasTexture(canvas)
+    return tex
+  }, [])
+
+  return (
+    <sprite scale={[7, 7, 1]} position={[0, -0.1, -0.5]}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        opacity={0.08}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </sprite>
+  )
+})
 
 // ─── Centre Glow ────────────────────────────────────────────────────
 const CentreGlow = memo(function CentreGlow() {
@@ -381,17 +425,215 @@ const CentreGlow = memo(function CentreGlow() {
 
   return (
     <mesh ref={ref}>
-      <sphereGeometry args={[0.08, 16, 16]} />
+      <sphereGeometry args={[0.1, 16, 16]} />
       <meshStandardMaterial
         color="#8B5CF6"
         emissive="#8B5CF6"
         emissiveIntensity={0.5}
         transparent
-        opacity={0.4}
+        opacity={0.35}
       />
     </mesh>
   )
 })
+
+// ─── Planet Orb ─────────────────────────────────────────────────────
+function PlanetOrb({
+  planet,
+  index,
+  isSelected,
+  onTap,
+  planets,
+}: {
+  planet: PlanetPosition
+  index: number
+  isSelected: boolean
+  onTap: () => void
+  planets: PlanetPosition[]
+}) {
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const [isFlashing, setIsFlashing] = useState(false)
+  const colour = useMemo(() => new THREE.Color(planet.colour), [planet.colour])
+  const pos = useMemo(() => longitudeToPosition(planet.eclipticLongitude, R_PLANET), [planet.eclipticLongitude])
+  const config = PLANET_CONFIG[planet.id] ?? { radius: 0.08, pulseSpeed: 0.6 }
+
+  // Check if close to another planet for label offset
+  const labelOffset = useMemo(() => {
+    let offset = -0.28
+    for (const other of planets) {
+      if (other.id === planet.id) continue
+      let diff = Math.abs(planet.eclipticLongitude - other.eclipticLongitude)
+      if (diff > 180) diff = 360 - diff
+      if (diff < 8 && planets.indexOf(other) < planets.indexOf(planet)) {
+        offset = 0.28 // push label above if close to another planet
+      }
+    }
+    return offset
+  }, [planet, planets])
+
+  const handleTap = useCallback(() => {
+    setIsFlashing(true)
+    setTimeout(() => setIsFlashing(false), 300)
+    onTap()
+  }, [onTap])
+
+  useFrame(({ clock }) => {
+    if (meshRef.current) {
+      const t = clock.getElapsedTime()
+      const speed = config.pulseSpeed
+      let breath = 0.4 + Math.sin(t * speed + index * 1.2) * 0.2
+      if (isFlashing) breath = 3.0
+      else if (isSelected) breath *= 2.5
+      const mat = meshRef.current.material as THREE.MeshStandardMaterial
+      mat.emissiveIntensity = breath
+    }
+  })
+
+  return (
+    <group position={pos}>
+      {/* Visible orb */}
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[config.radius, 20, 20]} />
+        <meshStandardMaterial
+          color={colour}
+          emissive={colour}
+          emissiveIntensity={0.4}
+          transparent
+          opacity={0.9}
+          roughness={0.3}
+          metalness={0.2}
+        />
+      </mesh>
+
+      {/* Saturn ring */}
+      {planet.id === 'saturn' && (
+        <mesh rotation={[Math.PI / 2.5, 0, 0]}>
+          <torusGeometry args={[config.radius * 1.6, 0.008, 4, 32]} />
+          <meshBasicMaterial color={planet.colour} transparent opacity={0.5} />
+        </mesh>
+      )}
+
+      {/* Point light */}
+      <pointLight
+        color={planet.colour}
+        intensity={isSelected || isFlashing ? 0.7 : 0.3}
+        distance={1.5}
+        decay={2}
+      />
+
+      {/* Label with backdrop */}
+      <Html
+        position={[0, labelOffset, 0]}
+        center
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        <div
+          className="text-center whitespace-nowrap px-1.5 py-0.5 rounded-md"
+          style={{
+            fontSize: '11px',
+            color: planet.colour,
+            background: 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            textShadow: `0 0 8px ${planet.colour}40`,
+            fontFamily: 'var(--font-body), sans-serif',
+          }}
+        >
+          {planet.glyph} {planet.degreeInSign}°
+        </div>
+      </Html>
+
+      {/* Invisible HTML tap target — 48px for reliable mobile tapping */}
+      <Html
+        center
+        style={{ pointerEvents: 'auto' }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleTap()
+          }}
+          className="rounded-full cursor-pointer"
+          style={{
+            width: '48px',
+            height: '48px',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            outline: 'none',
+          }}
+          aria-label={`View ${planet.name} details`}
+        />
+      </Html>
+    </group>
+  )
+}
+
+// ─── Aspect Lines ───────────────────────────────────────────────────
+function AspectLines3D({
+  aspects,
+  planets,
+  selectedPlanet,
+}: {
+  aspects: AspectData[]
+  planets: PlanetPosition[]
+  selectedPlanet: string | null
+}) {
+  const visibleAspects = selectedPlanet
+    ? aspects.filter(a => a.planet1 === selectedPlanet || a.planet2 === selectedPlanet)
+    : aspects
+
+  return (
+    <group>
+      {visibleAspects.map((aspect, i) => {
+        const p1 = planets.find(p => p.id === aspect.planet1)
+        const p2 = planets.find(p => p.id === aspect.planet2)
+        if (!p1 || !p2) return null
+
+        const pos1 = longitudeToPosition(p1.eclipticLongitude, R_PLANET)
+        const pos2 = longitudeToPosition(p2.eclipticLongitude, R_PLANET)
+        const isHighlighted = selectedPlanet
+          ? aspect.planet1 === selectedPlanet || aspect.planet2 === selectedPlanet
+          : false
+
+        return (
+          <Line
+            key={`aspect-${i}`}
+            points={[pos1, pos2]}
+            color={aspect.colour}
+            lineWidth={1}
+            transparent
+            opacity={selectedPlanet ? (isHighlighted ? 0.6 : 0.08) : 0.25}
+          />
+        )
+      })}
+    </group>
+  )
+}
+
+// ─── Counter-rotating wrapper for outer ring ────────────────────────
+function CounterRotatingRing({ children }: { children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null!)
+
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.rotation.y = -clock.getElapsedTime() * 0.01
+    }
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
+// ─── Mobile bloom detector ──────────────────────────────────────────
+function ConditionalBloom() {
+  const { size } = useThree()
+  if (size.width < 768) return null
+  return (
+    <EffectComposer>
+      <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={0.7} />
+    </EffectComposer>
+  )
+}
 
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
@@ -399,27 +641,38 @@ function WheelScene({
   aspects,
   onPlanetTap,
   onSignTap,
-  onAspectTap,
   selectedPlanet,
 }: AstroWheel3DProps) {
-  const groupRef = useRef<THREE.Group>(null!)
-
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[2, 3, 5]} intensity={0.3} />
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[2, 3, 5]} intensity={0.35} />
 
-      <ParticleField />
+      <BackgroundParticles />
+      <OuterHalo />
 
-      <group ref={groupRef} rotation={[0.25, 0, 0]}>
-        <ZodiacRing onSignTap={onSignTap} />
-        <DegreeTrack />
+      <group>
+        {/* Outer zodiac ring — slow counter-rotation for parallax */}
+        <CounterRotatingRing>
+          <OuterZodiacRing onSignTap={onSignTap} />
+        </CounterRotatingRing>
+
+        {/* Middle + inner rings rotate with wheel */}
+        <MiddleRing />
+        <InnerTrackRing />
+
+        {/* Sacred geometry behind planets */}
+        <SacredGeometry />
+        <InnerDust />
+
+        {/* Aspect lines */}
         <AspectLines3D
           aspects={aspects}
           planets={planets}
           selectedPlanet={selectedPlanet}
-          onAspectTap={onAspectTap}
         />
+
+        {/* Planet orbs */}
         {planets.map((planet, i) => (
           <PlanetOrb
             key={planet.id}
@@ -427,8 +680,10 @@ function WheelScene({
             index={i}
             isSelected={selectedPlanet === planet.id}
             onTap={() => onPlanetTap(planet)}
+            planets={planets}
           />
         ))}
+
         <CentreGlow />
       </group>
 
@@ -439,17 +694,11 @@ function WheelScene({
         enablePan={false}
         enableDamping
         dampingFactor={0.05}
-        minPolarAngle={Math.PI / 3}
-        maxPolarAngle={Math.PI / 1.5}
+        minPolarAngle={Math.PI / 2.3}
+        maxPolarAngle={Math.PI / 1.8}
       />
 
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.2}
-          luminanceSmoothing={0.9}
-          intensity={0.8}
-        />
-      </EffectComposer>
+      <ConditionalBloom />
     </>
   )
 }
@@ -457,11 +706,15 @@ function WheelScene({
 export default function AstroWheel3D(props: AstroWheel3DProps) {
   return (
     <div
-      className="relative w-full max-w-[90vw] md:max-w-[60vw] lg:max-w-[min(500px,45vw)] mx-auto"
-      style={{ height: '85vw', maxHeight: '500px', touchAction: 'none' }}
+      className="relative w-full mx-auto"
+      style={{
+        height: 'min(80vw, 420px)',
+        maxWidth: 'min(80vw, 420px)',
+        touchAction: 'none',
+      }}
     >
       <Canvas
-        camera={{ position: [0, 2.5, 4.5], fov: 45 }}
+        camera={{ position: [0, 0, 6], fov: 40, near: 0.1, far: 100 }}
         style={{ background: 'transparent' }}
         gl={{ alpha: true, antialias: true }}
       >
