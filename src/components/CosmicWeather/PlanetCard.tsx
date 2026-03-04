@@ -19,8 +19,8 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ delay: 0.05 * index }}
     >
       <GlassCard onClick={onClick} className="p-4">
@@ -30,8 +30,8 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-[family-name:var(--font-display)] text-base font-semibold text-white">
-                {t(`planet.${planet.id}`)} {t('moon.in').toLowerCase() === 'moon in' ? 'in' : ''} {t(`zodiac.${planet.zodiacSign}`)}
+              <h3 className="text-base font-serif text-white/85">
+                {t(`planet.${planet.id}`)} in {t(`zodiac.${planet.zodiacSign}`)}
               </h3>
               {planet.isRetrograde && (
                 <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
@@ -39,12 +39,12 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
                 </span>
               )}
             </div>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs text-white/25 mb-2">
               {planet.signGlyph} {planet.degreeInSign}°
             </p>
             {insight && (
-              <p className="font-[family-name:var(--font-display)] text-sm italic leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                &ldquo;{insight.oneLiner}&rdquo;
+              <p className="text-[13px] text-white/40 leading-relaxed">
+                {insight.oneLiner}
               </p>
             )}
           </div>

@@ -18,7 +18,7 @@ export default function CosmicWeather({ planets, moon, notableAspects, onPlanetC
   const { t } = useTranslation()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Moon Phase */}
       <MoonPhaseCard moon={moon} />
 

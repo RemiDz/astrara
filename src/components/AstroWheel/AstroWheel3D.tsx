@@ -778,7 +778,7 @@ function CounterRotatingRing({ children }: { children: React.ReactNode }) {
 function ConditionalBloom() {
   const { size } = useThree()
   if (size.width < 768) return null
-  return <EffectComposer><Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={0.7} /></EffectComposer>
+  return <EffectComposer><Bloom luminanceThreshold={0.6} luminanceSmoothing={0.9} intensity={0.3} /></EffectComposer>
 }
 
 // ─── Rotation Velocity Tracker ──────────────────────────────────────
@@ -800,20 +800,71 @@ function RotationVelocityTracker({
   return null
 }
 
+// ─── Camera Tilt Animator ────────────────────────────────────────────
+function TiltAnimator({
+  controlsRef,
+  tiltStarted,
+  onTiltDone,
+}: {
+  controlsRef: React.MutableRefObject<any>
+  tiltStarted: boolean
+  onTiltDone: () => void
+}) {
+  const isDone = useRef(false)
+  const TARGET_POLAR = Math.PI / 3 // ~60° from top — dramatic 3D view
+
+  useFrame(() => {
+    if (!tiltStarted || isDone.current || !controlsRef.current) return
+
+    const controls = controlsRef.current
+    const currentPolar = controls.getPolarAngle()
+    const diff = TARGET_POLAR - currentPolar
+
+    if (Math.abs(diff) > 0.001) {
+      const newPolar = currentPolar + diff * 0.03
+      controls.minPolarAngle = newPolar
+      controls.maxPolarAngle = newPolar
+    } else {
+      // Tilt complete — restore free rotation range
+      controls.minPolarAngle = 0.3
+      controls.maxPolarAngle = 2.8
+      isDone.current = true
+      onTiltDone()
+    }
+    controls.update()
+  })
+
+  return null
+}
+
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
   planetScale = 1, rotationSpeed = 1, onRotationVelocity,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
+  const [tiltStarted, setTiltStarted] = useState(false)
+  const [tiltDone, setTiltDone] = useState(false)
+  const controlsRef = useRef<any>(null)
   const prevAzimuth = useRef(0)
 
+  // Phase 6: Entrance finishes at 3000ms
   useEffect(() => {
     if (sceneReady) {
       const timer = setTimeout(() => setEntranceComplete(true), 3000)
       return () => clearTimeout(timer)
     }
   }, [sceneReady])
+
+  // Phase 7: Brief pause, then tilt begins at 3500ms
+  useEffect(() => {
+    if (entranceComplete) {
+      const timer = setTimeout(() => setTiltStarted(true), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [entranceComplete])
+
+  const handleTiltDone = useCallback(() => setTiltDone(true), [])
 
   return (
     <>
@@ -823,7 +874,6 @@ function WheelScene({
       <Environment preset="night" background={false} />
 
       <BackgroundParticles />
-      <OuterHalo />
       <OrbitingLight />
 
       <group>
@@ -869,13 +919,17 @@ function WheelScene({
         <AspectLines3D aspects={aspects} planets={planets} selectedPlanet={selectedPlanet} sceneReady={sceneReady} />
       </group>
 
-      {/* Phase 6: Auto-rotation begins after entrance (3000ms) */}
+      {/* Phase 7: Cinematic tilt after entrance */}
+      <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />
+
+      {/* Phase 8: Auto-rotation begins after tilt completes */}
       <RotationVelocityTracker prevAzimuth={prevAzimuth} onRotationVelocity={onRotationVelocity} />
       <OrbitControls
+        ref={controlsRef}
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={entranceComplete && rotationSpeed > 0}
+        autoRotate={tiltDone && rotationSpeed > 0}
         autoRotateSpeed={0.3 * rotationSpeed}
         enableDamping
         dampingFactor={0.05}
