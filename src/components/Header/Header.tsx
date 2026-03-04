@@ -17,6 +17,7 @@ interface HeaderProps {
   audioWantsOn: boolean
   onAudioToggle: () => void
   onAboutOpen: () => void
+  onSettingsOpen: () => void
 }
 
 const LANGUAGES: { code: Language; flag: string; label: string }[] = [
@@ -36,6 +37,7 @@ export default function Header({
   audioWantsOn,
   onAudioToggle,
   onAboutOpen,
+  onSettingsOpen,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang, setLang } = useLanguage()
@@ -107,6 +109,20 @@ export default function Header({
               aria-label="About Astrara"
             >
               i
+            </button>
+            {/* Settings button */}
+            <button
+              type="button"
+              onClick={onSettingsOpen}
+              className="w-6 h-6 rounded-full border border-white/25
+                         flex items-center justify-center
+                         text-white/40 text-xs
+                         hover:border-white/40 hover:text-white/60
+                         active:scale-90
+                         transition-all select-none cursor-pointer"
+              aria-label="Settings"
+            >
+              ⚙
             </button>
           </div>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>

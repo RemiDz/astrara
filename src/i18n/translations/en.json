@@ -103,5 +103,15 @@
   "earth.error": "Unable to reach Earth sensors. Showing base values.",
   "audio.on": "Cosmic soundscape on",
   "audio.off": "Sound off",
-  "audio.headphones": "Best with headphones \uD83C\uDFA7"
+  "audio.headphones": "Best with headphones \uD83C\uDFA7",
+  "settings.title": "Settings",
+  "settings.planetSize": "Planet Size",
+  "settings.rotationSpeed": "Rotation Speed",
+  "settings.rotationSound": "Rotation Sound",
+  "settings.rotationSoundHint": "Vortex hum when spinning the wheel",
+  "settings.small": "Small",
+  "settings.large": "Large",
+  "settings.paused": "Paused",
+  "settings.fast": "Fast",
+  "settings.reset": "Reset to Defaults"
 }

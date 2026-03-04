@@ -17,6 +17,9 @@ interface AstroWheel3DProps {
   onAspectTap: (aspect: AspectData) => void
   onEarthTap: () => void
   selectedPlanet: string | null
+  planetScale?: number
+  rotationSpeed?: number
+  onRotationVelocity?: (velocity: number) => void
 }
 
 const ELEMENT_COLOURS: Record<string, string> = {
@@ -332,6 +335,19 @@ const BackgroundParticles = memo(function BackgroundParticles() {
   )
 })
 
+// ─── Orbiting Light (glass ring shimmer) ────────────────────────────
+function OrbitingLight() {
+  const lightRef = useRef<THREE.PointLight>(null!)
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime() * 0.4
+    const r = R_OUTER + 0.3
+    if (lightRef.current) {
+      lightRef.current.position.set(Math.cos(t) * r, 0.3, Math.sin(t) * r)
+    }
+  })
+  return <pointLight ref={lightRef} color="#C4B5FD" intensity={0.4} distance={3} decay={2} />
+}
+
 // ─── Inner Dust ─────────────────────────────────────────────────────
 const InnerDust = memo(function InnerDust() {
   const ref = useRef<THREE.Points>(null!)
@@ -486,8 +502,8 @@ function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
         <sphereGeometry args={[0.15, 32, 32]} />
         <meshStandardMaterial
           map={earthTexture}
-          emissive="#0a1a3a"
-          emissiveIntensity={0.3}
+          emissive="#1d4ed8"
+          emissiveIntensity={0.6}
           roughness={0.7}
           metalness={0.05}
         />
@@ -496,16 +512,16 @@ function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
       {/* Atmosphere glow — inside-out sphere */}
       <mesh>
         <sphereGeometry args={[0.175, 32, 32]} />
-        <meshBasicMaterial color="#4a9eff" transparent opacity={0.1} side={THREE.BackSide} />
+        <meshBasicMaterial color="#2563eb" transparent opacity={0.2} side={THREE.BackSide} />
       </mesh>
 
       {/* Outer atmosphere halo */}
       <mesh>
         <sphereGeometry args={[0.2, 32, 32]} />
-        <meshBasicMaterial color="#6ab5ff" transparent opacity={0.05} side={THREE.BackSide} />
+        <meshBasicMaterial color="#6ab5ff" transparent opacity={0.1} side={THREE.BackSide} />
       </mesh>
 
-      <pointLight color="#4a9eff" intensity={0.3} distance={1.5} decay={2} />
+      <pointLight color="#4a9eff" intensity={0.5} distance={1.5} decay={2} />
 
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
         <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
@@ -531,10 +547,10 @@ function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
 
 // ─── Planet Orb (with entrance animation) ───────────────────────────
 function PlanetOrb({
-  planet, index, isSelected, onTap, planets, sceneReady, entranceDelay,
+  planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
-  planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number
+  planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
@@ -614,12 +630,12 @@ function PlanetOrb({
   return (
     <group ref={groupRef} position={pos} scale={0}>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[config.radius, 20, 20]} />
+        <sphereGeometry args={[config.radius * planetScale, 20, 20]} />
         <meshStandardMaterial color={colour} emissive={colour} emissiveIntensity={0.4} transparent opacity={0.9} roughness={0.3} metalness={0.2} />
       </mesh>
       {planet.id === 'saturn' && (
         <mesh rotation={[Math.PI / 2.5, 0, 0]}>
-          <torusGeometry args={[config.radius * 1.6, 0.008, 4, 32]} />
+          <torusGeometry args={[config.radius * planetScale * 1.6, 0.008, 4, 32]} />
           <meshBasicMaterial color={planet.colour} transparent opacity={0.5} />
         </mesh>
       )}
@@ -729,11 +745,32 @@ function ConditionalBloom() {
   return <EffectComposer><Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} intensity={0.7} /></EffectComposer>
 }
 
+// ─── Rotation Velocity Tracker ──────────────────────────────────────
+function RotationVelocityTracker({
+  prevAzimuth,
+  onRotationVelocity,
+}: {
+  prevAzimuth: React.MutableRefObject<number>
+  onRotationVelocity?: (velocity: number) => void
+}) {
+  const { camera } = useThree()
+  useFrame((_, delta) => {
+    if (!onRotationVelocity) return
+    const azimuth = Math.atan2(camera.position.x, camera.position.z)
+    const velocity = (azimuth - prevAzimuth.current) / Math.max(delta, 0.001)
+    prevAzimuth.current = azimuth
+    onRotationVelocity(velocity)
+  })
+  return null
+}
+
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
+  planetScale = 1, rotationSpeed = 1, onRotationVelocity,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
+  const prevAzimuth = useRef(0)
 
   useEffect(() => {
     if (sceneReady) {
@@ -749,6 +786,7 @@ function WheelScene({
 
       <BackgroundParticles />
       <OuterHalo />
+      <OrbitingLight />
 
       <group>
         {/* Phase 1: Earth ignites (0ms) */}
@@ -784,6 +822,7 @@ function WheelScene({
               planets={planets}
               sceneReady={sceneReady}
               entranceDelay={1400 + orderIndex * 100}
+              planetScale={planetScale}
             />
           )
         })}
@@ -793,12 +832,13 @@ function WheelScene({
       </group>
 
       {/* Phase 6: Auto-rotation begins after entrance (3000ms) */}
+      <RotationVelocityTracker prevAzimuth={prevAzimuth} onRotationVelocity={onRotationVelocity} />
       <OrbitControls
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={entranceComplete}
-        autoRotateSpeed={0.3}
+        autoRotate={entranceComplete && rotationSpeed > 0}
+        autoRotateSpeed={0.3 * rotationSpeed}
         enableDamping
         dampingFactor={0.05}
         minPolarAngle={0.3}

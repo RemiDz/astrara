@@ -1,6 +1,7 @@
 import { DroneLayer } from './DroneLayer'
 import { BinauralLayer } from './BinauralLayer'
 import { PlanetToneLayer } from './PlanetToneLayer'
+import { RotationSoundLayer } from './RotationSoundLayer'
 
 export class CosmicAudioEngine {
   private ctx: AudioContext | null = null
@@ -8,6 +9,7 @@ export class CosmicAudioEngine {
   private drone: DroneLayer | null = null
   private binaural: BinauralLayer | null = null
   private planetTone: PlanetToneLayer | null = null
+  private rotationSound: RotationSoundLayer | null = null
   private active = false
 
   private async init() {
@@ -74,6 +76,22 @@ export class CosmicAudioEngine {
     setTimeout(() => {
       this.binaural?.start(210.42, binauralPreset.hz)
     }, 2200)
+  }
+
+  startRotationSound() {
+    if (!this.ctx || !this.active) return
+    if (!this.rotationSound) {
+      this.rotationSound = new RotationSoundLayer(this.ctx, this.masterGain!)
+    }
+    this.rotationSound.start()
+  }
+
+  stopRotationSound() {
+    this.rotationSound?.stop()
+  }
+
+  updateRotationVelocity(velocity: number) {
+    this.rotationSound?.updateVelocity(velocity)
   }
 
   isPlaying() {

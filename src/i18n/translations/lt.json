@@ -103,5 +103,15 @@
   "earth.error": "Nepavyko pasiekti Žemės jutiklių. Rodomi baziniai duomenys.",
   "audio.on": "Kosminis garsovaizdis įjungtas",
   "audio.off": "Garsas išjungtas",
-  "audio.headphones": "Geriausia su ausinėmis \uD83C\uDFA7"
+  "audio.headphones": "Geriausia su ausinėmis \uD83C\uDFA7",
+  "settings.title": "Nustatymai",
+  "settings.planetSize": "Planetų Dydis",
+  "settings.rotationSpeed": "Sukimosi Greitis",
+  "settings.rotationSound": "Sukimosi Garsas",
+  "settings.rotationSoundHint": "Sūkurio gūžimas sukant ratą",
+  "settings.small": "Mažas",
+  "settings.large": "Didelis",
+  "settings.paused": "Sustabdyta",
+  "settings.fast": "Greitas",
+  "settings.reset": "Atkurti Numatytuosius"
 }

@@ -15,6 +15,9 @@ interface Props {
   onAspectTap: (aspect: AspectData) => void
   onEarthTap: () => void
   selectedPlanet: string | null
+  planetScale?: number
+  rotationSpeed?: number
+  onRotationVelocity?: (velocity: number) => void
 }
 
 interface ErrorBoundaryState {

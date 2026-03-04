@@ -43,6 +43,18 @@ export function useCosmicAudio(planets: PlanetPosition[], moonSign: string) {
     engineRef.current?.onSignTap(signKey)
   }, [])
 
+  const startRotationSound = useCallback(() => {
+    engineRef.current?.startRotationSound()
+  }, [])
+
+  const stopRotationSound = useCallback(() => {
+    engineRef.current?.stopRotationSound()
+  }, [])
+
+  const updateRotationVelocity = useCallback((velocity: number) => {
+    engineRef.current?.updateRotationVelocity(velocity)
+  }, [])
+
   // Update audio when Moon sign / day changes
   useEffect(() => {
     if (isPlaying && engineRef.current) {
@@ -52,5 +64,5 @@ export function useCosmicAudio(planets: PlanetPosition[], moonSign: string) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moonSign])
 
-  return { isPlaying, wantsAudio, toggle, onPlanetTap, onSignTap }
+  return { isPlaying, wantsAudio, toggle, onPlanetTap, onSignTap, startRotationSound, stopRotationSound, updateRotationVelocity }
 }

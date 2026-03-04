@@ -17,6 +17,7 @@ import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelToo
 import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
 import EarthPanel from '@/components/EarthPanel/EarthPanel'
 import AboutModal from '@/components/AboutModal/AboutModal'
+import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -30,6 +31,16 @@ function HomePage() {
   const [showBirthInput, setShowBirthInput] = useState(false)
   const [showEarthPanel, setShowEarthPanel] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState<AstraraSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('astrara-settings')
+        if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+      } catch { /* ignore */ }
+    }
+    return DEFAULT_SETTINGS
+  })
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
   const [birthCityQuery, setBirthCityQuery] = useState('')
@@ -53,7 +64,7 @@ function HomePage() {
   const astroData = useAstroData(targetDate, lat, lng)
 
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
-  const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap } = useCosmicAudio(astroData?.planets ?? [], moonSign)
+  const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
   const [showHeadphoneHint, setShowHeadphoneHint] = useState(false)
 
   const handleAudioToggle = useCallback(async () => {
@@ -83,6 +94,26 @@ function HomePage() {
   const handleAspectTap = useCallback((aspect: AspectData) => {
     setTooltip({ type: 'aspect', data: aspect })
   }, [])
+
+  const handleSettingsChange = useCallback((s: AstraraSettings) => {
+    setSettings(s)
+    localStorage.setItem('astrara-settings', JSON.stringify(s))
+  }, [])
+
+  // Start/stop rotation sound based on setting + audio state
+  useEffect(() => {
+    if (settings.rotationSoundEnabled && audioPlaying) {
+      startRotationSound()
+    } else {
+      stopRotationSound()
+    }
+  }, [settings.rotationSoundEnabled, audioPlaying, startRotationSound, stopRotationSound])
+
+  const handleRotationVelocity = useCallback((velocity: number) => {
+    if (settings.rotationSoundEnabled && audioPlaying) {
+      updateRotationVelocity(velocity)
+    }
+  }, [settings.rotationSoundEnabled, audioPlaying, updateRotationVelocity])
 
   const handleCloseTooltip = useCallback(() => {
     setTooltip(null)
@@ -142,6 +173,7 @@ function HomePage() {
           audioWantsOn={wantsAudio}
           onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
           onAboutOpen={() => { setShowAbout(true); trackEvent('about-open') }}
+          onSettingsOpen={() => { setShowSettings(true); trackEvent('settings-open') }}
         />
 
         <main className="max-w-5xl mx-auto px-4 pb-12">
@@ -158,6 +190,9 @@ function HomePage() {
                   onAspectTap={(a) => { handleAspectTap(a); trackEvent('aspect-tap', { aspect: `${a.planet1}-${a.type}-${a.planet2}` }) }}
                   onEarthTap={() => { setShowEarthPanel(true); trackEvent('earth-tap') }}
                   selectedPlanet={selectedPlanet}
+                  planetScale={settings.planetScale}
+                  rotationSpeed={settings.rotationSpeed}
+                  onRotationVelocity={handleRotationVelocity}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -259,6 +294,14 @@ function HomePage() {
 
       {/* About Modal */}
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        settings={settings}
+        onSettingsChange={handleSettingsChange}
+      />
 
       {/* Headphones hint toast */}
       {showHeadphoneHint && (
