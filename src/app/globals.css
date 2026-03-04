@@ -123,6 +123,20 @@ button, a, [role="button"] {
   -webkit-touch-callout: none;
 }
 
+/* Prevent canvas/wheel container highlight on tap */
+canvas,
+canvas + div,
+[data-engine],
+.wheel-container {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  outline: none;
+}
+
 /* Selection */
 ::selection {
   background: rgba(139, 92, 246, 0.3);

@@ -155,13 +155,15 @@ function OuterZodiacRing({
             zIndexRange={[100, 0]}
             occlude={false}
             style={{ pointerEvents: 'auto', overflow: 'visible' }}
-            onClick={() => onSignTap(sign.id)}
           >
-            <div
-              className="flex items-center justify-center select-none cursor-pointer"
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onSignTap(sign.id) }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center justify-center select-none cursor-pointer active:scale-90 transition-transform duration-150"
               style={{
-                width: '32px',
-                height: '32px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '8px',
                 background: `${ELEMENT_COLOURS[sign.element]}15`,
                 border: `1px solid ${ELEMENT_COLOURS[sign.element]}30`,
@@ -174,10 +176,13 @@ function OuterZodiacRing({
                 opacity: sceneReady ? 1 : 0,
                 transform: sceneReady ? 'scale(1)' : 'scale(0.5)',
                 transition: `all 0.4s ease-out ${800 + index * 80}ms`,
+                outline: 'none',
+                padding: 0,
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               {sign.glyph}
-            </div>
+            </button>
           </Html>
         </group>
       ))}
@@ -601,15 +606,14 @@ function PlanetOrb({
   )
 }
 
-// ─── Animated Aspect Line ───────────────────────────────────────────
-function AnimatedAspectLine({
+// ─── Aspect Line (delayed fade-in) ──────────────────────────────────
+function AspectLine({
   pos1, pos2, colour, opacity, sceneReady, delay,
 }: {
   pos1: [number, number, number]; pos2: [number, number, number]
   colour: string; opacity: number; sceneReady: boolean; delay: number
 }) {
   const [visible, setVisible] = useState(false)
-  const progress = useRef(0)
 
   useEffect(() => {
     if (sceneReady) {
@@ -618,28 +622,15 @@ function AnimatedAspectLine({
     }
   }, [sceneReady, delay])
 
-  useFrame((_, delta) => {
-    if (visible && progress.current < 1) {
-      progress.current = Math.min(progress.current + delta * 2.5, 1)
-    }
-  })
-
-  if (!visible && progress.current === 0) return null
-
-  const p = progress.current
-  const endPoint: [number, number, number] = [
-    pos1[0] + (pos2[0] - pos1[0]) * p,
-    pos1[1] + (pos2[1] - pos1[1]) * p,
-    pos1[2] + (pos2[2] - pos1[2]) * p,
-  ]
+  if (!visible) return null
 
   return (
     <Line
-      points={[pos1, endPoint]}
+      points={[pos1, pos2]}
       color={colour}
       lineWidth={1}
       transparent
-      opacity={opacity * p}
+      opacity={opacity}
     />
   )
 }
@@ -665,7 +656,7 @@ function AspectLines3D({
         const isHighlighted = selectedPlanet ? aspect.planet1 === selectedPlanet || aspect.planet2 === selectedPlanet : false
         const baseOpacity = selectedPlanet ? (isHighlighted ? 0.6 : 0.08) : 0.25
         return (
-          <AnimatedAspectLine
+          <AspectLine
             key={`aspect-${i}`}
             pos1={pos1} pos2={pos2}
             colour={aspect.colour}
@@ -784,13 +775,17 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
 
   return (
     <div
-      className="relative w-full"
+      className="relative w-full select-none"
       style={{
         height: '95vw',
         maxHeight: '550px',
         overflow: 'visible',
         touchAction: 'none',
         background: 'transparent',
+        WebkitTapHighlightColor: 'transparent',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        outline: 'none',
       }}
     >
       {/* Loading text */}
@@ -805,8 +800,9 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
       {/* Canvas — hidden until scene renders first frame */}
       <div style={{ opacity: sceneReady ? 1 : 0, width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
         <Canvas
+          tabIndex={-1}
           camera={{ position: [0, 1.5, 7], fov: 38, near: 0.1, far: 100 }}
-          style={{ background: 'transparent', overflow: 'visible' }}
+          style={{ background: 'transparent', overflow: 'visible', outline: 'none', WebkitTapHighlightColor: 'transparent' }}
           gl={{ alpha: true, antialias: true }}
           onCreated={() => {
             requestAnimationFrame(() => {
