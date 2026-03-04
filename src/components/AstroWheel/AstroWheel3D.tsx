@@ -121,6 +121,8 @@ const OuterZodiacRing = memo(function OuterZodiacRing({
           <Html
             position={[gx, 0.06, gz]}
             center
+            zIndexRange={[100, 0]}
+            occlude={false}
             style={{
               fontSize: '13px',
               color: 'rgba(255,255,255,0.55)',
@@ -129,6 +131,7 @@ const OuterZodiacRing = memo(function OuterZodiacRing({
               userSelect: 'none',
               fontFamily: 'serif',
               textShadow: '0 0 6px rgba(139,92,246,0.4)',
+              overflow: 'visible',
             }}
             onClick={() => onSignTap(sign.id)}
           >
@@ -525,7 +528,9 @@ function PlanetOrb({
       <Html
         position={[0, labelOffset, 0]}
         center
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
+        zIndexRange={[100, 0]}
+        occlude={false}
+        style={{ pointerEvents: 'none', userSelect: 'none', overflow: 'visible' }}
       >
         <div
           className="text-center whitespace-nowrap px-1.5 py-0.5 rounded-md"
@@ -546,7 +551,9 @@ function PlanetOrb({
       {/* Invisible HTML tap target — 48px for reliable mobile tapping */}
       <Html
         center
-        style={{ pointerEvents: 'auto' }}
+        zIndexRange={[100, 0]}
+        occlude={false}
+        style={{ pointerEvents: 'auto', overflow: 'visible' }}
       >
         <button
           onClick={(e) => {
@@ -688,14 +695,18 @@ function WheelScene({
       </group>
 
       <OrbitControls
-        autoRotate
-        autoRotateSpeed={0.3}
+        enableRotate
         enableZoom={false}
         enablePan={false}
+        autoRotate
+        autoRotateSpeed={0.3}
         enableDamping
         dampingFactor={0.05}
-        minPolarAngle={Math.PI / 2.3}
-        maxPolarAngle={Math.PI / 1.8}
+        minPolarAngle={0.3}
+        maxPolarAngle={2.8}
+        minAzimuthAngle={-Infinity}
+        maxAzimuthAngle={Infinity}
+        rotateSpeed={0.5}
       />
 
       <ConditionalBloom />
@@ -706,16 +717,17 @@ function WheelScene({
 export default function AstroWheel3D(props: AstroWheel3DProps) {
   return (
     <div
-      className="relative w-full mx-auto"
+      className="relative w-full"
       style={{
-        height: 'min(80vw, 420px)',
-        maxWidth: 'min(80vw, 420px)',
+        height: '95vw',
+        maxHeight: '550px',
+        overflow: 'visible',
         touchAction: 'none',
       }}
     >
       <Canvas
-        camera={{ position: [0, 0, 6], fov: 40, near: 0.1, far: 100 }}
-        style={{ background: 'transparent' }}
+        camera={{ position: [0, 1.5, 7], fov: 38, near: 0.1, far: 100 }}
+        style={{ background: 'transparent', overflow: 'visible' }}
         gl={{ alpha: true, antialias: true }}
       >
         <WheelScene {...props} />
