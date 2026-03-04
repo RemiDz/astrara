@@ -61,16 +61,25 @@ body {
   background: var(--glass-hover);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
+/* Hide scrollbar across all browsers while keeping scroll functional */
+html, body {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* Animations */

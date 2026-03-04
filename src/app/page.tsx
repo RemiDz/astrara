@@ -10,6 +10,7 @@ import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import Starfield from '@/components/Starfield/Starfield'
 import Header from '@/components/Header/Header'
 import AstroWheel from '@/components/AstroWheel/AstroWheel'
+import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
 import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelTooltip'
 import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
 import Shimmer from '@/components/ui/Shimmer'
@@ -78,7 +79,7 @@ function HomePage() {
             {/* Astro Wheel */}
             <div className="lg:flex-1 lg:sticky lg:top-4 py-4">
               {astroData ? (
-                <AstroWheel
+                <AstroWheel3DWrapper
                   planets={astroData.planets}
                   aspects={astroData.aspects}
                   onPlanetTap={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
@@ -91,6 +92,32 @@ function HomePage() {
                   <Shimmer className="w-full h-full rounded-full" />
                 </div>
               )}
+
+              {/* Day Navigation — directly below wheel */}
+              <div className="flex items-center justify-center gap-2 py-4">
+                <button
+                  onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'yesterday' }) }}
+                  className="px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
+                >
+                  ← {t('nav.yesterday')}
+                </button>
+                <button
+                  onClick={() => setDayOffset(0)}
+                  className={`px-5 py-2 rounded-xl text-sm font-medium active:scale-95 transition-all duration-200 ${
+                    dayOffset === 0
+                      ? 'bg-purple-500/20 border border-purple-400/30 text-purple-300'
+                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8'
+                  }`}
+                >
+                  {t('nav.today')}
+                </button>
+                <button
+                  onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'tomorrow' }) }}
+                  className="px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
+                >
+                  {t('nav.tomorrow')} →
+                </button>
+              </div>
             </div>
 
             {/* Cosmic Weather Panel */}
@@ -112,33 +139,6 @@ function HomePage() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Day Navigation */}
-          <div className="flex items-center justify-center gap-4 mt-8 mb-8">
-            <button
-              onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'yesterday' }) }}
-              className="px-4 py-2 text-sm rounded-lg hover:bg-white/5 transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              ← {t('nav.yesterday')}
-            </button>
-            <button
-              onClick={() => setDayOffset(0)}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                dayOffset === 0 ? 'bg-white/10 text-white' : 'hover:bg-white/5'
-              }`}
-              style={dayOffset !== 0 ? { color: 'var(--text-secondary)' } : undefined}
-            >
-              {t('nav.today')}
-            </button>
-            <button
-              onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'tomorrow' }) }}
-              className="px-4 py-2 text-sm rounded-lg hover:bg-white/5 transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('nav.tomorrow')} →
-            </button>
           </div>
 
           {/* Birth Chart CTA */}
