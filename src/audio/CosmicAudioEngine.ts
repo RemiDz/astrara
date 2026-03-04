@@ -6,6 +6,7 @@ import { RotationSoundLayer } from './RotationSoundLayer'
 export class CosmicAudioEngine {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
+  private rotationGain: GainNode | null = null // independent gain for rotation sound
   private drone: DroneLayer | null = null
   private binaural: BinauralLayer | null = null
   private planetTone: PlanetToneLayer | null = null
@@ -17,6 +18,11 @@ export class CosmicAudioEngine {
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 0 // start silent
     this.masterGain.connect(this.ctx.destination)
+
+    // Separate gain node for rotation sound — bypasses master mute
+    this.rotationGain = this.ctx.createGain()
+    this.rotationGain.gain.value = 1
+    this.rotationGain.connect(this.ctx.destination)
 
     this.drone = new DroneLayer(this.ctx, this.masterGain)
     this.binaural = new BinauralLayer(this.ctx, this.masterGain)
@@ -78,10 +84,14 @@ export class CosmicAudioEngine {
     }, 2200)
   }
 
-  startRotationSound() {
-    if (!this.ctx || !this.active) return
+  async startRotationSound() {
+    if (!this.ctx) await this.init()
+    if (this.ctx!.state === 'suspended') {
+      await this.ctx!.resume()
+    }
     if (!this.rotationSound) {
-      this.rotationSound = new RotationSoundLayer(this.ctx, this.masterGain!)
+      // Route through independent rotationGain — plays even when main audio is muted
+      this.rotationSound = new RotationSoundLayer(this.ctx!, this.rotationGain!)
     }
     this.rotationSound.start()
   }

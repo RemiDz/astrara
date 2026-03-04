@@ -10,9 +10,9 @@ export interface AstraraSettings {
 }
 
 export const DEFAULT_SETTINGS: AstraraSettings = {
-  planetScale: 1.0,
-  rotationSpeed: 1.0,
-  rotationSoundEnabled: false,
+  planetScale: 0.8,
+  rotationSpeed: 2.5,
+  rotationSoundEnabled: true,
 }
 
 interface SettingsPanelProps {

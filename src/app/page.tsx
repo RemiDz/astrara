@@ -101,20 +101,20 @@ function HomePage() {
     localStorage.setItem('astrara-settings', JSON.stringify(s))
   }, [])
 
-  // Start/stop rotation sound based on setting + audio state
+  // Start/stop rotation sound based on setting — independent of main audio
   useEffect(() => {
-    if (settings.rotationSoundEnabled && audioPlaying) {
+    if (settings.rotationSoundEnabled) {
       startRotationSound()
     } else {
       stopRotationSound()
     }
-  }, [settings.rotationSoundEnabled, audioPlaying, startRotationSound, stopRotationSound])
+  }, [settings.rotationSoundEnabled, startRotationSound, stopRotationSound])
 
   const handleRotationVelocity = useCallback((velocity: number) => {
-    if (settings.rotationSoundEnabled && audioPlaying) {
+    if (settings.rotationSoundEnabled) {
       updateRotationVelocity(velocity)
     }
-  }, [settings.rotationSoundEnabled, audioPlaying, updateRotationVelocity])
+  }, [settings.rotationSoundEnabled, updateRotationVelocity])
 
   const handleCloseTooltip = useCallback(() => {
     setTooltip(null)

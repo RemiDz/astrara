@@ -43,8 +43,11 @@ export function useCosmicAudio(planets: PlanetPosition[], moonSign: string) {
     engineRef.current?.onSignTap(signKey)
   }, [])
 
-  const startRotationSound = useCallback(() => {
-    engineRef.current?.startRotationSound()
+  const startRotationSound = useCallback(async () => {
+    if (!engineRef.current) {
+      engineRef.current = new CosmicAudioEngine()
+    }
+    await engineRef.current.startRotationSound()
   }, [])
 
   const stopRotationSound = useCallback(() => {
