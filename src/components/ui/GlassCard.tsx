@@ -12,6 +12,10 @@ export default function GlassCard({ children, className = '', onClick }: GlassCa
   return (
     <div
       className={`glass-card rounded-2xl transition-colors duration-200 ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      style={{
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
       onClick={onClick}
     >
       {children}

@@ -139,6 +139,8 @@ function HomePage() {
     }, 300)
   }
 
+  const birthDateTimeRef = useRef<Date | null>(null)
+
   const handleBirthSubmit = () => {
     const [year, month, day] = birthDate.split('-').map(Number)
     const [hours, minutes] = birthTime.split(':').map(Number)
@@ -152,6 +154,7 @@ function HomePage() {
 
     setBirthChartData({ planets, aspects })
     setBirthSubmitted(true)
+    birthDateTimeRef.current = birthDateTime
 
     const data = {
       date: birthDate,
@@ -162,6 +165,17 @@ function HomePage() {
     }
     localStorage.setItem('astrara-birth-data', JSON.stringify(data))
     trackEvent('birth-chart-submit')
+  }
+
+  const handleBirthModalClose = () => {
+    if (birthDateTimeRef.current && birthSubmitted) {
+      setCustomDate(birthDateTimeRef.current)
+      setDayOffset(0)
+    }
+    setShowBirthInput(false)
+    setBirthSubmitted(false)
+    setBirthChartData(null)
+    birthDateTimeRef.current = null
   }
 
   return (
@@ -351,7 +365,7 @@ function HomePage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => { setShowBirthInput(false); setBirthSubmitted(false); setBirthChartData(null) }}
+            onClick={handleBirthModalClose}
           />
           <div
             className="relative z-10 w-full max-w-md mx-4 sm:mx-auto rounded-t-2xl sm:rounded-2xl p-6 pb-8 animate-slide-up"
@@ -370,7 +384,7 @@ function HomePage() {
             {/* Close */}
             <button
               type="button"
-              onClick={() => { setShowBirthInput(false); setBirthSubmitted(false); setBirthChartData(null) }}
+              onClick={handleBirthModalClose}
               className="absolute top-4 right-4 text-white/30 hover:text-white/60 transition-colors select-none text-lg"
               aria-label="Close"
             >
@@ -454,25 +468,29 @@ function HomePage() {
                 <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1.5">
                   {t('form.dateOfBirth')}
                 </label>
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={e => setBirthDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl mb-4 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
-                  style={{ maxWidth: '100%' }}
-                />
+                <div className="relative mb-4">
+                  <input
+                    type="date"
+                    value={birthDate}
+                    onChange={e => setBirthDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
+                    style={{ maxWidth: '100%' }}
+                  />
+                </div>
 
                 {/* Time of Birth */}
                 <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1.5">
                   {t('form.timeOfBirth')}
                 </label>
-                <input
-                  type="time"
-                  value={birthTime}
-                  onChange={e => setBirthTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl mb-1 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
-                  style={{ maxWidth: '100%' }}
-                />
+                <div className="relative mb-1">
+                  <input
+                    type="time"
+                    value={birthTime}
+                    onChange={e => setBirthTime(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
+                    style={{ maxWidth: '100%' }}
+                  />
+                </div>
                 <p className="text-[10px] text-white/30 mb-4">
                   {t('form.timeHint')}
                 </p>
