@@ -98,6 +98,21 @@ body::-webkit-scrollbar {
   100% { background-position: 200% 0; }
 }
 
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
 /* Prevent text selection on interactive elements — app should feel native */
 button, a, [role="button"] {
   -webkit-user-select: none;

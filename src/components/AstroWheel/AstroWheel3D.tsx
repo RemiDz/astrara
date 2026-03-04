@@ -423,28 +423,82 @@ const OuterHalo = memo(function OuterHalo() {
   )
 })
 
-// ─── Centre Glow ────────────────────────────────────────────────────
-const CentreGlow = memo(function CentreGlow() {
-  const ref = useRef<THREE.Mesh>(null!)
+// ─── Earth Centre ───────────────────────────────────────────────────
+const EarthCentre = memo(function EarthCentre() {
+  const earthRef = useRef<THREE.Mesh>(null!)
+  const landRef = useRef<THREE.Mesh>(null!)
 
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      const mat = ref.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = 0.5 + Math.sin(clock.getElapsedTime() * 0.5) * 0.15
+  useFrame((_, delta) => {
+    if (earthRef.current) {
+      earthRef.current.rotation.y += delta * 0.1
+    }
+    if (landRef.current) {
+      landRef.current.rotation.y += delta * 0.1
     }
   })
 
   return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[0.1, 16, 16]} />
-      <meshStandardMaterial
-        color="#8B5CF6"
-        emissive="#8B5CF6"
-        emissiveIntensity={0.5}
-        transparent
-        opacity={0.35}
-      />
-    </mesh>
+    <group position={[0, 0, 0]}>
+      {/* Ocean sphere */}
+      <mesh ref={earthRef}>
+        <sphereGeometry args={[0.15, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#1a4a7a"
+          emissive="#0d2847"
+          emissiveIntensity={0.4}
+          roughness={0.6}
+          metalness={0.1}
+          clearcoat={0.5}
+          clearcoatRoughness={0.3}
+        />
+      </mesh>
+
+      {/* Land mass hint — low-poly wireframe overlay */}
+      <mesh ref={landRef} rotation={[0.4, 0, 0.2]}>
+        <icosahedronGeometry args={[0.152, 2]} />
+        <meshBasicMaterial
+          color="#2d5a1e"
+          transparent
+          opacity={0.25}
+          wireframe
+        />
+      </mesh>
+
+      {/* Atmosphere glow — inside-out sphere */}
+      <mesh>
+        <sphereGeometry args={[0.18, 32, 32]} />
+        <meshBasicMaterial
+          color="#4a9eff"
+          transparent
+          opacity={0.12}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* Point light */}
+      <pointLight color="#4a9eff" intensity={0.3} distance={1.5} decay={2} />
+
+      {/* "You are here" label */}
+      <Html
+        center
+        position={[0, -0.25, 0]}
+        zIndexRange={[100, 0]}
+        occlude={false}
+        style={{ pointerEvents: 'none', overflow: 'visible' }}
+      >
+        <div
+          className="text-center whitespace-nowrap select-none tracking-widest uppercase"
+          style={{
+            fontSize: '8px',
+            color: 'rgba(74, 158, 255, 0.35)',
+            textShadow: '0 0 8px rgba(74, 158, 255, 0.3)',
+            fontFamily: 'var(--font-body), sans-serif',
+          }}
+        >
+          you are here
+        </div>
+      </Html>
+    </group>
   )
 })
 
@@ -699,7 +753,7 @@ function WheelScene({
           />
         ))}
 
-        <CentreGlow />
+        <EarthCentre />
       </group>
 
       <OrbitControls
