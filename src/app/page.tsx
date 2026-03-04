@@ -148,6 +148,11 @@ function HomePage() {
     localStorage.setItem('astrara-birth-data', JSON.stringify(data))
     setBirthSubmitted(true)
     trackEvent('birth-chart-submit')
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+      setBirthSubmitted(false)
+      setShowBirthInput(false)
+    }, 4000)
   }
 
   return (
@@ -339,7 +344,17 @@ function HomePage() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => { setShowBirthInput(false); setBirthSubmitted(false) }}
           />
-          <div className="relative z-10 w-full max-w-md mx-auto bg-[#0D0D1A]/95 backdrop-blur-xl border border-white/10 rounded-t-2xl sm:rounded-2xl p-6 pb-8 animate-slide-up">
+          <div
+            className="relative z-10 w-full max-w-md mx-auto rounded-t-2xl sm:rounded-2xl p-6 pb-8 animate-slide-up overflow-hidden"
+            style={{
+              maxWidth: 'calc(100vw - 32px)',
+              background: 'linear-gradient(180deg, rgba(13, 13, 26, 0.92) 0%, rgba(13, 13, 26, 0.97) 100%)',
+              border: '1px solid rgba(147, 197, 253, 0.06)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+            }}
+          >
             {/* Handle bar (mobile) */}
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6 sm:hidden" />
 
@@ -355,10 +370,25 @@ function HomePage() {
 
             {birthSubmitted ? (
               <div className="text-center py-8">
-                <p className="text-2xl mb-3">✦</p>
-                <p className="text-white/80 text-sm">
-                  {t('cta.comingSoon')}
+                <div className="text-2xl mb-4">✦</div>
+                <h3 className="text-base font-serif text-white/80 mb-2">
+                  {t('cta.birthSaved')}
+                </h3>
+                <p className="text-sm text-white/40 mb-6">
+                  {t('cta.birthComingSoon')}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBirthSubmitted(false)
+                    setShowBirthInput(false)
+                  }}
+                  className="px-6 py-2.5 rounded-xl text-sm text-white/50
+                             border border-white/10 hover:border-white/20
+                             hover:text-white/70 transition-all select-none"
+                >
+                  {t('cta.gotIt')}
+                </button>
               </div>
             ) : (
               <>
@@ -377,7 +407,8 @@ function HomePage() {
                   type="date"
                   value={birthDate}
                   onChange={e => setBirthDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl mb-4 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl mb-4 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
+                  style={{ maxWidth: '100%' }}
                 />
 
                 {/* Time of Birth */}
@@ -388,7 +419,8 @@ function HomePage() {
                   type="time"
                   value={birthTime}
                   onChange={e => setBirthTime(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl mb-1 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-xl mb-1 bg-white/5 border border-white/10 text-white/90 text-sm focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
+                  style={{ maxWidth: '100%' }}
                 />
                 <p className="text-[10px] text-white/30 mb-4">
                   {t('form.timeHint')}
@@ -407,7 +439,8 @@ function HomePage() {
                       handleBirthCitySearch(e.target.value)
                     }}
                     placeholder={t('form.cityPlaceholder')}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
+                    style={{ maxWidth: '100%' }}
                   />
                   {birthCityResults.length > 0 && !birthCity && (
                     <ul className="absolute top-full left-0 right-0 mt-1 bg-[#0D0D1A]/95 backdrop-blur-xl border border-white/10 rounded-xl py-1 z-10 max-h-40 overflow-y-auto">

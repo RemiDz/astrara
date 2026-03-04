@@ -69,10 +69,11 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
           bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl
           md:bottom-auto md:top-0 md:left-auto md:right-0 md:max-h-full md:h-full md:w-[400px] md:rounded-t-none md:rounded-l-2xl"
         style={{
-          background: 'rgba(13, 13, 26, 0.95)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          background: 'linear-gradient(180deg, rgba(13, 13, 26, 0.92) 0%, rgba(13, 13, 26, 0.97) 100%)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(147, 197, 253, 0.06)',
+          boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
           display: 'flex',
           flexDirection: 'column',
           transform: visible && !closing ? 'translateY(0)' : 'translateY(100%)',
