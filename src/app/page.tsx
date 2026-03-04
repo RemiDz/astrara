@@ -14,6 +14,7 @@ import AstroWheel from '@/components/AstroWheel/AstroWheel'
 import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
 import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelTooltip'
 import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
+import EarthPanel from '@/components/EarthPanel/EarthPanel'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -25,6 +26,7 @@ function HomePage() {
   const [tooltip, setTooltip] = useState<TooltipData>(null)
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
   const [showBirthInput, setShowBirthInput] = useState(false)
+  const [showEarthPanel, setShowEarthPanel] = useState(false)
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
   const [birthCityQuery, setBirthCityQuery] = useState('')
@@ -128,6 +130,7 @@ function HomePage() {
                   onPlanetTap={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
                   onSignTap={(s) => { handleSignTap(s); trackEvent('sign-tap', { sign: s }) }}
                   onAspectTap={(a) => { handleAspectTap(a); trackEvent('aspect-tap', { aspect: `${a.planet1}-${a.type}-${a.planet2}` }) }}
+                  onEarthTap={() => { setShowEarthPanel(true); trackEvent('earth-tap') }}
                   selectedPlanet={selectedPlanet}
                 />
               ) : (
@@ -224,6 +227,9 @@ function HomePage() {
         planets={astroData?.planets ?? []}
         onClose={handleCloseTooltip}
       />
+
+      {/* Earth Panel */}
+      <EarthPanel isOpen={showEarthPanel} onClose={() => setShowEarthPanel(false)} />
 
       {/* Birth Details Modal */}
       {showBirthInput && (

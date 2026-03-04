@@ -13,6 +13,7 @@ interface Props {
   onPlanetTap: (planet: PlanetPosition) => void
   onSignTap: (signId: string) => void
   onAspectTap: (aspect: AspectData) => void
+  onEarthTap: () => void
   selectedPlanet: string | null
 }
 

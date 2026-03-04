@@ -15,6 +15,7 @@ interface AstroWheel3DProps {
   onPlanetTap: (planet: PlanetPosition) => void
   onSignTap: (signId: string) => void
   onAspectTap: (aspect: AspectData) => void
+  onEarthTap: () => void
   selectedPlanet: string | null
 }
 
@@ -470,7 +471,7 @@ function createEarthTexture(): THREE.CanvasTexture {
 }
 
 // ─── Earth Centre ───────────────────────────────────────────────────
-function EarthCentre() {
+function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
   const earthRef = useRef<THREE.Mesh>(null!)
   const earthTexture = useMemo(() => createEarthTexture(), [])
 
@@ -511,6 +512,18 @@ function EarthCentre() {
           style={{ fontSize: '8px', color: 'rgba(74, 158, 255, 0.35)', textShadow: '0 0 8px rgba(74, 158, 255, 0.3)', fontFamily: 'var(--font-body), sans-serif' }}>
           you are here
         </div>
+      </Html>
+
+      {/* Earth tap target */}
+      <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'auto', overflow: 'visible' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEarthTap() }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="w-14 h-14 rounded-full cursor-pointer select-none active:scale-90 transition-transform duration-150"
+          style={{ background: 'transparent', border: 'none', outline: 'none', padding: 0, WebkitTapHighlightColor: 'transparent' }}
+          aria-label="View Earth intelligence"
+        />
       </Html>
     </group>
   )
@@ -686,7 +699,7 @@ function ConditionalBloom() {
 
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
-  planets, aspects, onPlanetTap, onSignTap, selectedPlanet, sceneReady,
+  planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
 
@@ -708,7 +721,7 @@ function WheelScene({
       <group>
         {/* Phase 1: Earth ignites (0ms) */}
         <AnimatedScaleGroup sceneReady={sceneReady} delay={0}>
-          <EarthCentre />
+          <EarthCentre onEarthTap={onEarthTap} />
         </AnimatedScaleGroup>
 
         {/* Phase 2: Inner rings expand (400ms) */}
