@@ -89,33 +89,33 @@ export default function Header({
     <header className="relative z-30 px-4 py-3">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         {/* Logo + tagline + info */}
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
-              ASTRARA
-            </h1>
+        <div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
+            ASTRARA
+          </h1>
+          <div className="flex items-center gap-1.5">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {t('app.tagline')}
             </p>
+            <button
+              type="button"
+              onClick={onAboutOpen}
+              className="w-4 h-4 rounded-full border border-white/20 text-white/30 text-[9px] flex items-center justify-center hover:text-white/50 hover:border-white/30 transition-colors select-none leading-none"
+              aria-label="About Astrara"
+            >
+              i
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onAboutOpen}
-            className="text-white/30 hover:text-white/60 transition-colors select-none text-sm self-start mt-1"
-            aria-label="About Astrara"
-          >
-            ℹ️
-          </button>
         </div>
 
         {/* Right side: location + language */}
         <div className="flex items-center gap-3">
           {/* Location */}
-          <div ref={searchRef} className="relative">
+          <div ref={searchRef} className="relative min-w-[100px]">
             <button
               type="button"
               onClick={() => setSearchOpen(!searchOpen)}
-              className="flex items-center gap-1.5 text-sm hover:text-white transition-colors select-none"
+              className="flex items-center justify-end gap-1.5 text-sm hover:text-white transition-colors select-none w-full"
               style={{ color: 'var(--text-secondary)' }}
             >
               <span>📍</span>
