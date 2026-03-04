@@ -39,7 +39,7 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
       {content.sections.map((section, i) => (
         <div key={i}>
           <div className="w-full h-px bg-white/8 mt-6 mb-4" />
-          <h3 className="text-[10px] uppercase tracking-[0.2em] text-purple-300/50 mb-3 flex items-center gap-2">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-white/35 mb-3 flex items-center gap-2">
             <span>{section.icon}</span>
             <span>{section.heading}</span>
           </h3>
@@ -53,7 +53,7 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
 
       {/* FAQ */}
       <div className="w-full h-px bg-white/8 mt-6 mb-4" />
-      <h3 className="text-[10px] uppercase tracking-[0.2em] text-purple-300/50 mb-3 flex items-center gap-2">
+      <h3 className="text-[10px] uppercase tracking-[0.2em] text-white/35 mb-3 flex items-center gap-2">
         <span>?</span>
         <span>{content.faq.heading}</span>
       </h3>

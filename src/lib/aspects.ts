@@ -8,11 +8,11 @@ interface AspectDef {
 }
 
 const ASPECT_TYPES: AspectDef[] = [
-  { name: 'conjunction', symbol: '☌', angle: 0, colour: '#FFFFFF' },
+  { name: 'conjunction', symbol: '☌', angle: 0, colour: '#FBBF24' },
   { name: 'sextile', symbol: '⚹', angle: 60, colour: '#60A5FA' },
-  { name: 'square', symbol: '□', angle: 90, colour: '#FF4444' },
-  { name: 'trine', symbol: '△', angle: 120, colour: '#4ADE80' },
-  { name: 'opposition', symbol: '☍', angle: 180, colour: '#FF8C00' },
+  { name: 'square', symbol: '□', angle: 90, colour: '#F87171' },
+  { name: 'trine', symbol: '△', angle: 120, colour: '#34D399' },
+  { name: 'opposition', symbol: '☍', angle: 180, colour: '#FB923C' },
 ]
 
 function getOrb(p1: string, p2: string, aspectName: string): number {

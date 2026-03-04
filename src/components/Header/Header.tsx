@@ -100,10 +100,10 @@ export default function Header({
             <button
               type="button"
               onClick={onAboutOpen}
-              className="w-6 h-6 rounded-full border border-white/25
+              className="w-6 h-6 rounded-full border border-purple-400/25
                          flex items-center justify-center
-                         text-white/40 text-xs font-serif
-                         hover:border-white/40 hover:text-white/60
+                         text-purple-300/40 text-xs font-serif
+                         hover:border-purple-400/40 hover:text-purple-300/60
                          active:scale-90
                          transition-all select-none cursor-pointer"
               aria-label="About Astrara"
@@ -114,10 +114,10 @@ export default function Header({
             <button
               type="button"
               onClick={onSettingsOpen}
-              className="w-6 h-6 rounded-full border border-white/25
+              className="w-6 h-6 rounded-full border border-purple-400/25
                          flex items-center justify-center
-                         text-white/40 text-xs
-                         hover:border-white/40 hover:text-white/60
+                         text-purple-300/40 text-xs
+                         hover:border-purple-400/40 hover:text-purple-300/60
                          active:scale-90
                          transition-all select-none cursor-pointer"
               aria-label="Settings"
@@ -139,7 +139,7 @@ export default function Header({
                   dateInputRef.current?.focus()
                 }
               }}
-              className="text-sm hover:text-purple-200 transition-colors select-none"
+              className="text-sm hover:text-white/70 transition-colors select-none"
               style={{ color: 'var(--text-muted)' }}
             >
               {dateStr}{timeStr ? ` · ${timeStr}` : ''}
@@ -216,7 +216,7 @@ export default function Header({
             onClick={onAudioToggle}
             className={`text-lg select-none ${
               audioPlaying
-                ? 'text-purple-400/80 hover:text-purple-300'
+                ? 'text-white/60 hover:text-white/80'
                 : audioWantsOn
                   ? 'text-white/40 hover:text-white/70 animate-pulse'
                   : 'text-white/40 hover:text-white/70'

@@ -145,8 +145,8 @@ export default function AstroWheel({
         {/* Definitions */}
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+            <stop offset="0%" stopColor="#c0c8e0" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#c0c8e0" stopOpacity="0" />
           </radialGradient>
           {planets.map(p => (
             <radialGradient key={`glow-${p.id}`} id={`glow-${p.id}`} cx="50%" cy="50%" r="50%">

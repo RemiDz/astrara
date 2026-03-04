@@ -94,11 +94,11 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <torusGeometry args={[radius, 0.005, 8, 128]} />
       <meshPhysicalMaterial
-        color="#a78bfa"
+        color="#c0c8e0"
         transparent
         opacity={opacity}
         roughness={0.05}
-        metalness={0.5}
+        metalness={0.6}
         clearcoat={1.0}
         clearcoatRoughness={0.05}
         side={THREE.DoubleSide}
@@ -150,11 +150,11 @@ function OuterZodiacRing({
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
             <shapeGeometry args={[shape]} />
             <meshPhysicalMaterial
-              color="#a78bfa"
+              color="#c0c8e0"
               transparent
               opacity={0.12}
               roughness={0.05}
-              metalness={0.5}
+              metalness={0.6}
               clearcoat={1.0}
               clearcoatRoughness={0.05}
               side={THREE.DoubleSide}
@@ -205,7 +205,7 @@ function OuterZodiacRing({
         const x2 = Math.cos(angle) * R_OUTER
         const z2 = Math.sin(angle) * R_OUTER
         return (
-          <Line key={`div1-${i}`} points={[[x1, 0, z1], [x2, 0, z2]]} color="#8B5CF6" lineWidth={0.5} transparent opacity={0.12} />
+          <Line key={`div1-${i}`} points={[[x1, 0, z1], [x2, 0, z2]]} color="#ffffff" lineWidth={0.5} transparent opacity={0.12} />
         )
       })}
       <RingEdge radius={R_OUTER} opacity={0.4} />
@@ -246,7 +246,7 @@ const MiddleRing = memo(function MiddleRing() {
         <mesh key={sign.id} rotation={[-Math.PI / 2, 0, 0]}>
           <shapeGeometry args={[shape]} />
           <meshPhysicalMaterial
-            color="#a78bfa" transparent opacity={0.1} roughness={0.05} metalness={0.5}
+            color="#c0c8e0" transparent opacity={0.1} roughness={0.05} metalness={0.6}
             clearcoat={1.0} clearcoatRoughness={0.05} side={THREE.DoubleSide}
             emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])} emissiveIntensity={0.05}
           />
@@ -258,7 +258,7 @@ const MiddleRing = memo(function MiddleRing() {
         const z1 = Math.sin(angle) * R_MID_INNER
         const x2 = Math.cos(angle) * R_MID_OUTER
         const z2 = Math.sin(angle) * R_MID_OUTER
-        return <Line key={`tick-${i}`} points={[[x1, 0, z1], [x2, 0, z2]]} color="#8B5CF6" lineWidth={0.5} transparent opacity={0.12} />
+        return <Line key={`tick-${i}`} points={[[x1, 0, z1], [x2, 0, z2]]} color="#ffffff" lineWidth={0.5} transparent opacity={0.12} />
       })}
       <RingEdge radius={R_MID_OUTER} opacity={0.25} />
       <RingEdge radius={R_MID_INNER} opacity={0.2} />
@@ -274,9 +274,9 @@ const InnerTrackRing = memo(function InnerTrackRing() {
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[R_TRACK - 0.015, R_TRACK + 0.015, 128]} />
         <meshPhysicalMaterial
-          color="#a78bfa" transparent opacity={0.08} roughness={0.05} metalness={0.5}
+          color="#c0c8e0" transparent opacity={0.08} roughness={0.05} metalness={0.6}
           clearcoat={1.0} clearcoatRoughness={0.05} side={THREE.DoubleSide}
-          emissive="#8B5CF6" emissiveIntensity={0.03}
+          emissive="#c0c8e0" emissiveIntensity={0.03}
         />
       </mesh>
     </group>
@@ -313,7 +313,7 @@ const SacredGeometry = memo(function SacredGeometry() {
   return (
     <group ref={ref}>
       {lines.map((pair, i) => (
-        <Line key={`sg-${i}`} points={pair} color="#8B5CF6" lineWidth={0.3} transparent opacity={0.04} />
+        <Line key={`sg-${i}`} points={pair} color="#ffffff" lineWidth={0.3} transparent opacity={0.04} />
       ))}
     </group>
   )
@@ -353,7 +353,7 @@ function OrbitingLight() {
       lightRef.current.position.set(Math.cos(t) * r, 0.3, Math.sin(t) * r)
     }
   })
-  return <pointLight ref={lightRef} color="#C4B5FD" intensity={0.4} distance={3} decay={2} />
+  return <pointLight ref={lightRef} color="#e0e8ff" intensity={0.4} distance={3} decay={2} />
 }
 
 // ─── Inner Dust ─────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ const InnerDust = memo(function InnerDust() {
   return (
     <points ref={ref}>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
-      <pointsMaterial size={0.015} color="#C4B5FD" transparent opacity={0.15} sizeAttenuation />
+      <pointsMaterial size={0.015} color="#ffffff" transparent opacity={0.15} sizeAttenuation />
     </points>
   )
 })
@@ -387,9 +387,9 @@ const OuterHalo = memo(function OuterHalo() {
     canvas.width = size; canvas.height = size
     const ctx = canvas.getContext('2d')!
     const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.3)')
-    gradient.addColorStop(0.4, 'rgba(139, 92, 246, 0.08)')
-    gradient.addColorStop(1, 'rgba(139, 92, 246, 0)')
+    gradient.addColorStop(0, 'rgba(200, 210, 230, 0.2)')
+    gradient.addColorStop(0.4, 'rgba(200, 210, 230, 0.06)')
+    gradient.addColorStop(1, 'rgba(200, 210, 230, 0)')
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, size, size)
     return new THREE.CanvasTexture(canvas)
@@ -561,7 +561,7 @@ function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
 
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
         <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
-          style={{ fontSize: '8px', color: 'rgba(74, 158, 255, 0.35)', textShadow: '0 0 8px rgba(74, 158, 255, 0.3)', fontFamily: 'var(--font-body), sans-serif' }}>
+          style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.3)', textShadow: '0 0 8px rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-body), sans-serif' }}>
           you are here
         </div>
       </Html>
@@ -818,8 +818,8 @@ function WheelScene({
   return (
     <>
       <ambientLight intensity={0.3} color="#ffffff" />
-      <directionalLight position={[3, 4, 2]} intensity={0.6} color="#e0d0ff" />
-      <pointLight position={[0, -2, 0]} intensity={0.2} color="#a78bfa" distance={6} />
+      <directionalLight position={[3, 4, 2]} intensity={0.6} color="#e0e8ff" />
+      <pointLight position={[0, -2, 0]} intensity={0.2} color="#c0c8e0" distance={6} />
       <Environment preset="night" background={false} />
 
       <BackgroundParticles />

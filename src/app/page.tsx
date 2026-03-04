@@ -236,8 +236,8 @@ function HomePage() {
                       onClick={() => { setCustomDate(null); setDayOffset(0) }}
                       className={`px-4 py-2 rounded-xl text-sm select-none active:scale-95 transition-all ${
                         isToday
-                          ? 'bg-purple-500/30 border border-purple-400/30 text-purple-200'
-                          : 'border border-white/10 text-white/50 hover:border-white/20'
+                          ? 'bg-white/8 border border-white/20 text-white/90'
+                          : 'border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
                       }`}
                     >
                       {centreLabel}
