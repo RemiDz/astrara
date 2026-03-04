@@ -189,7 +189,6 @@ export default function Header({
             style={{ color: 'var(--text-muted)' }}
           >
             <span>{dateStr}{timeStr ? ` · ${timeStr}` : ''}</span>
-            <span className="text-xs opacity-50">📅</span>
           </button>
 
           {/* Hidden native date input */}
