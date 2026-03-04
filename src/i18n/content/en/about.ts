@@ -29,7 +29,7 @@ export const aboutContent: AboutContent = {
   subtitle: 'How it all works',
   intro: [
     'Astrara shows you the sky as it actually is right now \u2014 where every planet sits, what signs they\u2019re moving through, and what that might mean for you today.',
-    'Nothing here is random or made up. Every planetary position is calculated to the arc-minute using the same astronomical algorithms NASA uses for space missions. The insights are drawn from centuries of astrological tradition. The sound frequencies come from real physics.',
+    'Every planetary position in Astrara is calculated using the same astronomical algorithms used in space navigation, accurate to within fractions of a degree. The interpretive content draws from established astrological tradition. Sound frequencies are based on published acoustic research \u2014 Hans Cousto\u2019s planetary octave calculations and the solfeggio frequency framework. Earth data comes directly from NOAA satellite feeds.',
     'Here\u2019s how it all comes together.',
   ],
   sections: [

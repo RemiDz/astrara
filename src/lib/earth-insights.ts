@@ -12,38 +12,38 @@ interface ConditionInsights {
 const insights: Record<string, ConditionInsights> = {
   en: {
     quiet: {
-      low_wind: "The geomagnetic field is deeply calm today, and solar winds whisper gently. Your nervous system can rest in its natural rhythm. A beautiful day for deep meditation, subtle energy work, and sound healing — the body is most receptive when Earth is quiet.",
-      normal_wind: "The geomagnetic field is calm with moderate solar wind. Conditions are stable and grounding. A good day for focused work and steady, intentional practice.",
-      high_wind: "The geomagnetic field is calm despite elevated solar wind. A watchful peace — like the eye of a gentle storm. Stay grounded and hydrated.",
+      low_wind: "The geomagnetic field is calm and solar wind is low. These are stable conditions — research associates low Kp with better sleep quality, steady blood pressure, and improved focus. Ideal conditions for sound healing, as the body's electromagnetic environment is undisturbed.",
+      normal_wind: "The geomagnetic field is calm with moderate solar wind. Conditions are stable. No significant electromagnetic interference expected. Good baseline conditions for energy work and therapeutic sessions.",
+      high_wind: "The geomagnetic field is currently calm despite elevated solar wind speed. Geomagnetic conditions may shift in the coming hours as the solar wind interacts with Earth's magnetosphere. Worth monitoring if you have sessions planned.",
     },
     unsettled: {
-      low_wind: "The geomagnetic field is mildly unsettled. You may notice subtle shifts in mood or energy levels. Some people feel slightly restless or emotionally sensitive. Gentle grounding practices can help.",
-      normal_wind: "Earth's magnetic field is stirring today. Sensitivity may increase — headaches, vivid dreams, or unexpected emotions are common when the field is unsettled. Move slowly and listen to your body.",
-      high_wind: "The field is unsettled with active solar wind pushing against Earth's magnetosphere. You may feel wired or scattered. Prioritise grounding: walk barefoot, use low frequencies, eat warm food.",
+      low_wind: "The geomagnetic field is mildly unsettled (Kp 2-3). Some research suggests sensitive individuals may notice subtle changes in mood, energy levels, or sleep quality during these periods. Grounding techniques and low-frequency sound work can be supportive.",
+      normal_wind: "The geomagnetic field is unsettled with moderate solar wind. Studies have shown correlations between unsettled geomagnetic conditions and increased reports of headaches, fatigue, and emotional sensitivity. Allow extra integration time in sessions.",
+      high_wind: "The geomagnetic field is unsettled with elevated solar wind. The magnetosphere is under pressure. Sensitive individuals may experience disrupted sleep, heightened anxiety, or physical tension. Prioritise grounding work and lower frequencies (174-285 Hz range).",
     },
     active: {
-      any: "The geomagnetic field is active today — a minor storm is stirring Earth's magnetic shield. Many people report disrupted sleep, heightened anxiety, or intense dreams during active periods. This is also a time of accelerated inner growth. Be gentle with yourself.",
+      any: "The geomagnetic field is active (Kp 4+). A minor geomagnetic storm is in progress. Published research has documented effects on human heart rate variability, blood pressure, and melatonin production during active periods. Clients may present with unusual fatigue or emotional intensity. Adjust session intensity accordingly — grounding and stabilising work is recommended.",
     },
     storm: {
-      any: "A geomagnetic storm is in progress. Earth's magnetic field is significantly disturbed. Sensitive individuals may experience headaches, fatigue, emotional intensity, or unusual dream states. This is powerful energy — not harmful, but demanding. Rest when you can, drink water, and avoid major decisions if you feel foggy.",
+      any: "A significant geomagnetic storm is in progress (Kp 5+). Earth's magnetic field is substantially disturbed. Multiple studies have documented measurable effects on the human autonomic nervous system during storms of this magnitude. Common reports include disrupted sleep, headaches, increased anxiety, and emotional volatility. Keep sessions gentle and grounding. Root chakra frequencies and steady, predictable rhythms are most supportive.",
     },
   },
   lt: {
     quiet: {
-      low_wind: "Geomagnetinis laukas šiandien yra giliai ramus, o saulės vėjas švelniai šnabžda. Jūsų nervų sistema gali ilsėtis natūraliu ritmu. Puiki diena giliai meditacijai, subtiliam energetiniam darbui ir garso terapijai — kūnas yra imliausia, kai Žemė tyli.",
-      normal_wind: "Geomagnetinis laukas ramus su vidutiniu saulės vėju. Sąlygos stabilios ir įžeminančios. Gera diena susikaupusiam darbui ir nuosekliai praktikai.",
-      high_wind: "Geomagnetinis laukas ramus, nepaisant padidėjusio saulės vėjo. Budri ramybė — tarsi švelnios audros akis. Likite įsišakniję ir gerkite vandenį.",
+      low_wind: "Geomagnetinis laukas ramus ir saulės vėjas žemas. Tai stabilios sąlygos — tyrimai sieja žemą Kp su geresne miego kokybe, stabiliu kraujospūdžiu ir geresniu susikaupmu. Idealios sąlygos garso terapijai, nes kūno elektromagnetinė aplinka netrukdoma.",
+      normal_wind: "Geomagnetinis laukas ramus su vidutiniu saulės vėju. Sąlygos stabilios. Nenumatoma reikšmingų elektromagnetinių trikdžių. Geros bazinės sąlygos energetiniam darbui ir terapiniams seansams.",
+      high_wind: "Geomagnetinis laukas šiuo metu ramus, nepaisant padidėjusio saulės vėjo greičio. Geomagnetinės sąlygos gali keistis artimiausiomis valandomis. Verta stebėti, jei planuojate seansus.",
     },
     unsettled: {
-      low_wind: "Geomagnetinis laukas šiek tiek nerimsta. Galite pastebėti subtilius nuotaikos ar energijos pokyčius. Kai kurie žmonės jaučiasi truputį neramūs ar emociškai jautrūs. Švelnios įžeminimo praktikos gali padėti.",
-      normal_wind: "Žemės magnetinis laukas šiandien juda. Jautrumas gali padidėti — galvos skausmai, ryškūs sapnai ar netikėtos emocijos dažnos, kai laukas nerimsta. Judėkite lėtai ir klausykite savo kūno.",
-      high_wind: "Laukas nerimsta su aktyviu saulės vėju, stumiančiu Žemės magnetosferą. Galite jaustis įtempti ar išsiblaškę. Pirmenybę teikite įžeminimui: vaikščiokite basomis, naudokite žemus dažnius, valgykite šiltą maistą.",
+      low_wind: "Geomagnetinis laukas šiek tiek nerimsta (Kp 2-3). Kai kurie tyrimai rodo, kad jautrūs žmonės gali pastebėti subtilius nuotaikos, energijos lygio ar miego kokybės pokyčius. Įžeminimo technikos ir žemo dažnio garso darbas gali padėti.",
+      normal_wind: "Geomagnetinis laukas nerimsta su vidutiniu saulės vėju. Tyrimai parodė koreliacijas tarp neramių geomagnetinių sąlygų ir padidėjusių galvos skausmo, nuovargio bei emocinio jautrumo pranešimų. Skirkite papildomo integracijos laiko seansuose.",
+      high_wind: "Geomagnetinis laukas nerimsta su padidėjusiu saulės vėju. Magnetosfera yra po spaudimu. Jautrūs žmonės gali patirti sutrikdytą miegą, padidėjusį nerimą ar fizinę įtampą. Pirmenybę teikite įžeminimo darbui ir žemesniems dažniams (174-285 Hz diapazonas).",
     },
     active: {
-      any: "Geomagnetinis laukas šiandien aktyvus — nedidelė audra drumščia Žemės magnetinį skydą. Daugelis žmonių praneša apie sutrikdytą miegą, padidėjusį nerimą ar intensyvius sapnus aktyviais periodais. Tai taip pat pagreitinto vidinio augimo laikas. Būkite švelnūs su savimi.",
+      any: "Geomagnetinis laukas aktyvus (Kp 4+). Vyksta nedidelė geomagnetinė audra. Publikuoti tyrimai dokumentavo poveikį žmogaus širdies ritmo kintamumui, kraujospūdžiui ir melatonino gamybai aktyviais periodais. Klientai gali pasireikšti neįprastu nuovargiu ar emociniu intensyvumu. Atitinkamai koreguokite seanso intensyvumą — rekomenduojamas įžeminantis ir stabilizuojantis darbas.",
     },
     storm: {
-      any: "Vyksta geomagnetinė audra. Žemės magnetinis laukas stipriai sutrikdytas. Jautrūs žmonės gali patirti galvos skausmus, nuovargį, emocinį intensyvumą ar neįprastas sapnų būsenas. Tai galinga energija — ne žalinga, bet reikli. Ilsėkitės, kai galite, gerkite vandenį ir venkite svarbių sprendimų, jei jaučiatės apsiblaususiai.",
+      any: "Vyksta reikšminga geomagnetinė audra (Kp 5+). Žemės magnetinis laukas yra stipriai sutrikdytas. Keli tyrimai dokumentavo išmatuojamą poveikį žmogaus autonominei nervų sistemai tokio masto audrų metu. Dažni pranešimai: sutrikdytas miegas, galvos skausmai, padidėjęs nerimas ir emocinis nepastovumas. Seansus darykite švelnius ir įžeminančius. Šaknies čakros dažniai ir pastovūs, nuspėjami ritmai yra palankiausi.",
     },
   },
 }
@@ -63,38 +63,38 @@ export function getEarthInsight(data: EarthData, lang: string): string {
 export function getBodyMindPractice(data: EarthData, lang: string) {
   const en = {
     body: data.kpIndex <= 2
-      ? "Calm geomagnetic conditions support restful sleep and stable blood pressure."
+      ? "Calm conditions. Research shows low geomagnetic activity supports stable blood pressure, restful sleep, and normal heart rate variability."
       : data.kpIndex <= 4
-      ? "Mild magnetic disturbance may cause headaches or fatigue in sensitive individuals."
-      : "Geomagnetic storm conditions can disrupt sleep, increase blood pressure, and cause migraines.",
+      ? "Mildly disturbed conditions. Some individuals may experience headaches, fatigue, or changes in blood pressure. Stay hydrated."
+      : "Storm conditions. Documented effects include disrupted sleep, elevated blood pressure, headaches, and reduced heart rate variability.",
     mind: data.kpIndex <= 2
-      ? "Low Kp index correlates with better focus and mental clarity."
+      ? "Low Kp correlates with better focus, mental clarity, and emotional stability in published studies."
       : data.kpIndex <= 4
-      ? "Concentration may waver — allow extra time for important tasks."
-      : "Mental fog and emotional intensity are common. Be patient with yourself.",
+      ? "Concentration may be affected. Allow extra time for complex tasks and important decisions."
+      : "Cognitive function can be impaired during strong geomagnetic storms. Mental fog and emotional reactivity are commonly reported.",
     practice: data.kpIndex <= 2
-      ? "Ideal conditions for sound healing — the body is most receptive when the field is quiet."
+      ? "Optimal conditions for sound healing. The body's electromagnetic environment is stable, which supports receptivity to subtle frequency work."
       : data.kpIndex <= 4
-      ? "Good for grounding practices. Lower frequencies (174–285 Hz) may be especially soothing."
-      : "Focus on stabilising and grounding work. Root chakra frequencies. Avoid overly intense sessions.",
+      ? "Good for grounding-focused sessions. Lower frequencies (174-285 Hz) and steady rhythms are recommended. Allow extra integration time."
+      : "Focus on stabilisation and grounding. Root chakra frequencies, steady tempos, and gentle instruments. Avoid overly intense or lengthy sessions.",
   }
 
   const lt = {
     body: data.kpIndex <= 2
-      ? "Ramios geomagnetinės sąlygos palaiko poilsinį miegą ir stabilų kraujospūdį."
+      ? "Ramios sąlygos. Tyrimai rodo, kad žemas geomagnetinis aktyvumas palaiko stabilų kraujospūdį, poilsinį miegą ir normalų širdies ritmo kintamumą."
       : data.kpIndex <= 4
-      ? "Silpnas magnetinis trikdymas gali sukelti galvos skausmą ar nuovargį jautriems žmonėms."
-      : "Geomagnetinės audros sąlygos gali sutrikdyti miegą, padidinti kraujospūdį ir sukelti migreną.",
+      ? "Šiek tiek sutrikdytos sąlygos. Kai kurie žmonės gali patirti galvos skausmą, nuovargį ar kraujospūdžio pokyčius. Gerkite pakankamai vandens."
+      : "Audros sąlygos. Dokumentuotas poveikis: sutrikdytas miegas, padidėjęs kraujospūdis, galvos skausmai ir sumažėjęs širdies ritmo kintamumas.",
     mind: data.kpIndex <= 2
-      ? "Žemas Kp indeksas koreliuoja su geresniu susikaupmu ir psichine aiškumu."
+      ? "Žemas Kp koreliuoja su geresniu susikaupmu, psichine aiškumu ir emociniu stabilumu publikuotuose tyrimuose."
       : data.kpIndex <= 4
-      ? "Koncentracija gali svyruoti — skirkite papildomo laiko svarbioms užduotims."
-      : "Protinis rūkas ir emocinis intensyvumas yra įprasti. Būkite kantrūs su savimi.",
+      ? "Koncentracija gali būti paveikta. Skirkite papildomo laiko sudėtingoms užduotims ir svarbiems sprendimams."
+      : "Pažintinės funkcijos gali būti susilpnėjusios stiprių geomagnetinių audrų metu. Protinis rūkas ir emocinis reaktyvumas dažnai pranešami.",
     practice: data.kpIndex <= 2
-      ? "Idealios sąlygos garso terapijai — kūnas yra imliausias, kai laukas ramus."
+      ? "Optimalios sąlygos garso terapijai. Kūno elektromagnetinė aplinka stabili, kas palaiko imlumą subtiliam dažnių darbui."
       : data.kpIndex <= 4
-      ? "Tinka įžeminimo praktikoms. Žemesni dažniai (174–285 Hz) gali būti ypač raminantys."
-      : "Sutelkite dėmesį į stabilizavimą ir įžeminimą. Šaknies čakros dažniai. Venkite pernelyg intensyvių seansų.",
+      ? "Tinka į įžeminimą orientuotiems seansams. Rekomenduojami žemesni dažniai (174-285 Hz) ir pastovūs ritmai. Skirkite papildomo integracijos laiko."
+      : "Sutelkite dėmesį į stabilizavimą ir įžeminimą. Šaknies čakros dažniai, pastovūs tempai ir švelnūs instrumentai. Venkite pernelyg intensyvių ar ilgų seansų.",
   }
 
   return lang === 'lt' ? lt : en

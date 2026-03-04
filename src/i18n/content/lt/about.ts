@@ -5,7 +5,7 @@ export const aboutContent: AboutContent = {
   subtitle: 'Kaip viskas veikia',
   intro: [
     'Astrara rodo dang\u0173 tok\u012F, koks jis yra \u0161iuo metu \u2014 kur yra kiekviena planeta, per kokius \u017Eenklus jos keliauja ir k\u0105 tai gali reik\u0161ti jums \u0161iandien.',
-    '\u010Cia niekas n\u0117ra atsitiktina ar sugalvota. Kiekviena planetos pad\u0117tis apskai\u010Diuojama iki lanko minut\u0117s tikslumu, naudojant tuos pa\u010Dius astronominius algoritmus, kuriuos NASA naudoja kosmoso misijoms. \u012E\u017Evalgos remiasi \u0161imtme\u010Diais astrologin\u0117s tradicijos. Garso da\u017Eniai kyla i\u0161 tikros fizikos.',
+    'Kiekviena planetos pad\u0117tis Astrara apskai\u010Diuojama naudojant tuos pa\u010Dius astronominius algoritmus, naudojamus kosmin\u0117je navigacijoje, tikslumu iki laipsnio dali\u0173. Interpretacinis turinys remiasi nusistov\u0117jusia astrologine tradicija. Garso da\u017Eniai paremti publikuotais akustiniais tyrimais \u2014 Hanso Cousto planetiniais oktav\u0173 skai\u010Diavimais ir solfed\u017Eio da\u017Eni\u0173 sistema. \u017Dem\u0117s duomenys gaunami tiesiogiai i\u0161 NOAA palydovini\u0173 sraut\u0173.',
     '\u0160tai kaip viskas susideda.',
   ],
   sections: [

@@ -19,8 +19,9 @@ export interface PlanetPairInsight {
 }
 
 export interface SignInsight {
-  whatItFeelsLike: string
-  keywords: string[]
+  energyDescription: string
+  noPlanetsMessage: string
+  dateRange: string
 }
 
 export interface PhaseInsight {
