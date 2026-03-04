@@ -24,20 +24,24 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <motion.div
+          key="modal-wrapper"
+          className="fixed inset-0 z-40"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
           {/* Dim overlay */}
-          <motion.div
-            className="fixed inset-0 bg-black/60 z-40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
+            className="absolute inset-0 bg-black/60"
             onClick={onClose}
           />
 
           {/* Bottom sheet on mobile, side panel on desktop */}
           <motion.div
             ref={contentRef}
-            className="fixed z-50
+            className="absolute z-10
               bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl
               md:bottom-auto md:top-0 md:left-auto md:right-0 md:max-h-full md:h-full md:w-[400px] md:rounded-t-none md:rounded-l-2xl"
             style={{
@@ -48,9 +52,9 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
               display: 'flex',
               flexDirection: 'column',
             }}
-            initial={{ y: '100%', x: 0 }}
-            animate={{ y: 0, x: 0 }}
-            exit={{ y: '100%', x: 0 }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             drag="y"
             dragConstraints={{ top: 0 }}
@@ -83,7 +87,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
               {children}
             </div>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   )
