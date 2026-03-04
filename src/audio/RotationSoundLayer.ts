@@ -7,6 +7,7 @@ export class RotationSoundLayer {
   private oscGain: GainNode | null = null
   private noiseGain: GainNode | null = null
   private noiseFilter: BiquadFilterNode | null = null
+  private noiseCeiling: BiquadFilterNode | null = null
   private lfo: OscillatorNode | null = null
   private lfoGain: GainNode | null = null
   private bassFilter: BiquadFilterNode | null = null
@@ -65,8 +66,14 @@ export class RotationSoundLayer {
 
     this.noiseFilter = this.ctx.createBiquadFilter()
     this.noiseFilter.type = 'bandpass'
-    this.noiseFilter.frequency.value = 200
-    this.noiseFilter.Q.value = 2
+    this.noiseFilter.frequency.value = 80
+    this.noiseFilter.Q.value = 6
+
+    // Hard lowpass ceiling — prevents harsh content on phone speakers
+    this.noiseCeiling = this.ctx.createBiquadFilter()
+    this.noiseCeiling.type = 'lowpass'
+    this.noiseCeiling.frequency.value = 300
+    this.noiseCeiling.Q.value = 1
 
     const bufferSize = this.ctx.sampleRate * 2
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)
@@ -79,7 +86,8 @@ export class RotationSoundLayer {
     this.noiseNode.buffer = buffer
     this.noiseNode.loop = true
     this.noiseNode.connect(this.noiseFilter)
-    this.noiseFilter.connect(this.noiseGain)
+    this.noiseFilter.connect(this.noiseCeiling)
+    this.noiseCeiling.connect(this.noiseGain)
     this.noiseGain.connect(this.masterGain)
     this.noiseNode.start()
 
@@ -99,9 +107,9 @@ export class RotationSoundLayer {
     if (this.oscGain) {
       this.oscGain.gain.linearRampToValueAtTime(normalised * 0.14, now + smoothing)
     }
-    // Noise whoosh — increased
+    // Noise whoosh — quiet texture, not the main sound
     if (this.noiseGain) {
-      this.noiseGain.gain.linearRampToValueAtTime(normalised * 0.07, now + smoothing)
+      this.noiseGain.gain.linearRampToValueAtTime(normalised * 0.02, now + smoothing)
     }
     // Base oscillator: 30 Hz → 70 Hz
     if (this.baseOsc) {
@@ -111,8 +119,9 @@ export class RotationSoundLayer {
     if (this.subOsc) {
       this.subOsc.frequency.linearRampToValueAtTime(15 + normalised * 20, now + smoothing)
     }
+    // Noise filter stays in low range — max 250 Hz
     if (this.noiseFilter) {
-      this.noiseFilter.frequency.linearRampToValueAtTime(200 + normalised * 600, now + smoothing)
+      this.noiseFilter.frequency.linearRampToValueAtTime(80 + normalised * 170, now + smoothing)
     }
     // LFO rate: 1 Hz (slow spin) → 6 Hz (fast spin)
     if (this.lfo) {
@@ -152,6 +161,7 @@ export class RotationSoundLayer {
     this.oscGain = null
     this.noiseGain = null
     this.noiseFilter = null
+    this.noiseCeiling = null
     this.lfo = null
     this.lfoGain = null
     this.bassFilter = null

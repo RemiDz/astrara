@@ -173,26 +173,25 @@ function OuterZodiacRing({
               type="button"
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); onSignTap(sign.id) }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex items-center justify-center select-none cursor-pointer active:scale-90 transition-transform duration-150"
+              className="flex items-center justify-center select-none cursor-pointer
+                         w-11 h-11 rounded-full
+                         active:scale-90 transition-transform duration-150"
               style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '8px',
-                background: `${ELEMENT_COLOURS[sign.element]}15`,
-                border: `1px solid ${ELEMENT_COLOURS[sign.element]}30`,
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-                fontSize: '18px',
+                background: 'transparent',
+                border: 'none',
+                fontSize: '20px',
                 color: ELEMENT_COLOURS[sign.element],
-                textShadow: `0 0 12px ${ELEMENT_COLOURS[sign.element]}60`,
+                opacity: sceneReady ? 0.5 : 0,
+                textShadow: `0 0 10px ${ELEMENT_COLOURS[sign.element]}50, 0 0 20px ${ELEMENT_COLOURS[sign.element]}25, 0 0 40px ${ELEMENT_COLOURS[sign.element]}10`,
                 fontFamily: 'serif',
-                opacity: sceneReady ? 1 : 0,
+                lineHeight: 1,
                 transform: sceneReady ? 'scale(1)' : 'scale(0.5)',
                 transition: `all 0.4s ease-out ${800 + index * 80}ms`,
                 outline: 'none',
                 padding: 0,
                 WebkitTapHighlightColor: 'transparent',
               }}
+              aria-label={`View ${sign.name} details`}
             >
               {sign.glyph}
             </button>
