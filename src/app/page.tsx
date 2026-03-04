@@ -8,7 +8,8 @@ import { useLocation } from '@/hooks/useLocation'
 import { useAstroData } from '@/hooks/useAstroData'
 import { useCosmicAudio } from '@/audio/useCosmicAudio'
 import { searchCity, type UserLocation } from '@/lib/location'
-import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
+import { calculateAspects } from '@/lib/aspects'
 import Starfield from '@/components/Starfield/Starfield'
 import Header from '@/components/Header/Header'
 import AstroWheel from '@/components/AstroWheel/AstroWheel'
@@ -48,6 +49,7 @@ function HomePage() {
   const [birthCityResults, setBirthCityResults] = useState<UserLocation[]>([])
   const [birthCity, setBirthCity] = useState<UserLocation | null>(null)
   const [birthSubmitted, setBirthSubmitted] = useState(false)
+  const [birthChartData, setBirthChartData] = useState<{ planets: PlanetPosition[], aspects: AspectData[] } | null>(null)
   const birthSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const baseDate = customDate ?? now
@@ -138,21 +140,28 @@ function HomePage() {
   }
 
   const handleBirthSubmit = () => {
+    const [year, month, day] = birthDate.split('-').map(Number)
+    const [hours, minutes] = birthTime.split(':').map(Number)
+    const birthDateTime = new Date(year, month - 1, day, hours, minutes)
+
+    const bLat = birthCity?.lat ?? 51.5074
+    const bLng = birthCity?.lng ?? -0.1278
+
+    const planets = getPlanetPositions(birthDateTime, bLat, bLng)
+    const aspects = calculateAspects(planets)
+
+    setBirthChartData({ planets, aspects })
+    setBirthSubmitted(true)
+
     const data = {
       date: birthDate,
       time: birthTime,
       city: birthCity?.city ?? birthCityQuery,
-      lat: birthCity?.lat ?? null,
-      lng: birthCity?.lng ?? null,
+      lat: bLat,
+      lng: bLng,
     }
     localStorage.setItem('astrara-birth-data', JSON.stringify(data))
-    setBirthSubmitted(true)
     trackEvent('birth-chart-submit')
-    // Auto-dismiss after 4 seconds
-    setTimeout(() => {
-      setBirthSubmitted(false)
-      setShowBirthInput(false)
-    }, 4000)
   }
 
   return (
@@ -342,12 +351,12 @@ function HomePage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => { setShowBirthInput(false); setBirthSubmitted(false) }}
+            onClick={() => { setShowBirthInput(false); setBirthSubmitted(false); setBirthChartData(null) }}
           />
           <div
-            className="relative z-10 w-full max-w-md mx-auto rounded-t-2xl sm:rounded-2xl p-6 pb-8 animate-slide-up overflow-hidden"
+            className="relative z-10 w-full max-w-md mx-4 sm:mx-auto rounded-t-2xl sm:rounded-2xl p-6 pb-8 animate-slide-up"
             style={{
-              maxWidth: 'calc(100vw - 32px)',
+              maxWidth: 'min(28rem, calc(100vw - 32px))',
               background: 'linear-gradient(180deg, rgba(13, 13, 26, 0.92) 0%, rgba(13, 13, 26, 0.97) 100%)',
               border: '1px solid rgba(147, 197, 253, 0.06)',
               backdropFilter: 'blur(20px)',
@@ -361,34 +370,76 @@ function HomePage() {
             {/* Close */}
             <button
               type="button"
-              onClick={() => { setShowBirthInput(false); setBirthSubmitted(false) }}
+              onClick={() => { setShowBirthInput(false); setBirthSubmitted(false); setBirthChartData(null) }}
               className="absolute top-4 right-4 text-white/30 hover:text-white/60 transition-colors select-none text-lg"
               aria-label="Close"
             >
               ✕
             </button>
 
-            {birthSubmitted ? (
-              <div className="text-center py-8">
-                <div className="text-2xl mb-4">✦</div>
-                <h3 className="text-base font-serif text-white/80 mb-2">
-                  {t('cta.birthSaved')}
+            {birthSubmitted && birthChartData ? (
+              <div className="max-h-[70vh] overflow-y-auto py-2 -mx-2 px-2">
+                <h3 className="text-lg font-[family-name:var(--font-display)] text-white/90 text-center mb-1">
+                  {t('cta.birthChartTitle')}
                 </h3>
-                <p className="text-sm text-white/40 mb-6">
-                  {t('cta.birthComingSoon')}
+                <p className="text-xs text-white/40 text-center mb-5">
+                  {birthDate} · {birthTime}{birthCity ? ` · ${birthCity.city}` : birthCityQuery ? ` · ${birthCityQuery}` : ''}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBirthSubmitted(false)
-                    setShowBirthInput(false)
-                  }}
-                  className="px-6 py-2.5 rounded-xl text-sm text-white/50
-                             border border-white/10 hover:border-white/20
-                             hover:text-white/70 transition-all select-none"
-                >
-                  {t('cta.gotIt')}
-                </button>
+
+                {/* Sun & Moon highlights */}
+                {(() => {
+                  const sun = birthChartData.planets.find(p => p.id === 'sun')!
+                  const moon = birthChartData.planets.find(p => p.id === 'moon')!
+                  return (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="text-2xl mb-1" style={{ color: sun.colour }}>{sun.signGlyph}</div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">{t('planet.sun')}</div>
+                        <div className="text-sm text-white/80">{t(`zodiac.${sun.zodiacSign}`)}</div>
+                        <div className="text-[10px] text-white/30 mt-0.5">{sun.degreeInSign}°</div>
+                      </div>
+                      <div className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="text-2xl mb-1" style={{ color: moon.colour }}>{moon.signGlyph}</div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">{t('planet.moon')}</div>
+                        <div className="text-sm text-white/80">{t(`zodiac.${moon.zodiacSign}`)}</div>
+                        <div className="text-[10px] text-white/30 mt-0.5">{moon.degreeInSign}°</div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* All other planet positions */}
+                <div className="space-y-1 mb-4">
+                  {birthChartData.planets.filter(p => p.id !== 'sun' && p.id !== 'moon').map(planet => (
+                    <div key={planet.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm" style={{ color: planet.colour }}>{planet.glyph}</span>
+                        <span className="text-xs text-white/60">{t(`planet.${planet.id}`)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-white/80">{t(`zodiac.${planet.zodiacSign}`)}</span>
+                        <span className="text-[10px] text-white/30">{planet.degreeInSign}°</span>
+                        {planet.isRetrograde && <span className="text-[9px] text-orange-400/60">℞</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Notable aspects */}
+                {birthChartData.aspects.filter(a => a.orb < 5).length > 0 && (
+                  <div className="mb-2">
+                    <div className="text-[10px] uppercase tracking-widest text-white/30 mb-2">{t('weather.notableAspects')}</div>
+                    <div className="space-y-1">
+                      {birthChartData.aspects.filter(a => a.orb < 5).slice(0, 6).map((aspect, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-white/50">
+                          <span style={{ color: aspect.colour }}>{aspect.planet1Glyph} {aspect.symbol} {aspect.planet2Glyph}</span>
+                          <span className="text-white/40">{t(`aspect.${aspect.type}`)}</span>
+                          <span className="text-white/20 text-[10px]">{aspect.orb}°</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
