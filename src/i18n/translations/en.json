@@ -69,5 +69,6 @@
   "aspect.opposition": "Opposition",
   "aspect.trine": "Trine",
   "aspect.square": "Square",
-  "aspect.sextile": "Sextile"
+  "aspect.sextile": "Sextile",
+  "loading.stars": "Reading the stars..."
 }

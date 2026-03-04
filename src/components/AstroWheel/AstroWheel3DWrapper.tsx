@@ -61,8 +61,10 @@ export default function AstroWheel3DWrapper(props: Props) {
     <Wheel3DErrorBoundary fallback={fallback2D}>
       <Suspense
         fallback={
-          <div className="w-full max-w-[90vw] md:max-w-[60vw] lg:max-w-[min(500px,45vw)] mx-auto aspect-square flex items-center justify-center">
-            <Shimmer className="w-full h-full rounded-full" />
+          <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
+            <div className="text-white/20 text-xs tracking-widest uppercase animate-pulse">
+              Reading the stars...
+            </div>
           </div>
         }
       >
