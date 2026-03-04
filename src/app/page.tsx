@@ -473,8 +473,8 @@ function HomePage() {
                     type="date"
                     value={birthDate}
                     onChange={e => setBirthDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
-                    style={{ maxWidth: '100%' }}
+                    className="w-full min-w-0 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border appearance-none"
+                    style={{ maxWidth: '100%', WebkitAppearance: 'none' }}
                   />
                 </div>
 
@@ -487,8 +487,8 @@ function HomePage() {
                     type="time"
                     value={birthTime}
                     onChange={e => setBirthTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border"
-                    style={{ maxWidth: '100%' }}
+                    className="w-full min-w-0 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 text-sm placeholder:text-white/20 focus:border-purple-400/40 focus:ring-1 focus:ring-purple-400/20 outline-none transition-all box-border appearance-none"
+                    style={{ maxWidth: '100%', WebkitAppearance: 'none' }}
                   />
                 </div>
                 <p className="text-[10px] text-white/30 mb-4">
