@@ -76,7 +76,7 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSettingsCha
         <input
           type="range"
           min="0"
-          max="2"
+          max="5"
           step="0.1"
           value={settings.rotationSpeed}
           onChange={(e) => onSettingsChange({ ...settings, rotationSpeed: parseFloat(e.target.value) })}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { LanguageProvider } from '@/i18n/LanguageContext'
+import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useRealTime } from '@/hooks/useRealTime'
 import { useLocation } from '@/hooks/useLocation'
@@ -22,6 +22,7 @@ import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
   const { t } = useTranslation()
+  const { lang } = useLanguage()
   const now = useRealTime(60000)
   const { location, loading: locationLoading, setLocation } = useLocation()
   const [dayOffset, setDayOffset] = useState(0)
@@ -203,33 +204,54 @@ function HomePage() {
               )}
 
               {/* Day Navigation — directly below wheel */}
-              <div className="flex items-center justify-center gap-2 py-4">
-                <button
-                  type="button"
-                  onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'yesterday' }) }}
-                  className="px-4 py-2 rounded-xl text-sm select-none bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
-                >
-                  ← {t('nav.yesterday')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setCustomDate(null); setDayOffset(0) }}
-                  className={`px-5 py-2 rounded-xl text-sm font-medium select-none active:scale-95 transition-all duration-200 ${
-                    isToday
-                      ? 'bg-purple-500/20 border border-purple-400/30 text-purple-300'
-                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8'
-                  }`}
-                >
-                  {t('nav.today')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'tomorrow' }) }}
-                  className="px-4 py-2 rounded-xl text-sm select-none bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
-                >
-                  {t('nav.tomorrow')} →
-                </button>
-              </div>
+              {(() => {
+                const formatShortDate = (date: Date) => {
+                  const day = date.getDate()
+                  const monthNames = lang === 'lt'
+                    ? ['Sau', 'Vas', 'Kov', 'Bal', 'Geg', 'Bir', 'Lie', 'Rgp', 'Rgs', 'Spa', 'Lap', 'Gru']
+                    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                  return `${day} ${monthNames[date.getMonth()]}`
+                }
+
+                const prevDate = new Date(targetDate)
+                prevDate.setDate(prevDate.getDate() - 1)
+                const nextDate = new Date(targetDate)
+                nextDate.setDate(nextDate.getDate() + 1)
+
+                const prevLabel = isToday ? `← ${t('nav.yesterday')}` : `← ${formatShortDate(prevDate)}`
+                const nextLabel = isToday ? `${t('nav.tomorrow')} →` : `${formatShortDate(nextDate)} →`
+                const centreLabel = isToday ? t('nav.today') : formatShortDate(targetDate)
+
+                return (
+                  <div className="flex items-center justify-center gap-2 py-4">
+                    <button
+                      type="button"
+                      onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'prev' }) }}
+                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all"
+                    >
+                      {prevLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setCustomDate(null); setDayOffset(0) }}
+                      className={`px-4 py-2 rounded-xl text-sm select-none active:scale-95 transition-all ${
+                        isToday
+                          ? 'bg-purple-500/30 border border-purple-400/30 text-purple-200'
+                          : 'border border-white/10 text-white/50 hover:border-white/20'
+                      }`}
+                    >
+                      {centreLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'next' }) }}
+                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all"
+                    >
+                      {nextLabel}
+                    </button>
+                  </div>
+                )
+              })()}
 
               {/* Birth chart CTA — subtle, always visible */}
               <button

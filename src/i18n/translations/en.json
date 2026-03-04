@@ -113,5 +113,6 @@
   "settings.large": "Large",
   "settings.paused": "Paused",
   "settings.fast": "Fast",
-  "settings.reset": "Reset to Defaults"
+  "settings.reset": "Reset to Defaults",
+  "nav.backToToday": "Back to Today"
 }

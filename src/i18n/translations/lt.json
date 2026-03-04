@@ -113,5 +113,6 @@
   "settings.large": "Didelis",
   "settings.paused": "Sustabdyta",
   "settings.fast": "Greitas",
-  "settings.reset": "Atkurti Numatytuosius"
+  "settings.reset": "Atkurti Numatytuosius",
+  "nav.backToToday": "Grįžti į Šiandien"
 }

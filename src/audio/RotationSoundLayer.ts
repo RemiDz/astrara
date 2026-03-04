@@ -7,6 +7,10 @@ export class RotationSoundLayer {
   private oscGain: GainNode | null = null
   private noiseGain: GainNode | null = null
   private noiseFilter: BiquadFilterNode | null = null
+  private lfo: OscillatorNode | null = null
+  private lfoGain: GainNode | null = null
+  private bassFilter: BiquadFilterNode | null = null
+  private subGain: GainNode | null = null
   private isActive = false
 
   constructor(ctx: AudioContext, masterGain: GainNode) {
@@ -22,21 +26,38 @@ export class RotationSoundLayer {
     this.oscGain.gain.value = 0
     this.oscGain.connect(this.masterGain)
 
+    // Resonant lowpass filter for woofer character
+    this.bassFilter = this.ctx.createBiquadFilter()
+    this.bassFilter.type = 'lowpass'
+    this.bassFilter.frequency.value = 120
+    this.bassFilter.Q.value = 4
+
     this.baseOsc = this.ctx.createOscillator()
     this.baseOsc.type = 'sine'
-    this.baseOsc.frequency.value = 40
-    this.baseOsc.connect(this.oscGain)
+    this.baseOsc.frequency.value = 30
+    this.baseOsc.connect(this.bassFilter)
+    this.bassFilter.connect(this.oscGain)
     this.baseOsc.start()
 
     // Sub-harmonic for richness
-    const subGain = this.ctx.createGain()
-    subGain.gain.value = 0.5
+    this.subGain = this.ctx.createGain()
+    this.subGain.gain.value = 0.5
     this.subOsc = this.ctx.createOscillator()
     this.subOsc.type = 'sine'
-    this.subOsc.frequency.value = 20
-    this.subOsc.connect(subGain)
-    subGain.connect(this.oscGain)
+    this.subOsc.frequency.value = 15
+    this.subOsc.connect(this.subGain)
+    this.subGain.connect(this.oscGain)
     this.subOsc.start()
+
+    // LFO — pulsating "whooo whooo" modulation
+    this.lfo = this.ctx.createOscillator()
+    this.lfo.type = 'sine'
+    this.lfo.frequency.value = 1
+    this.lfoGain = this.ctx.createGain()
+    this.lfoGain.gain.value = 0.04
+    this.lfo.connect(this.lfoGain)
+    this.lfoGain.connect(this.oscGain.gain)
+    this.lfo.start()
 
     // Filtered noise — the "whoosh" texture
     this.noiseGain = this.ctx.createGain()
@@ -74,17 +95,32 @@ export class RotationSoundLayer {
     const now = this.ctx.currentTime
     const smoothing = 0.1
 
+    // Bass volume — increased for woofer character
     if (this.oscGain) {
-      this.oscGain.gain.linearRampToValueAtTime(normalised * 0.08, now + smoothing)
+      this.oscGain.gain.linearRampToValueAtTime(normalised * 0.14, now + smoothing)
     }
+    // Noise whoosh — increased
     if (this.noiseGain) {
-      this.noiseGain.gain.linearRampToValueAtTime(normalised * 0.04, now + smoothing)
+      this.noiseGain.gain.linearRampToValueAtTime(normalised * 0.07, now + smoothing)
     }
+    // Base oscillator: 30 Hz → 70 Hz
     if (this.baseOsc) {
-      this.baseOsc.frequency.linearRampToValueAtTime(40 + normalised * 40, now + smoothing)
+      this.baseOsc.frequency.linearRampToValueAtTime(30 + normalised * 40, now + smoothing)
+    }
+    // Sub oscillator: 15 Hz → 35 Hz (chest-rumbling)
+    if (this.subOsc) {
+      this.subOsc.frequency.linearRampToValueAtTime(15 + normalised * 20, now + smoothing)
     }
     if (this.noiseFilter) {
       this.noiseFilter.frequency.linearRampToValueAtTime(200 + normalised * 600, now + smoothing)
+    }
+    // LFO rate: 1 Hz (slow spin) → 6 Hz (fast spin)
+    if (this.lfo) {
+      this.lfo.frequency.linearRampToValueAtTime(1 + normalised * 5, now + smoothing)
+    }
+    // LFO depth: subtle → strong pulsation
+    if (this.lfoGain) {
+      this.lfoGain.gain.linearRampToValueAtTime(normalised * 0.06, now + smoothing)
     }
   }
 
@@ -102,10 +138,12 @@ export class RotationSoundLayer {
     const bo = this.baseOsc
     const so = this.subOsc
     const nn = this.noiseNode
+    const lf = this.lfo
     setTimeout(() => {
       try { bo?.stop() } catch { /* ok */ }
       try { so?.stop() } catch { /* ok */ }
       try { nn?.stop() } catch { /* ok */ }
+      try { lf?.stop() } catch { /* ok */ }
     }, 600)
 
     this.baseOsc = null
@@ -114,6 +152,10 @@ export class RotationSoundLayer {
     this.oscGain = null
     this.noiseGain = null
     this.noiseFilter = null
+    this.lfo = null
+    this.lfoGain = null
+    this.bassFilter = null
+    this.subGain = null
     this.isActive = false
   }
 }

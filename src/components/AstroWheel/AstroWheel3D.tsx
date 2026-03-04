@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useMemo, useState, useEffect, memo, useCallback } from 'react'
+import { useRef, useMemo, useState, useEffect, memo, useCallback, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Html, Line } from '@react-three/drei'
+import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
@@ -93,7 +93,16 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <torusGeometry args={[radius, 0.005, 8, 128]} />
-      <meshBasicMaterial color="#8B5CF6" transparent opacity={opacity} />
+      <meshPhysicalMaterial
+        color="#a78bfa"
+        transparent
+        opacity={opacity}
+        roughness={0.05}
+        metalness={0.5}
+        clearcoat={1.0}
+        clearcoatRoughness={0.05}
+        side={THREE.DoubleSide}
+      />
     </mesh>
   )
 })
@@ -141,13 +150,13 @@ function OuterZodiacRing({
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
             <shapeGeometry args={[shape]} />
             <meshPhysicalMaterial
-              color="#1a1a2e"
+              color="#a78bfa"
               transparent
-              opacity={0.25}
-              roughness={0.1}
-              metalness={0.8}
+              opacity={0.12}
+              roughness={0.05}
+              metalness={0.5}
               clearcoat={1.0}
-              clearcoatRoughness={0.1}
+              clearcoatRoughness={0.05}
               side={THREE.DoubleSide}
               emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])}
               emissiveIntensity={0.08}
@@ -238,8 +247,8 @@ const MiddleRing = memo(function MiddleRing() {
         <mesh key={sign.id} rotation={[-Math.PI / 2, 0, 0]}>
           <shapeGeometry args={[shape]} />
           <meshPhysicalMaterial
-            color="#1a1a2e" transparent opacity={0.2} roughness={0.1} metalness={0.8}
-            clearcoat={1.0} clearcoatRoughness={0.1} side={THREE.DoubleSide}
+            color="#a78bfa" transparent opacity={0.1} roughness={0.05} metalness={0.5}
+            clearcoat={1.0} clearcoatRoughness={0.05} side={THREE.DoubleSide}
             emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])} emissiveIntensity={0.05}
           />
         </mesh>
@@ -266,8 +275,8 @@ const InnerTrackRing = memo(function InnerTrackRing() {
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[R_TRACK - 0.015, R_TRACK + 0.015, 128]} />
         <meshPhysicalMaterial
-          color="#1a1a2e" transparent opacity={0.08} roughness={0.1} metalness={0.8}
-          clearcoat={1.0} clearcoatRoughness={0.1} side={THREE.DoubleSide}
+          color="#a78bfa" transparent opacity={0.08} roughness={0.05} metalness={0.5}
+          clearcoat={1.0} clearcoatRoughness={0.05} side={THREE.DoubleSide}
           emissive="#8B5CF6" emissiveIntensity={0.03}
         />
       </mesh>
@@ -486,42 +495,70 @@ function createEarthTexture(): THREE.CanvasTexture {
   return tex
 }
 
-// ─── Earth Centre ───────────────────────────────────────────────────
-function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
+// ─── Earth Sphere (with real texture) ────────────────────────────────
+function EarthSphereTextured() {
   const earthRef = useRef<THREE.Mesh>(null!)
-  const earthTexture = useMemo(() => createEarthTexture(), [])
+  const texture = useTexture('/textures/earth.jpg')
+
+  useEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+  }, [texture])
 
   useFrame((_, delta) => {
-    if (earthRef.current) earthRef.current.rotation.y += delta * 0.1
+    if (earthRef.current) earthRef.current.rotation.y += delta * 0.08
   })
 
   return (
+    <mesh ref={earthRef}>
+      <sphereGeometry args={[0.16, 32, 32]} />
+      <meshStandardMaterial
+        map={texture}
+        emissive="#0a1a3a"
+        emissiveIntensity={0.4}
+        roughness={0.6}
+        metalness={0.1}
+      />
+    </mesh>
+  )
+}
+
+function EarthSphereFallback() {
+  const earthRef = useRef<THREE.Mesh>(null!)
+  const fallbackTexture = useMemo(() => createEarthTexture(), [])
+
+  useFrame((_, delta) => {
+    if (earthRef.current) earthRef.current.rotation.y += delta * 0.08
+  })
+
+  return (
+    <mesh ref={earthRef}>
+      <sphereGeometry args={[0.16, 32, 32]} />
+      <meshStandardMaterial
+        map={fallbackTexture}
+        emissive="#0a1a3a"
+        emissiveIntensity={0.4}
+        roughness={0.6}
+        metalness={0.1}
+      />
+    </mesh>
+  )
+}
+
+// ─── Earth Centre ───────────────────────────────────────────────────
+function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
+  return (
     <group>
-      {/* Textured Earth sphere */}
-      <mesh ref={earthRef}>
-        <sphereGeometry args={[0.15, 32, 32]} />
-        <meshStandardMaterial
-          map={earthTexture}
-          emissive="#1d4ed8"
-          emissiveIntensity={0.6}
-          roughness={0.7}
-          metalness={0.05}
-        />
-      </mesh>
+      <Suspense fallback={<EarthSphereFallback />}>
+        <EarthSphereTextured />
+      </Suspense>
 
-      {/* Atmosphere glow — inside-out sphere */}
-      <mesh>
-        <sphereGeometry args={[0.175, 32, 32]} />
-        <meshBasicMaterial color="#2563eb" transparent opacity={0.2} side={THREE.BackSide} />
-      </mesh>
-
-      {/* Outer atmosphere halo */}
+      {/* Atmosphere glow */}
       <mesh>
         <sphereGeometry args={[0.2, 32, 32]} />
-        <meshBasicMaterial color="#6ab5ff" transparent opacity={0.1} side={THREE.BackSide} />
+        <meshBasicMaterial color="#93c5fd" transparent opacity={0.12} side={THREE.BackSide} />
       </mesh>
 
-      <pointLight color="#4a9eff" intensity={0.5} distance={1.5} decay={2} />
+      <pointLight color="#60a5fa" intensity={0.4} distance={1.5} decay={2} />
 
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
         <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
@@ -781,8 +818,10 @@ function WheelScene({
 
   return (
     <>
-      <ambientLight intensity={0.2} />
-      <directionalLight position={[2, 3, 5]} intensity={0.35} />
+      <ambientLight intensity={0.3} color="#ffffff" />
+      <directionalLight position={[3, 4, 2]} intensity={0.6} color="#e0d0ff" />
+      <pointLight position={[0, -2, 0]} intensity={0.2} color="#a78bfa" distance={6} />
+      <Environment preset="night" background={false} />
 
       <BackgroundParticles />
       <OuterHalo />
