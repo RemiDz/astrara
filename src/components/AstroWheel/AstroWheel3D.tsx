@@ -803,7 +803,7 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
       )}
 
       {/* Canvas — hidden until scene renders first frame */}
-      <div style={{ opacity: sceneReady ? 1 : 0 }}>
+      <div style={{ opacity: sceneReady ? 1 : 0, width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
         <Canvas
           camera={{ position: [0, 1.5, 7], fov: 38, near: 0.1, far: 100 }}
           style={{ background: 'transparent', overflow: 'visible' }}
