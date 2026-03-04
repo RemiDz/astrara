@@ -98,6 +98,16 @@ body::-webkit-scrollbar {
   100% { background-position: 200% 0; }
 }
 
+/* Prevent text selection on interactive elements — app should feel native */
+button, a, [role="button"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 /* Selection */
 ::selection {
   background: rgba(139, 92, 246, 0.3);

@@ -9,7 +9,10 @@ interface HeaderProps {
   location: UserLocation | null
   locationLoading: boolean
   now: Date
+  displayDate: Date
+  isToday: boolean
   onLocationChange: (loc: UserLocation) => void
+  onDateChange: (date: Date) => void
 }
 
 const LANGUAGES: { code: Language; flag: string; label: string }[] = [
@@ -17,7 +20,15 @@ const LANGUAGES: { code: Language; flag: string; label: string }[] = [
   { code: 'lt', flag: '🇱🇹', label: 'LT' },
 ]
 
-export default function Header({ location, locationLoading, now, onLocationChange }: HeaderProps) {
+export default function Header({
+  location,
+  locationLoading,
+  now,
+  displayDate,
+  isToday,
+  onLocationChange,
+  onDateChange,
+}: HeaderProps) {
   const { t } = useTranslation()
   const { lang, setLang } = useLanguage()
   const [langOpen, setLangOpen] = useState(false)
@@ -26,6 +37,7 @@ export default function Header({ location, locationLoading, now, onLocationChang
   const [searchResults, setSearchResults] = useState<UserLocation[]>([])
   const langRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -46,18 +58,24 @@ export default function Header({ location, locationLoading, now, onLocationChang
   }, [searchQuery])
 
   const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0]
+  const locale = lang === 'lt' ? 'lt-LT' : 'en-GB'
 
-  const timeStr = now.toLocaleTimeString(lang === 'lt' ? 'lt-LT' : 'en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  })
+  const timeStr = isToday
+    ? now.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
+      })
+    : null
 
-  const dateStr = now.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-GB', {
+  const dateStr = displayDate.toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   })
+
+  // Format for hidden date input value (YYYY-MM-DD)
+  const dateInputValue = `${displayDate.getFullYear()}-${String(displayDate.getMonth() + 1).padStart(2, '0')}-${String(displayDate.getDate()).padStart(2, '0')}`
 
   return (
     <header className="relative z-30 px-4 py-3">
@@ -77,8 +95,9 @@ export default function Header({ location, locationLoading, now, onLocationChang
           {/* Location */}
           <div ref={searchRef} className="relative">
             <button
+              type="button"
               onClick={() => setSearchOpen(!searchOpen)}
-              className="flex items-center gap-1.5 text-sm hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-sm hover:text-white transition-colors select-none"
               style={{ color: 'var(--text-secondary)' }}
             >
               <span>📍</span>
@@ -100,12 +119,13 @@ export default function Header({ location, locationLoading, now, onLocationChang
                     {searchResults.map((r, i) => (
                       <li key={i}>
                         <button
+                          type="button"
                           onClick={() => {
                             onLocationChange(r)
                             setSearchOpen(false)
                             setSearchQuery('')
                           }}
-                          className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-white/5 transition-colors"
+                          className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-white/5 transition-colors select-none"
                           style={{ color: 'var(--text-secondary)' }}
                         >
                           {r.city}
@@ -121,8 +141,9 @@ export default function Header({ location, locationLoading, now, onLocationChang
           {/* Language switcher */}
           <div ref={langRef} className="relative">
             <button
+              type="button"
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1 text-sm px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+              className="flex items-center gap-1 text-sm px-2 py-1 rounded-lg hover:bg-white/5 transition-colors select-none"
               style={{ color: 'var(--text-secondary)' }}
             >
               <span>{currentLang.flag}</span>
@@ -134,9 +155,10 @@ export default function Header({ location, locationLoading, now, onLocationChang
               <div className="absolute top-full right-0 mt-1 glass-card py-1 z-50 min-w-[100px]">
                 {LANGUAGES.map(l => (
                   <button
+                    type="button"
                     key={l.code}
                     onClick={() => { setLang(l.code); setLangOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 transition-colors select-none ${
                       l.code === lang ? 'text-white' : ''
                     }`}
                     style={{ color: l.code === lang ? undefined : 'var(--text-secondary)' }}
@@ -151,11 +173,40 @@ export default function Header({ location, locationLoading, now, onLocationChang
         </div>
       </div>
 
-      {/* Date + Time */}
-      <div className="max-w-5xl mx-auto mt-1">
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          {dateStr} · {timeStr}
-        </p>
+      {/* Date + Time — tappable for date picker */}
+      <div className="max-w-5xl mx-auto mt-1 relative">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                dateInputRef.current?.showPicker()
+              } catch {
+                dateInputRef.current?.focus()
+              }
+            }}
+            className="text-sm hover:text-purple-200 transition-colors select-none flex items-center gap-1.5"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <span>{dateStr}{timeStr ? ` · ${timeStr}` : ''}</span>
+            <span className="text-xs opacity-50">📅</span>
+          </button>
+
+          {/* Hidden native date input */}
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={dateInputValue}
+            onChange={(e) => {
+              if (e.target.value) {
+                const newDate = new Date(e.target.value + 'T12:00:00')
+                onDateChange(newDate)
+              }
+            }}
+            className="absolute opacity-0 w-0 h-0 pointer-events-none"
+            aria-label="Select date"
+          />
+        </div>
       </div>
     </header>
   )

@@ -123,19 +123,27 @@ const OuterZodiacRing = memo(function OuterZodiacRing({
             center
             zIndexRange={[100, 0]}
             occlude={false}
-            style={{
-              fontSize: '13px',
-              color: 'rgba(255,255,255,0.55)',
-              pointerEvents: 'auto',
-              cursor: 'pointer',
-              userSelect: 'none',
-              fontFamily: 'serif',
-              textShadow: '0 0 6px rgba(139,92,246,0.4)',
-              overflow: 'visible',
-            }}
+            style={{ pointerEvents: 'auto', overflow: 'visible' }}
             onClick={() => onSignTap(sign.id)}
           >
-            {sign.glyph}
+            <div
+              className="flex items-center justify-center select-none cursor-pointer"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: `${ELEMENT_COLOURS[sign.element]}15`,
+                border: `1px solid ${ELEMENT_COLOURS[sign.element]}30`,
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                fontSize: '18px',
+                color: ELEMENT_COLOURS[sign.element],
+                textShadow: `0 0 12px ${ELEMENT_COLOURS[sign.element]}60`,
+                fontFamily: 'serif',
+              }}
+            >
+              {sign.glyph}
+            </div>
           </Html>
         </group>
       ))}

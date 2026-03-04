@@ -20,14 +20,18 @@ function HomePage() {
   const now = useRealTime(60000)
   const { location, loading: locationLoading, setLocation } = useLocation()
   const [dayOffset, setDayOffset] = useState(0)
+  const [customDate, setCustomDate] = useState<Date | null>(null)
   const [tooltip, setTooltip] = useState<TooltipData>(null)
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
 
+  const baseDate = customDate ?? now
+  const isToday = !customDate && dayOffset === 0
+
   const targetDate = useMemo(() => {
-    const d = new Date(now)
+    const d = new Date(baseDate)
     d.setDate(d.getDate() + dayOffset)
     return d
-  }, [now, dayOffset])
+  }, [baseDate, dayOffset])
 
   const lat = location?.lat ?? 51.5074
   const lng = location?.lng ?? -0.1278
@@ -67,9 +71,16 @@ function HomePage() {
           location={location}
           locationLoading={locationLoading}
           now={now}
+          displayDate={targetDate}
+          isToday={isToday}
           onLocationChange={(loc) => {
             setLocation(loc)
             trackEvent('location-detected', { city: loc.city })
+          }}
+          onDateChange={(date) => {
+            setCustomDate(date)
+            setDayOffset(0)
+            trackEvent('date-pick', { date: date.toISOString().split('T')[0] })
           }}
         />
 
@@ -96,15 +107,17 @@ function HomePage() {
               {/* Day Navigation — directly below wheel */}
               <div className="flex items-center justify-center gap-2 py-4">
                 <button
+                  type="button"
                   onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'yesterday' }) }}
-                  className="px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
+                  className="px-4 py-2 rounded-xl text-sm select-none bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
                 >
                   ← {t('nav.yesterday')}
                 </button>
                 <button
-                  onClick={() => setDayOffset(0)}
-                  className={`px-5 py-2 rounded-xl text-sm font-medium active:scale-95 transition-all duration-200 ${
-                    dayOffset === 0
+                  type="button"
+                  onClick={() => { setCustomDate(null); setDayOffset(0) }}
+                  className={`px-5 py-2 rounded-xl text-sm font-medium select-none active:scale-95 transition-all duration-200 ${
+                    isToday
                       ? 'bg-purple-500/20 border border-purple-400/30 text-purple-300'
                       : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8'
                   }`}
@@ -112,8 +125,9 @@ function HomePage() {
                   {t('nav.today')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'tomorrow' }) }}
-                  className="px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
+                  className="px-4 py-2 rounded-xl text-sm select-none bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/8 active:scale-95 transition-all duration-200"
                 >
                   {t('nav.tomorrow')} →
                 </button>
