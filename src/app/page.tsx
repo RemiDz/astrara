@@ -10,6 +10,7 @@ import { useCosmicAudio } from '@/audio/useCosmicAudio'
 import { useEarthData } from '@/hooks/useEarthData'
 import { searchCity, type UserLocation } from '@/lib/location'
 import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
+import { calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
 import { calculateAspects } from '@/lib/aspects'
 import CosmicBackground from '@/components/Starfield/CosmicBackground'
 import Header from '@/components/Header/Header'
@@ -44,6 +45,10 @@ function HomePage() {
     }
     return DEFAULT_SETTINGS
   })
+  type ViewMode = 'geocentric' | 'heliocentric'
+  const [viewMode, setViewMode] = useState<ViewMode>('geocentric')
+  const [helioData, setHelioData] = useState<Record<string, HelioData>>({})
+
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
   const [birthCityQuery, setBirthCityQuery] = useState('')
@@ -67,6 +72,26 @@ function HomePage() {
 
   const astroData = useAstroData(targetDate, lat, lng)
   const { earthData, loading: earthLoading } = useEarthData()
+
+  // Calculate heliocentric data alongside geocentric
+  useEffect(() => {
+    const helio = calculateAllHelioData(targetDate)
+    setHelioData(helio)
+  }, [targetDate])
+
+  // Temporary verification — remove in Step 3
+  useEffect(() => {
+    const testData = calculateAllHelioData(new Date())
+    console.log('Heliocentric data test:', {
+      sunAtCentre: testData.Sun.sceneX === 0 && testData.Sun.sceneY === 0,
+      earthRadius: testData.Earth.ringRadius,
+      earthAngle: testData.Earth.angleDeg.toFixed(1),
+      plutoRadius: testData.Pluto.ringRadius,
+      plutoAngle: testData.Pluto.angleDeg.toFixed(1),
+      moonNearEarth: Math.abs(testData.Moon.sceneX - testData.Earth.sceneX) < 2,
+      allPlanetsPresent: Object.keys(testData).length === 11,
+    })
+  }, [])
 
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
   const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
