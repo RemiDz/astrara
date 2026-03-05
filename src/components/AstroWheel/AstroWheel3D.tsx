@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import type { PlanetPosition, AspectData, HelioPosition } from '@/lib/astronomy'
+import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import { getHeliocentricPositions } from '@/lib/astronomy'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -64,27 +64,34 @@ const PLANET_CONFIG: Record<string, { radius: number; pulseSpeed: number }> = {
 // ─── Heliocentric Constants ──────────────────────────────────────────
 type ViewMode = 'geocentric' | 'heliocentric'
 
-const ORBITAL_DISTANCES_AU: Record<string, number> = {
-  mercury: 0.387, venus: 0.723, earth: 1.000, mars: 1.524,
-  jupiter: 5.203, saturn: 9.537, uranus: 19.191, neptune: 30.069, pluto: 39.482,
+const HELIO_RING_RADII: Record<string, number> = {
+  sun: 0, mercury: 2.5, venus: 4.0, earth: 5.5, mars: 7.0,
+  jupiter: 9.0, saturn: 11.0, uranus: 13.0, neptune: 15.0, pluto: 17.0,
 }
 
-const SCENE_SCALE = 4.5
-const MOON_ORBIT_VISUAL_RADIUS = 1.2
+const MOON_ORBIT_OFFSET = 1.0
 
-function auToSceneRadius(distanceAU: number): number {
-  return Math.sqrt(distanceAU) * SCENE_SCALE
-}
-
-function helioToScene(helio: HelioPosition): [number, number, number] {
-  const scaledRadius = auToSceneRadius(helio.distanceAU)
-  const angleRad = helio.angleDeg * (Math.PI / 180)
-  return [scaledRadius * Math.cos(angleRad), 0, scaledRadius * Math.sin(angleRad)]
+function helioToSceneFixed(planetId: string, angleDeg: number): [number, number, number] {
+  const radius = HELIO_RING_RADII[planetId] ?? 10
+  const angleRad = angleDeg * (Math.PI / 180)
+  return [radius * Math.cos(angleRad), 0, radius * Math.sin(angleRad)]
 }
 
 function smoothstep(t: number): number {
   const c = Math.max(0, Math.min(1, t))
   return c * c * (3 - 2 * c)
+}
+
+// Phased transition: maps raw progress (0→1) to sequential phase values
+function getTransitionPhases(progress: number) {
+  // Phase 1 (progress 0.0→0.25): Zodiac/geo elements fade out
+  const geoFade = 1 - Math.min(progress / 0.25, 1)
+  // Phase 2 (progress 0.25→0.85): Planet movement
+  const moveRaw = Math.max(0, Math.min((progress - 0.25) / 0.6, 1))
+  const moveT = smoothstep(moveRaw)
+  // Phase 3 (progress 0.7→1.0): Helio elements appear
+  const helioFade = Math.max(0, Math.min((progress - 0.7) / 0.3, 1))
+  return { geoFade, moveT, helioFade }
 }
 
 // ─── Animated Scale Group (lerps scale from 0 to 1) ────────────────
@@ -804,11 +811,13 @@ function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity
 // ─── Orbital Rings (heliocentric view) ───────────────────────────────
 function OrbitalRings({ opacity }: { opacity: number }) {
   const rings = useMemo(() => {
-    return Object.entries(ORBITAL_DISTANCES_AU).map(([name, au]) => ({
-      name,
-      radius: auToSceneRadius(au),
-      innerPlanet: ['mercury', 'venus', 'earth', 'mars'].includes(name),
-    }))
+    return Object.entries(HELIO_RING_RADII)
+      .filter(([name]) => name !== 'sun')
+      .map(([name, radius]) => ({
+        name,
+        radius,
+        innerPlanet: ['mercury', 'venus', 'earth', 'mars'].includes(name),
+      }))
   }, [])
 
   if (opacity < 0.001) return null
@@ -836,7 +845,7 @@ function MoonOrbitRing({ earthPos, opacity }: { earthPos: [number, number, numbe
   if (opacity < 0.001) return null
   return (
     <mesh position={earthPos} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[MOON_ORBIT_VISUAL_RADIUS - 0.006, MOON_ORBIT_VISUAL_RADIUS + 0.006, 64]} />
+      <ringGeometry args={[MOON_ORBIT_OFFSET - 0.006, MOON_ORBIT_OFFSET + 0.006, 64]} />
       <meshBasicMaterial color="#C0C0C0" transparent opacity={opacity * 0.06} side={THREE.DoubleSide} depthWrite={false} />
     </mesh>
   )
@@ -845,11 +854,11 @@ function MoonOrbitRing({ earthPos, opacity }: { earthPos: [number, number, numbe
 // ─── Planet Orb (with entrance + helio transition) ──────────────────
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
-  helioPos, viewMode, transitionT, isTransitioning,
+  helioPos, viewMode, moveT, isTransitioning,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
   planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
-  helioPos: [number, number, number]; viewMode: ViewMode; transitionT: number; isTransitioning: boolean
+  helioPos: [number, number, number]; viewMode: ViewMode; moveT: number; isTransitioning: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
@@ -884,15 +893,14 @@ function PlanetOrb({
     return [x, y + yOffset, z] as [number, number, number]
   }, [planet.eclipticLongitude, yOffset, radiusOffset])
 
-  // Lerped position between geo and helio
+  // Lerped position between geo and helio (moveT is already smoothstepped)
   const lerpedPos = useMemo((): [number, number, number] => {
-    const t = smoothstep(transitionT)
     return [
-      geoPos[0] + (helioPos[0] - geoPos[0]) * t,
-      geoPos[1] + (helioPos[1] - geoPos[1]) * t,
-      geoPos[2] + (helioPos[2] - geoPos[2]) * t,
+      geoPos[0] + (helioPos[0] - geoPos[0]) * moveT,
+      geoPos[1] + (helioPos[1] - geoPos[1]) * moveT,
+      geoPos[2] + (helioPos[2] - geoPos[2]) * moveT,
     ]
-  }, [geoPos, helioPos, transitionT])
+  }, [geoPos, helioPos, moveT])
 
   useEffect(() => {
     if (sceneReady) {
@@ -935,7 +943,7 @@ function PlanetOrb({
     }
   })
 
-  const isHelio = transitionT > 0.5
+  const isHelio = moveT > 0.5
   const labelText = isHelio ? `${planet.glyph} ${planet.name}` : `${planet.glyph} ${planet.degreeInSign}\u00B0`
 
   return (
@@ -1112,13 +1120,25 @@ function TiltAnimator({
   return null
 }
 
-// ─── Camera Z Animator (heliocentric pulls back) ─────────────────────
-function CameraZAnimator({ viewMode, isTransitioning }: { viewMode: ViewMode; isTransitioning: boolean }) {
-  const { camera } = useThree()
-  const targetZ = viewMode === 'heliocentric' ? 7 * 1.35 : 7
-  useFrame((_, delta) => {
-    if (!isTransitioning && Math.abs(camera.position.z - targetZ) < 0.01) return
-    camera.position.z += (targetZ - camera.position.z) * Math.min(delta * 1.5, 0.08)
+// ─── Camera Distance Animator (heliocentric pulls back proportionally) ──
+function CameraDistanceAnimator({
+  moveT, controlsRef,
+}: {
+  moveT: number; controlsRef: React.MutableRefObject<any>
+}) {
+  const GEO_DISTANCE = Math.sqrt(1.5 * 1.5 + 7 * 7) // ~7.16
+  // Pluto at 17 + padding 2 = 19; need ~8.6× distance vs geocentric view
+  const HELIO_DISTANCE = GEO_DISTANCE * 8.6 // ~61.6
+
+  useFrame(() => {
+    const camera = controlsRef.current?.object
+    if (!camera) return
+    const targetDist = GEO_DISTANCE + (HELIO_DISTANCE - GEO_DISTANCE) * moveT
+    const currentDist = camera.position.length()
+    if (Math.abs(currentDist - targetDist) < 0.05) return
+    const scale = targetDist / Math.max(currentDist, 0.01)
+    camera.position.multiplyScalar(scale)
+    controlsRef.current?.update()
   })
   return null
 }
@@ -1165,7 +1185,7 @@ function WheelScene({
   // Heliocentric positions for all bodies
   const helioPositions = useMemo(() => getHeliocentricPositions(targetDate), [targetDate])
 
-  // Compute helio scene positions for each planet
+  // Compute helio scene positions using fixed ring radii + real angles
   const helioScenePositions = useMemo(() => {
     const result: Record<string, [number, number, number]> = {}
     for (const planet of planets) {
@@ -1175,33 +1195,35 @@ function WheelScene({
       if (planet.id === 'sun') {
         result.sun = [0, 0, 0]
       } else if (planet.id === 'moon') {
-        // Moon orbits Earth with exaggerated radius
-        const earthScenePos = helioToScene(helioPositions.earth)
+        // Moon orbits Earth with fixed offset
+        const earthScenePos = helioToSceneFixed('earth', helioPositions.earth.angleDeg)
         const moonAngleRad = helio.angleDeg * (Math.PI / 180)
         result.moon = [
-          earthScenePos[0] + MOON_ORBIT_VISUAL_RADIUS * Math.cos(moonAngleRad),
+          earthScenePos[0] + MOON_ORBIT_OFFSET * Math.cos(moonAngleRad),
           0,
-          earthScenePos[2] + MOON_ORBIT_VISUAL_RADIUS * Math.sin(moonAngleRad),
+          earthScenePos[2] + MOON_ORBIT_OFFSET * Math.sin(moonAngleRad),
         ]
       } else {
-        result[planet.id] = helioToScene(helio)
+        result[planet.id] = helioToSceneFixed(planet.id, helio.angleDeg)
       }
     }
     // Earth position (not a "planet" in the array but needed for EarthCentre)
-    result.earth = helioToScene(helioPositions.earth)
+    result.earth = helioToSceneFixed('earth', helioPositions.earth.angleDeg)
     return result
   }, [planets, helioPositions])
+
+  // Compute phased transition values from raw progress
+  const { geoFade: geoOpacity, moveT, helioFade: helioOpacity } = getTransitionPhases(transitionT)
 
   // Earth helio position for the EarthCentre group
   const earthHelioPos = helioScenePositions.earth ?? [0, 0, 0]
   const earthLerpedPos = useMemo((): [number, number, number] => {
-    const t = smoothstep(transitionT)
     return [
-      earthHelioPos[0] * t,
-      earthHelioPos[1] * t,
-      earthHelioPos[2] * t,
+      earthHelioPos[0] * moveT,
+      earthHelioPos[1] * moveT,
+      earthHelioPos[2] * moveT,
     ]
-  }, [earthHelioPos, transitionT])
+  }, [earthHelioPos, moveT])
 
   // Sun geocentric position for corona
   const sunGeoPos = useMemo(() => {
@@ -1211,29 +1233,23 @@ function WheelScene({
   }, [planets])
 
   const sunLerpedPos = useMemo((): [number, number, number] => {
-    const t = smoothstep(transitionT)
     return [
-      sunGeoPos[0] + (0 - sunGeoPos[0]) * t,
-      sunGeoPos[1] + (0 - sunGeoPos[1]) * t,
-      sunGeoPos[2] + (0 - sunGeoPos[2]) * t,
+      sunGeoPos[0] + (0 - sunGeoPos[0]) * moveT,
+      sunGeoPos[1] + (0 - sunGeoPos[1]) * moveT,
+      sunGeoPos[2] + (0 - sunGeoPos[2]) * moveT,
     ]
-  }, [sunGeoPos, transitionT])
-
-  // Geo element opacity (1 in geocentric, 0 in heliocentric)
-  const geoOpacity = 1 - smoothstep(Math.min(transitionT * 1.5, 1))
-  // Helio element opacity (0 in geocentric, 1 in heliocentric)
-  const helioOpacity = smoothstep(Math.max((transitionT - 0.4) / 0.6, 0))
+  }, [sunGeoPos, moveT])
 
   // Transition animation via useFrame — coarse state updates to avoid 60fps re-renders
   const lastRenderedT = useRef(0)
   useFrame((_, delta) => {
     if (!isTransitioning) return
     const target = viewMode === 'heliocentric' ? 1 : 0
-    const speed = 0.8
-    transitionProgress.current += (target - transitionProgress.current) * Math.min(delta * speed, 0.04)
+    const speed = 1.2
+    transitionProgress.current += (target - transitionProgress.current) * Math.min(delta * speed, 0.05)
 
-    // Only trigger React re-render when progress changes significantly (every ~2%)
-    if (Math.abs(transitionProgress.current - lastRenderedT.current) > 0.02 ||
+    // Only trigger React re-render when progress changes significantly (~1.5%)
+    if (Math.abs(transitionProgress.current - lastRenderedT.current) > 0.015 ||
         Math.abs(transitionProgress.current - target) < 0.005) {
       lastRenderedT.current = transitionProgress.current
 
@@ -1331,7 +1347,7 @@ function WheelScene({
               planetScale={planetScale}
               helioPos={helioPos}
               viewMode={viewMode}
-              transitionT={transitionT}
+              moveT={moveT}
               isTransitioning={isTransitioning}
             />
           )
@@ -1355,8 +1371,8 @@ function WheelScene({
         </GeoFadeGroup>
       </group>
 
-      {/* Camera pullback for heliocentric */}
-      <CameraZAnimator viewMode={viewMode} isTransitioning={isTransitioning} />
+      {/* Camera pullback for heliocentric — scales with planet movement phase */}
+      <CameraDistanceAnimator moveT={moveT} controlsRef={controlsRef} />
 
       {/* Phase 7: Cinematic tilt after entrance */}
       <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />
