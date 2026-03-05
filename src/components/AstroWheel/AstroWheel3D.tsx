@@ -37,17 +37,17 @@ interface AstroWheel3DProps {
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
-  sun:     3.0,
-  jupiter: 5.5,
-  saturn:  5.0,
-  uranus:  4.0,
-  neptune: 3.8,
-  earth:   3.0,
-  venus:   2.8,
-  mars:    2.5,
-  mercury: 2.0,
-  pluto:   1.8,
-  moon:    1.8,
+  sun:     6.0,
+  jupiter: 11.0,
+  saturn:  10.0,
+  uranus:  8.0,
+  neptune: 7.6,
+  earth:   6.0,
+  venus:   5.6,
+  mars:    5.0,
+  mercury: 4.0,
+  pluto:   3.6,
+  moon:    3.6,
 }
 
 function clamp01(v: number): number {
