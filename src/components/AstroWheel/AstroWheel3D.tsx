@@ -1649,19 +1649,21 @@ function WheelScene({
 
         {/* Geo-only elements: fade out during transition */}
         <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
-          {/* Phase 2: Inner rings expand (400ms) */}
+          {/* Inner track + dust (no angular divisions, no counter-rotation needed) */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
-            <MiddleRing />
             <InnerTrackRing />
             <InnerDust />
           </AnimatedScaleGroup>
 
-          {/* Phase 3: Outer zodiac ring (800ms) — badges stagger via CSS */}
-          <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
-            <CounterRotatingRing>
+          {/* Rings with 30° divisions — counter-rotate together to stay aligned */}
+          <CounterRotatingRing>
+            <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
+              <MiddleRing />
+            </AnimatedScaleGroup>
+            <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
               <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
-            </CounterRotatingRing>
-          </AnimatedScaleGroup>
+            </AnimatedScaleGroup>
+          </CounterRotatingRing>
         </GeoFadeGroup>
 
         {/* Orbital path rings — helio view only */}
