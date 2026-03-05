@@ -1097,29 +1097,6 @@ function PlanetPolygon({
   )
 }
 
-// ─── Counter-rotating wrapper ───────────────────────────────────────
-function CounterRotatingRing({ children }: { children: React.ReactNode }) {
-  const ref = useRef<THREE.Group>(null!)
-  useFrame(({ clock }) => { if (ref.current) ref.current.rotation.y = -clock.getElapsedTime() * 0.01 })
-  return <group ref={ref}>{children}</group>
-}
-
-// ─── Inner ring rotation (opposite direction, half speed, geo only) ─
-function InnerRingRotation({ children, phaseValuesRef }: { children: React.ReactNode; phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
-  const ref = useRef<THREE.Group>(null!)
-  const frozenAngle = useRef(0)
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    if (phaseValuesRef.current.zodiacOpacity > 0.01) {
-      frozenAngle.current = clock.getElapsedTime() * 0.005
-    }
-    ref.current.rotation.y = frozenAngle.current
-  })
-
-  return <group ref={ref}>{children}</group>
-}
-
 // ─── Mobile bloom detector ──────────────────────────────────────────
 function ConditionalBloom() {
   const { size } = useThree()
@@ -1665,20 +1642,14 @@ function WheelScene({
 
         {/* Geo-only elements: fade out during transition */}
         <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
-          {/* Inner track + dust (no angular divisions, no counter-rotation needed) */}
+          {/* Phase 2: Inner rings expand (400ms) */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
+            <MiddleRing />
             <InnerTrackRing />
             <InnerDust />
           </AnimatedScaleGroup>
 
-          {/* Inner ring — rotates opposite direction at half speed for visual depth */}
-          <InnerRingRotation phaseValuesRef={phaseValuesRef}>
-            <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
-              <MiddleRing />
-            </AnimatedScaleGroup>
-          </InnerRingRotation>
-
-          {/* Outer zodiac ring — stays fixed, never rotates */}
+          {/* Phase 3: Outer zodiac ring (800ms) */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
             <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
           </AnimatedScaleGroup>
