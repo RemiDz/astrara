@@ -47,6 +47,7 @@ function HomePage() {
   })
   type ViewMode = 'geocentric' | 'heliocentric'
   const [viewMode, setViewMode] = useState<ViewMode>('geocentric')
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [helioData, setHelioData] = useState<Record<string, HelioData>>({})
 
   const [birthDate, setBirthDate] = useState('')
@@ -243,6 +244,10 @@ function HomePage() {
                   kpIndex={earthData?.kpIndex ?? null}
                   solarFlareClass={earthData?.solarFlareClass ?? null}
                   solarFluxValue={earthData?.solarFluxValue ?? null}
+                  viewMode={viewMode}
+                  isTransitioning={isTransitioning}
+                  helioData={helioData}
+                  onTransitionComplete={() => setIsTransitioning(false)}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -251,6 +256,33 @@ function HomePage() {
                   </div>
                 </div>
               )}
+
+              {/* View Toggle — below wheel, above day nav */}
+              <div className="flex justify-center py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isTransitioning) {
+                      setIsTransitioning(true)
+                      setViewMode(prev => prev === 'geocentric' ? 'heliocentric' : 'geocentric')
+                    }
+                  }}
+                  disabled={isTransitioning}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-white/70 text-sm transition-all duration-200 hover:bg-white/10 hover:text-white/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {viewMode === 'geocentric' ? (
+                    <>
+                      <span>&#9737;</span>
+                      <span>Solar System View</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>&#10022;</span>
+                      <span>Astro Wheel View</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               {/* Day Navigation — directly below wheel */}
               {(() => {
@@ -275,8 +307,9 @@ function HomePage() {
                   <div className="flex items-center justify-center gap-2 py-4">
                     <button
                       type="button"
+                      disabled={isTransitioning}
                       onClick={() => { setDayOffset(prev => prev - 1); trackEvent('day-nav', { direction: 'prev' }) }}
-                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all"
+                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       {prevLabel}
                     </button>
@@ -293,8 +326,9 @@ function HomePage() {
                     </button>
                     <button
                       type="button"
+                      disabled={isTransitioning}
                       onClick={() => { setDayOffset(prev => prev + 1); trackEvent('day-nav', { direction: 'next' }) }}
-                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all"
+                      className="px-4 py-2 rounded-xl text-sm select-none border border-white/10 text-white/50 hover:border-white/20 hover:text-white/70 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       {nextLabel}
                     </button>

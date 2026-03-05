@@ -6,8 +6,15 @@ import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import type { HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
+
+interface PhaseValues {
+  zodiacOpacity: number
+  smoothMoveT: number
+  helioOpacity: number
+}
 
 interface AstroWheel3DProps {
   planets: PlanetPosition[]
@@ -23,6 +30,18 @@ interface AstroWheel3DProps {
   kpIndex?: number | null
   solarFlareClass?: string | null
   solarFluxValue?: number | null
+  viewMode?: 'geocentric' | 'heliocentric'
+  isTransitioning?: boolean
+  helioData?: Record<string, HelioData>
+  onTransitionComplete?: () => void
+}
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v))
+}
+
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t)
 }
 
 const ELEMENT_COLOURS: Record<string, string> = {
@@ -114,10 +133,26 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
 function OuterZodiacRing({
   onSignTap,
   sceneReady,
+  phaseValuesRef,
 }: {
   onSignTap: (signId: string) => void
   sceneReady: boolean
+  phaseValuesRef?: React.MutableRefObject<PhaseValues>
 }) {
+  // Direct DOM refs for per-frame opacity updates on zodiac glyph buttons
+  const glyphRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  useFrame(() => {
+    if (!phaseValuesRef) return
+    const zodiacOpacity = phaseValuesRef.current.zodiacOpacity
+    for (const btn of glyphRefs.current) {
+      if (btn) {
+        btn.style.opacity = String(sceneReady ? 0.5 * zodiacOpacity : 0)
+        btn.style.pointerEvents = zodiacOpacity > 0.1 ? 'auto' : 'none'
+      }
+    }
+  })
+
   const segments = useMemo(() => {
     return ZODIAC_SIGNS.map((sign, i) => {
       const startAngle = (i * 30 - 90) * (Math.PI / 180)
@@ -173,6 +208,7 @@ function OuterZodiacRing({
             style={{ pointerEvents: 'auto', overflow: 'visible' }}
           >
             <button
+              ref={(el) => { glyphRefs.current[index] = el }}
               type="button"
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); onSignTap(sign.id) }}
               onPointerDown={(e) => e.stopPropagation()}
@@ -776,9 +812,13 @@ function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity
 // ─── Planet Orb (with entrance animation) ───────────────────────────
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
+  phaseValuesRef, helioData, isTransitioning: isTransitioningProp,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
   planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
+  phaseValuesRef?: React.MutableRefObject<PhaseValues>
+  helioData?: Record<string, HelioData>
+  isTransitioning?: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
@@ -838,11 +878,33 @@ function PlanetOrb({
     onTap()
   }, [onTap])
 
+  // Helio position for this planet
+  const helioKey = planet.id.charAt(0).toUpperCase() + planet.id.slice(1)
+  const helioPos = helioData?.[helioKey]
+
   useFrame(({ clock }, delta) => {
     // Scale animation
     const targetScale = visible ? 1 : 0
     currentScale.current += (targetScale - currentScale.current) * Math.min(delta * 3, 0.15)
     if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current)
+
+    // Lerp position between geo and helio
+    if (groupRef.current && phaseValuesRef && helioPos) {
+      const t = phaseValuesRef.current.smoothMoveT
+      if (t > 0.001) {
+        const geoX = pos[0], geoY = pos[1], geoZ = pos[2]
+        // Helio positions: sceneX maps to X, sceneY maps to Z (flat on XZ plane)
+        const hX = helioPos.sceneX
+        const hZ = helioPos.sceneY
+        groupRef.current.position.set(
+          geoX + (hX - geoX) * t,
+          geoY + (0 - geoY) * t,
+          geoZ + (hZ - geoZ) * t,
+        )
+      } else {
+        groupRef.current.position.set(pos[0], pos[1], pos[2])
+      }
+    }
 
     // Breathing glow
     if (meshRef.current && visible) {
@@ -853,6 +915,15 @@ function PlanetOrb({
       const mat = meshRef.current.material as THREE.MeshStandardMaterial
       mat.emissiveIntensity = breath
     }
+  })
+
+  // Track helio opacity for label text swap (coarse updates to avoid excessive re-renders)
+  const [showHelioLabel, setShowHelioLabel] = useState(false)
+  useFrame(() => {
+    if (!phaseValuesRef) return
+    const h = phaseValuesRef.current.helioOpacity
+    if (h > 0.5 && !showHelioLabel) setShowHelioLabel(true)
+    else if (h <= 0.5 && showHelioLabel) setShowHelioLabel(false)
   })
 
   return (
@@ -878,10 +949,12 @@ function PlanetOrb({
             fontFamily: "'DM Sans', sans-serif",
             transition: 'opacity 0.4s ease-out',
           }}>
-          {planet.glyph} {planet.degreeInSign}°
+          {showHelioLabel
+            ? `${planet.glyph} ${planet.name}`
+            : `${planet.glyph} ${planet.degreeInSign}°`}
         </div>
       </Html>
-      <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'auto', overflow: 'visible' }}>
+      <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: isTransitioningProp ? 'none' : 'auto', overflow: 'visible' }}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); handleTap() }}
@@ -1029,16 +1102,226 @@ function TiltAnimator({
   return null
 }
 
+// ─── Geo Fade Group (fades all descendant mesh materials) ───────────
+function GeoFadeGroup({
+  children,
+  phaseValuesRef,
+}: {
+  children: React.ReactNode
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+}) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const originalOpacities = useRef<Map<THREE.Material, number>>(new Map())
+  const captured = useRef(false)
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    const zodiacOpacity = phaseValuesRef.current.zodiacOpacity
+
+    groupRef.current.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh || (obj as THREE.Line).isLine || (obj as THREE.Points).isPoints) {
+        const mat = (obj as THREE.Mesh).material as THREE.Material & { opacity: number }
+        if (!mat || !('opacity' in mat)) return
+
+        // Capture original opacity on first meaningful frame
+        if (!captured.current && zodiacOpacity > 0.99) {
+          if (!originalOpacities.current.has(mat)) {
+            originalOpacities.current.set(mat, mat.opacity)
+          }
+        }
+
+        const orig = originalOpacities.current.get(mat) ?? mat.opacity
+        if (!originalOpacities.current.has(mat)) {
+          originalOpacities.current.set(mat, orig)
+        }
+        mat.opacity = orig * zodiacOpacity
+      }
+    })
+
+    if (!captured.current && zodiacOpacity > 0.99) {
+      captured.current = true
+    }
+  })
+
+  return <group ref={groupRef}>{children}</group>
+}
+
+// ─── Transition Controller ──────────────────────────────────────────
+function TransitionController({
+  viewMode,
+  isTransitioning,
+  onTransitionComplete,
+  phaseValuesRef,
+  transitionProgress,
+}: {
+  viewMode: 'geocentric' | 'heliocentric'
+  isTransitioning: boolean
+  onTransitionComplete?: () => void
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+  transitionProgress: React.MutableRefObject<number>
+}) {
+  const completedRef = useRef(false)
+
+  useEffect(() => {
+    completedRef.current = false
+  }, [viewMode])
+
+  useFrame((_, delta) => {
+    const target = viewMode === 'heliocentric' ? 1 : 0
+    const diff = target - transitionProgress.current
+
+    if (Math.abs(diff) > 0.003) {
+      transitionProgress.current += diff * delta * 1.5
+      transitionProgress.current = Math.max(0, Math.min(1, transitionProgress.current))
+    } else if (isTransitioning && !completedRef.current) {
+      transitionProgress.current = target
+      completedRef.current = true
+      onTransitionComplete?.()
+    }
+
+    const p = transitionProgress.current
+    phaseValuesRef.current = {
+      zodiacOpacity: 1 - clamp01(p / 0.25),
+      smoothMoveT: smoothstep(clamp01((p - 0.25) / 0.6)),
+      helioOpacity: clamp01((p - 0.7) / 0.3),
+    }
+  })
+
+  return null
+}
+
+// ─── Camera Distance Animator ───────────────────────────────────────
+function CameraDistanceAnimator({
+  transitionProgress,
+}: {
+  transitionProgress: React.MutableRefObject<number>
+}) {
+  const { camera } = useThree()
+  const initialDistance = useRef<number | null>(null)
+
+  useFrame(() => {
+    if (initialDistance.current === null) {
+      initialDistance.current = camera.position.length()
+    }
+
+    const p = transitionProgress.current
+    const geoDistance = initialDistance.current
+    const helioDistance = geoDistance * 4.5 // pull back enough for Pluto at r=17
+    const targetDistance = geoDistance + (helioDistance - geoDistance) * p
+
+    const currentDistance = camera.position.length()
+    if (currentDistance > 0.01) {
+      const newDistance = currentDistance + (targetDistance - currentDistance) * 0.05
+      camera.position.normalize().multiplyScalar(newDistance)
+    }
+  })
+
+  return null
+}
+
+// ─── Earth Position Animator (moves Earth from centre to helio orbit) ─
+function EarthPositionAnimator({
+  phaseValuesRef,
+  helioData,
+  children,
+}: {
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+  helioData?: Record<string, HelioData>
+  children: React.ReactNode
+}) {
+  const groupRef = useRef<THREE.Group>(null!)
+
+  useFrame(() => {
+    if (!groupRef.current || !helioData?.Earth) return
+    const t = phaseValuesRef.current.smoothMoveT
+    if (t > 0.001) {
+      groupRef.current.position.set(
+        helioData.Earth.sceneX * t,
+        0,
+        helioData.Earth.sceneY * t,
+      )
+    } else {
+      groupRef.current.position.set(0, 0, 0)
+    }
+  })
+
+  return <group ref={groupRef}>{children}</group>
+}
+
+// ─── Sun Corona Animated (lerps between geo and helio position) ─────
+function SunCoronaAnimated({
+  planet,
+  solarActivity,
+  sceneReady,
+  phaseValuesRef,
+  helioData,
+}: {
+  planet: PlanetPosition
+  solarActivity: SolarActivity
+  sceneReady: boolean
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+  helioData?: Record<string, HelioData>
+}) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const geoPos = useMemo(() => longitudeToPosition(planet.eclipticLongitude, R_PLANET), [planet.eclipticLongitude])
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    const t = phaseValuesRef.current.smoothMoveT
+    // Sun helio position is (0, 0, 0)
+    groupRef.current.position.set(
+      geoPos[0] + (0 - geoPos[0]) * t,
+      geoPos[1] + (0 - geoPos[1]) * t,
+      geoPos[2] + (0 - geoPos[2]) * t,
+    )
+  })
+
+  return (
+    <group ref={groupRef} position={geoPos}>
+      <SunCorona solarActivity={solarActivity} sceneReady={sceneReady} />
+    </group>
+  )
+}
+
+// ─── Sun Centre Label (visible in helio view) ───────────────────────
+function SunCentreLabel({ phaseValuesRef }: { phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
+  const spanRef = useRef<HTMLSpanElement>(null)
+  const [show, setShow] = useState(false)
+
+  useFrame(() => {
+    const opacity = phaseValuesRef.current.helioOpacity
+    if (opacity > 0.01 && !show) setShow(true)
+    else if (opacity < 0.01 && show) setShow(false)
+    if (spanRef.current) {
+      spanRef.current.style.opacity = String(opacity)
+    }
+  })
+
+  if (!show) return null
+  return (
+    <Html center position={[0, -0.35, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
+      <span ref={spanRef} className="text-white/70 text-xs whitespace-nowrap select-none" style={{ opacity: 0 }}>
+        &#9737; Sun
+      </span>
+    </Html>
+  )
+}
+
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
+  viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
   const [tiltDone, setTiltDone] = useState(false)
   const controlsRef = useRef<any>(null)
   const prevAzimuth = useRef(0)
+
+  // Transition state
+  const phaseValuesRef = useRef<PhaseValues>({ zodiacOpacity: 1, smoothMoveT: 0, helioOpacity: 0 })
+  const transitionProgress = useRef(0)
 
   // Phase 6: Entrance finishes at 3000ms
   useEffect(() => {
@@ -1068,26 +1351,41 @@ function WheelScene({
       <BackgroundParticles />
       <OrbitingLight />
 
+      {/* Transition system */}
+      <TransitionController
+        viewMode={viewMode}
+        isTransitioning={isTransitioning}
+        onTransitionComplete={onTransitionComplete}
+        phaseValuesRef={phaseValuesRef}
+        transitionProgress={transitionProgress}
+      />
+      <CameraDistanceAnimator transitionProgress={transitionProgress} />
+
       <group>
-        {/* Phase 1: Earth ignites (0ms) */}
-        <AnimatedScaleGroup sceneReady={sceneReady} delay={0}>
-          <EarthCentre onEarthTap={onEarthTap} kpIndex={kpIndex ?? null} />
-        </AnimatedScaleGroup>
+        {/* Phase 1: Earth ignites (0ms) — moves in helio view */}
+        <EarthPositionAnimator phaseValuesRef={phaseValuesRef} helioData={helioData}>
+          <AnimatedScaleGroup sceneReady={sceneReady} delay={0}>
+            <EarthCentre onEarthTap={onEarthTap} kpIndex={kpIndex ?? null} />
+          </AnimatedScaleGroup>
+        </EarthPositionAnimator>
 
-        {/* Phase 2: Inner rings expand (400ms) */}
-        <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
-          <MiddleRing />
-          <InnerTrackRing />
-          <SacredGeometry />
-          <InnerDust />
-        </AnimatedScaleGroup>
+        {/* Geo-only elements: fade out during transition */}
+        <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
+          {/* Phase 2: Inner rings expand (400ms) */}
+          <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
+            <MiddleRing />
+            <InnerTrackRing />
+            <SacredGeometry />
+            <InnerDust />
+          </AnimatedScaleGroup>
 
-        {/* Phase 3: Outer zodiac ring (800ms) — badges stagger via CSS */}
-        <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
-          <CounterRotatingRing>
-            <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} />
-          </CounterRotatingRing>
-        </AnimatedScaleGroup>
+          {/* Phase 3: Outer zodiac ring (800ms) — badges stagger via CSS */}
+          <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
+            <CounterRotatingRing>
+              <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
+            </CounterRotatingRing>
+          </AnimatedScaleGroup>
+        </GeoFadeGroup>
 
         {/* Phase 4: Planets appear (1400ms+, staggered) */}
         {planets.map((planet) => {
@@ -1103,6 +1401,9 @@ function WheelScene({
               sceneReady={sceneReady}
               entranceDelay={1400 + orderIndex * 100}
               planetScale={planetScale}
+              phaseValuesRef={phaseValuesRef}
+              helioData={helioData}
+              isTransitioning={isTransitioning}
             />
           )
         })}
@@ -1112,16 +1413,24 @@ function WheelScene({
           const sun = planets.find(p => p.id === 'sun')
           if (!sun) return null
           const activity = parseSolarActivity(solarFluxValue ?? 0, '')
-          const sunPos = longitudeToPosition(sun.eclipticLongitude, R_PLANET)
           return (
-            <group position={sunPos}>
-              <SunCorona solarActivity={activity} sceneReady={sceneReady} />
-            </group>
+            <SunCoronaAnimated
+              planet={sun}
+              solarActivity={activity}
+              sceneReady={sceneReady}
+              phaseValuesRef={phaseValuesRef}
+              helioData={helioData}
+            />
           )
         })()}
 
-        {/* Phase 5: Aspect lines draw (2200ms+) */}
-        <AspectLines3D aspects={aspects} planets={planets} selectedPlanet={selectedPlanet} sceneReady={sceneReady} />
+        {/* Phase 5: Aspect lines draw (2200ms+) — fade with geo elements */}
+        <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
+          <AspectLines3D aspects={aspects} planets={planets} selectedPlanet={selectedPlanet} sceneReady={sceneReady} />
+        </GeoFadeGroup>
+
+        {/* Sun centre label — appears in helio view */}
+        <SunCentreLabel phaseValuesRef={phaseValuesRef} />
       </group>
 
       {/* Phase 7: Cinematic tilt after entrance */}
@@ -1134,8 +1443,8 @@ function WheelScene({
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={tiltDone && rotationSpeed > 0}
-        autoRotateSpeed={0.3 * rotationSpeed}
+        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning}
+        autoRotateSpeed={viewMode === 'heliocentric' ? 0.08 : 0.3 * rotationSpeed}
         enableDamping
         dampingFactor={0.05}
         minPolarAngle={0.3}

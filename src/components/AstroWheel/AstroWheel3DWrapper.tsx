@@ -2,6 +2,7 @@
 
 import { Component, Suspense, lazy, type ReactNode } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import type { HelioData } from '@/lib/heliocentric'
 import AstroWheel from './AstroWheel'
 import Shimmer from '@/components/ui/Shimmer'
 
@@ -21,6 +22,10 @@ interface Props {
   kpIndex?: number | null
   solarFlareClass?: string | null
   solarFluxValue?: number | null
+  viewMode?: 'geocentric' | 'heliocentric'
+  isTransitioning?: boolean
+  helioData?: Record<string, HelioData>
+  onTransitionComplete?: () => void
 }
 
 interface ErrorBoundaryState {
