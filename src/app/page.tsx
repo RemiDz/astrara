@@ -80,6 +80,32 @@ function HomePage() {
     setHelioData(helio)
   }, [targetDate])
 
+  // Autoplay time controls (helio view only)
+  type AutoplayDir = 'backward-fast' | 'backward' | 'stopped' | 'forward' | 'forward-fast'
+  const [autoplayDirection, setAutoplayDirection] = useState<AutoplayDir>('stopped')
+  const autoplayInterval = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (autoplayInterval.current) {
+      clearInterval(autoplayInterval.current)
+      autoplayInterval.current = null
+    }
+    if (autoplayDirection === 'stopped') return
+    const daysPerTick = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 7 : 1
+    const direction = autoplayDirection.includes('backward') ? -1 : 1
+    autoplayInterval.current = setInterval(() => {
+      setDayOffset(prev => prev + daysPerTick * direction)
+    }, 800)
+    return () => {
+      if (autoplayInterval.current) clearInterval(autoplayInterval.current)
+    }
+  }, [autoplayDirection])
+
+  // Stop autoplay when switching back to geocentric
+  useEffect(() => {
+    if (viewMode === 'geocentric') setAutoplayDirection('stopped')
+  }, [viewMode])
+
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
   const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
   const [showHeadphoneHint, setShowHeadphoneHint] = useState(false)
@@ -271,7 +297,82 @@ function HomePage() {
               </div>
 
               {/* Day Navigation — directly below wheel */}
-              {(() => {
+              {viewMode === 'heliocentric' ? (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <button
+                    type="button"
+                    disabled={isTransitioning}
+                    onClick={() => setAutoplayDirection(prev => prev === 'backward-fast' ? 'stopped' : 'backward-fast')}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs ${
+                      autoplayDirection === 'backward-fast'
+                        ? 'border-white/30 bg-white/15 text-white'
+                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                    }`}
+                    aria-label="Fast rewind"
+                  >
+                    ◀◀
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isTransitioning}
+                    onClick={() => setAutoplayDirection(prev => prev === 'backward' ? 'stopped' : 'backward')}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
+                      autoplayDirection === 'backward'
+                        ? 'border-white/30 bg-white/15 text-white'
+                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                    }`}
+                    aria-label="Rewind"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isTransitioning}
+                    onClick={() => setAutoplayDirection(prev => prev === 'stopped' ? 'forward' : 'stopped')}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
+                      autoplayDirection !== 'stopped'
+                        ? 'border-white/30 bg-white/15 text-white'
+                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                    }`}
+                    aria-label={autoplayDirection !== 'stopped' ? 'Pause' : 'Play'}
+                  >
+                    {autoplayDirection !== 'stopped' ? '⏸' : '▶'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isTransitioning}
+                    onClick={() => setAutoplayDirection(prev => prev === 'forward' ? 'stopped' : 'forward')}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
+                      autoplayDirection === 'forward'
+                        ? 'border-white/30 bg-white/15 text-white'
+                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                    }`}
+                    aria-label="Forward"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isTransitioning}
+                    onClick={() => setAutoplayDirection(prev => prev === 'forward-fast' ? 'stopped' : 'forward-fast')}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs ${
+                      autoplayDirection === 'forward-fast'
+                        ? 'border-white/30 bg-white/15 text-white'
+                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                    }`}
+                    aria-label="Fast forward"
+                  >
+                    ▶▶
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
+                    className="px-4 h-10 rounded-full flex items-center justify-center border border-white/10 bg-white/5 text-white/60 hover:text-white/80 transition-all duration-200 active:scale-95 text-sm"
+                  >
+                    {t('nav.today')}
+                  </button>
+                </div>
+              ) : (() => {
                 const formatShortDate = (date: Date) => {
                   const day = date.getDate()
                   const monthNames = lang === 'lt'

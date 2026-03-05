@@ -907,19 +907,25 @@ function PlanetOrb({
     const viewScale = 1.0 + (helioScaleFactor - 1.0) * moveT
     if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current * viewScale)
 
-    // Lerp position between geo and helio
-    if (groupRef.current && phaseValuesRef && helioPos) {
-      const t = phaseValuesRef.current.smoothMoveT
-      if (t > 0.001) {
+    // Set position in useFrame (avoids reconciler flash on date change)
+    if (groupRef.current) {
+      const t = phaseValuesRef?.current.smoothMoveT ?? 0
+      if (t > 0.001 && helioPos) {
         const geoX = pos[0], geoY = pos[1], geoZ = pos[2]
-        // Helio positions: sceneX maps to X, sceneY maps to Z (flat on XZ plane)
         const hX = helioPos.sceneX
         const hZ = helioPos.sceneY
-        groupRef.current.position.set(
-          geoX + (hX - geoX) * t,
-          geoY + (0 - geoY) * t,
-          geoZ + (hZ - geoZ) * t,
-        )
+        const targetX = geoX + (hX - geoX) * t
+        const targetY = geoY + (0 - geoY) * t
+        const targetZ = geoZ + (hZ - geoZ) * t
+        if (t > 0.99) {
+          // Smooth glide for date changes in helio view
+          const lr = Math.min(delta * 5, 0.2)
+          groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
+          groupRef.current.position.y += (targetY - groupRef.current.position.y) * lr
+          groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr
+        } else {
+          groupRef.current.position.set(targetX, targetY, targetZ)
+        }
       } else {
         groupRef.current.position.set(pos[0], pos[1], pos[2])
       }
@@ -946,7 +952,7 @@ function PlanetOrb({
   })
 
   return (
-    <group ref={groupRef} position={pos} scale={0}>
+    <group ref={groupRef} scale={0}>
       <mesh ref={meshRef}>
         <sphereGeometry args={[config.radius * planetScale, 20, 20]} />
         <meshStandardMaterial color={colour} emissive={colour} emissiveIntensity={0.4} transparent opacity={0.9} roughness={0.3} metalness={0.2} />
@@ -1288,15 +1294,20 @@ function EarthPositionAnimator({
 }) {
   const groupRef = useRef<THREE.Group>(null!)
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!groupRef.current || !helioData?.Earth) return
     const t = phaseValuesRef.current.smoothMoveT
     if (t > 0.001) {
-      groupRef.current.position.set(
-        helioData.Earth.sceneX * t,
-        0,
-        helioData.Earth.sceneY * t,
-      )
+      const targetX = helioData.Earth.sceneX * t
+      const targetZ = helioData.Earth.sceneY * t
+      if (t > 0.99) {
+        const lr = Math.min(delta * 5, 0.2)
+        groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
+        groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
+        groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr
+      } else {
+        groupRef.current.position.set(targetX, 0, targetZ)
+      }
     } else {
       groupRef.current.position.set(0, 0, 0)
     }
@@ -1407,17 +1418,22 @@ function MoonOrbitRing({
   const groupRef = useRef<THREE.Group>(null!)
   const matRef = useRef<THREE.MeshBasicMaterial>(null!)
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!groupRef.current || !helioData?.Earth) return
     const t = phaseValuesRef.current.smoothMoveT
     const helioOpacity = phaseValuesRef.current.helioOpacity
 
     // Follow Earth's interpolated position
-    groupRef.current.position.set(
-      helioData.Earth.sceneX * t,
-      0,
-      helioData.Earth.sceneY * t,
-    )
+    const targetX = helioData.Earth.sceneX * t
+    const targetZ = helioData.Earth.sceneY * t
+    if (t > 0.99) {
+      const lr = Math.min(delta * 5, 0.2)
+      groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
+      groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
+      groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr
+    } else {
+      groupRef.current.position.set(targetX, 0, targetZ)
+    }
     groupRef.current.visible = helioOpacity > 0.01
     if (matRef.current) matRef.current.opacity = 0.24 * helioOpacity
   })
