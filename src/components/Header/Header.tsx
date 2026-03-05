@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
-import { useLanguage, type Language } from '@/i18n/LanguageContext'
-import { searchCity, type UserLocation } from '@/lib/location'
+import { useLanguage } from '@/i18n/LanguageContext'
+import type { UserLocation } from '@/lib/location'
 
 interface HeaderProps {
   location: UserLocation | null
@@ -11,8 +10,6 @@ interface HeaderProps {
   now: Date
   displayDate: Date
   isToday: boolean
-  onLocationChange: (loc: UserLocation) => void
-  onDateChange: (date: Date) => void
   audioPlaying: boolean
   audioWantsOn: boolean
   onAudioToggle: () => void
@@ -20,10 +17,8 @@ interface HeaderProps {
   onSettingsOpen: () => void
 }
 
-const LANGUAGES: { code: Language; flag: string; label: string }[] = [
-  { code: 'en', flag: '🇬🇧', label: 'EN' },
-  { code: 'lt', flag: '🇱🇹', label: 'LT' },
-]
+const iconBtn =
+  'w-9 h-9 flex items-center justify-center text-white/50 hover:text-white/80 active:scale-90 transition-all duration-150 select-none cursor-pointer'
 
 export default function Header({
   location,
@@ -31,8 +26,6 @@ export default function Header({
   now,
   displayDate,
   isToday,
-  onLocationChange,
-  onDateChange,
   audioPlaying,
   audioWantsOn,
   onAudioToggle,
@@ -40,35 +33,14 @@ export default function Header({
   onSettingsOpen,
 }: HeaderProps) {
   const { t } = useTranslation()
-  const { lang, setLang } = useLanguage()
-  const [langOpen, setLangOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<UserLocation[]>([])
-  const langRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLDivElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    if (searchQuery.length < 2) { setSearchResults([]); return }
-    const timer = setTimeout(async () => {
-      const results = await searchCity(searchQuery)
-      setSearchResults(results)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchQuery])
-
-  const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0]
+  const { lang } = useLanguage()
   const locale = lang === 'lt' ? 'lt-LT' : 'en-GB'
+
+  const dateStr = displayDate.toLocaleDateString(locale, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
   const timeStr = isToday
     ? now.toLocaleTimeString(locale, {
@@ -78,186 +50,87 @@ export default function Header({
       })
     : null
 
-  const dateStr = displayDate.toLocaleDateString(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-
-  // Format for hidden date input value (YYYY-MM-DD)
-  const dateInputValue = `${displayDate.getFullYear()}-${String(displayDate.getMonth() + 1).padStart(2, '0')}-${String(displayDate.getDate()).padStart(2, '0')}`
+  const cityName = locationLoading
+    ? t('location.detecting')
+    : location?.city || ''
 
   return (
     <header className="relative z-30 px-4 pt-4 pb-2">
       <div className="max-w-5xl mx-auto flex items-start justify-between">
-        {/* Left column: App name + subtitle + date */}
-        <div className="flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
-              ASTRARA
-            </h1>
-            {/* Info button */}
-            <button
-              type="button"
-              onClick={onAboutOpen}
-              className="w-6 h-6 rounded-full border border-purple-400/25
-                         flex items-center justify-center
-                         text-purple-300/40 text-xs font-serif
-                         hover:border-purple-400/40 hover:text-purple-300/60
-                         active:scale-90
-                         transition-all select-none cursor-pointer"
-              aria-label="About Astrara"
-            >
-              i
-            </button>
-            {/* Settings button */}
-            <button
-              type="button"
-              onClick={onSettingsOpen}
-              className="w-6 h-6 rounded-full border border-purple-400/25
-                         flex items-center justify-center
-                         text-purple-300/40 text-xs
-                         hover:border-purple-400/40 hover:text-purple-300/60
-                         active:scale-90
-                         transition-all select-none cursor-pointer"
-              aria-label="Settings"
-            >
-              ⚙
-            </button>
-          </div>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+        {/* Left — text block */}
+        <div className="flex flex-col min-w-0">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
+            ASTRARA
+          </h1>
+          <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {t('app.tagline')}
-          </p>
-          {/* Date + Time — tappable for date picker */}
-          <div className="relative mt-1">
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  dateInputRef.current?.showPicker()
-                } catch {
-                  dateInputRef.current?.focus()
-                }
-              }}
-              className="text-sm hover:text-white/70 transition-colors select-none"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {dateStr}{timeStr ? ` · ${timeStr}` : ''}
-            </button>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={dateInputValue}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const newDate = new Date(e.target.value + 'T12:00:00')
-                  onDateChange(newDate)
-                }
-              }}
-              className="absolute opacity-0 w-0 h-0 pointer-events-none"
-              aria-label="Select date"
-            />
-          </div>
+          </span>
+          <span
+            className="text-sm mt-1 truncate"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {dateStr}
+            {timeStr ? ` \u00B7 ${timeStr}` : ''}
+            {cityName ? ` \u00B7 ${cityName}` : ''}
+          </span>
         </div>
 
-        {/* Right column: Location + Sound + Language */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Location */}
-          <div ref={searchRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="flex items-center gap-1 min-w-[80px] justify-end select-none"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <span className="text-xs">📍</span>
-              <span className="text-xs truncate max-w-[100px]" style={{ color: 'var(--text-secondary)' }}>
-                {locationLoading ? t('location.detecting') : (location?.city || 'Unknown')}
-              </span>
-            </button>
-
-            {searchOpen && (
-              <div className="absolute top-full right-0 mt-2 w-64 glass-card p-3 z-50">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={t('location.searchPlaceholder')}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20"
-                  autoFocus
-                />
-                {searchResults.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {searchResults.map((r, i) => (
-                      <li key={i}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onLocationChange(r)
-                            setSearchOpen(false)
-                            setSearchQuery('')
-                          }}
-                          className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-white/5 select-none"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          {r.city}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-
+        {/* Right — icon row */}
+        <div className="flex items-center gap-3 pt-1 flex-shrink-0">
           {/* Sound toggle */}
           <button
             type="button"
             onClick={onAudioToggle}
-            className={`text-lg select-none ${
+            className={`${iconBtn} ${
               audioPlaying
-                ? 'text-white/60 hover:text-white/80'
+                ? 'text-white/60'
                 : audioWantsOn
-                  ? 'text-white/40 hover:text-white/70 animate-pulse'
-                  : 'text-white/40 hover:text-white/70'
+                  ? 'text-white/40 animate-pulse'
+                  : 'text-white/40'
             }`}
-            aria-label={audioPlaying ? 'Mute cosmic soundscape' : 'Play cosmic soundscape'}
+            aria-label={audioPlaying ? 'Mute' : 'Unmute'}
           >
-            {audioPlaying ? '\uD83D\uDD08' : '\uD83D\uDD07'}
+            {audioPlaying ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            )}
           </button>
 
-          {/* Language switcher */}
-          <div ref={langRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1 text-xs select-none"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <span>{currentLang.flag}</span>
-              <span>{currentLang.label}</span>
-              <span className="text-white/30">▾</span>
-            </button>
+          {/* Info */}
+          <button
+            type="button"
+            onClick={onAboutOpen}
+            className={iconBtn}
+            aria-label="About"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </button>
 
-            {langOpen && (
-              <div className="absolute top-full right-0 mt-1 glass-card py-1 z-50 min-w-[100px]">
-                {LANGUAGES.map(l => (
-                  <button
-                    type="button"
-                    key={l.code}
-                    onClick={() => { setLang(l.code); setLangOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/5 select-none ${
-                      l.code === lang ? 'text-white' : ''
-                    }`}
-                    style={{ color: l.code === lang ? undefined : 'var(--text-secondary)' }}
-                  >
-                    <span>{l.flag}</span>
-                    <span>{l.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Settings */}
+          <button
+            type="button"
+            onClick={onSettingsOpen}
+            className={iconBtn}
+            aria-label="Settings"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
         </div>
       </div>
     </header>

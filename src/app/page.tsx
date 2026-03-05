@@ -191,15 +191,6 @@ function HomePage() {
           now={now}
           displayDate={targetDate}
           isToday={isToday}
-          onLocationChange={(loc) => {
-            setLocation(loc)
-            trackEvent('location-detected', { city: loc.city })
-          }}
-          onDateChange={(date) => {
-            setCustomDate(date)
-            setDayOffset(0)
-            trackEvent('date-pick', { date: date.toISOString().split('T')[0] })
-          }}
           audioPlaying={audioPlaying}
           audioWantsOn={wantsAudio}
           onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
@@ -358,6 +349,12 @@ function HomePage() {
         onClose={() => setShowSettings(false)}
         settings={settings}
         onSettingsChange={handleSettingsChange}
+        location={location}
+        locationLoading={locationLoading}
+        onLocationChange={(loc) => {
+          setLocation(loc)
+          trackEvent('location-change', { city: loc.city })
+        }}
       />
 
       {/* Headphones hint toast */}
