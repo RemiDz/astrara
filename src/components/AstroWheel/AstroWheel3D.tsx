@@ -37,6 +37,7 @@ interface AstroWheel3DProps {
   onTransitionComplete?: () => void
   animationTimeRef?: React.MutableRefObject<number>
   animationSpeedRef?: React.MutableRefObject<number>
+  showHelioLabels?: boolean
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -691,7 +692,18 @@ function EarthKpAura({ kpIndex }: { kpIndex: number | null }) {
 }
 
 // ─── Earth Centre ───────────────────────────────────────────────────
-function EarthCentre({ onEarthTap, kpIndex }: { onEarthTap: () => void; kpIndex: number | null }) {
+function EarthCentre({ onEarthTap, kpIndex, labelOpacityRef, phaseValuesRef }: { onEarthTap: () => void; kpIndex: number | null; labelOpacityRef?: React.MutableRefObject<number>; phaseValuesRef?: React.MutableRefObject<PhaseValues> }) {
+  const earthLabelRef = useRef<HTMLDivElement>(null)
+
+  useFrame(() => {
+    if (earthLabelRef.current && phaseValuesRef && labelOpacityRef) {
+      const helioT = phaseValuesRef.current.helioOpacity
+      // In helio mode, apply label visibility; in geo mode, always show
+      const labelVis = helioT > 0.5 ? labelOpacityRef.current : 1
+      earthLabelRef.current.style.opacity = String(0.3 * labelVis)
+    }
+  })
+
   return (
     <group>
       <Suspense fallback={<EarthSphereFallback />}>
@@ -704,7 +716,7 @@ function EarthCentre({ onEarthTap, kpIndex }: { onEarthTap: () => void; kpIndex:
       <pointLight color="#60a5fa" intensity={0.4} distance={1.5} decay={2} />
 
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
-        <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
+        <div ref={earthLabelRef} className="text-center whitespace-nowrap select-none tracking-widest uppercase"
           style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.3)', textShadow: '0 0 8px rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-body), sans-serif' }}>
           home
         </div>
@@ -829,13 +841,14 @@ function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity
 // ─── Planet Orb (with entrance animation) ───────────────────────────
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
-  phaseValuesRef, helioData, isTransitioning: isTransitioningProp,
+  phaseValuesRef, helioData, isTransitioning: isTransitioningProp, labelOpacityRef,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
   planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
   phaseValuesRef?: React.MutableRefObject<PhaseValues>
   helioData?: Record<string, HelioData>
   isTransitioning?: boolean
+  labelOpacityRef?: React.MutableRefObject<number>
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
@@ -953,11 +966,22 @@ function PlanetOrb({
 
   // Track helio opacity for label text swap (coarse updates to avoid excessive re-renders)
   const [showHelioLabel, setShowHelioLabel] = useState(false)
+  const labelDivRef = useRef<HTMLDivElement>(null)
   useFrame(() => {
     if (!phaseValuesRef) return
     const h = phaseValuesRef.current.helioOpacity
     if (h > 0.5 && !showHelioLabel) setShowHelioLabel(true)
     else if (h <= 0.5 && showHelioLabel) setShowHelioLabel(false)
+    // Imperatively update label opacity for helio label toggle
+    if (labelDivRef.current) {
+      const labelVis = labelOpacityRef?.current ?? 1
+      const isHiddenSunInHelio = showHelioLabel && planet.id === 'sun'
+      const baseOpacity = (visible && !isHiddenSunInHelio) ? 0.85 : 0
+      // In helio mode, multiply by label visibility; in geo mode, always show
+      const finalOpacity = showHelioLabel ? baseOpacity * labelVis : baseOpacity
+      labelDivRef.current.style.opacity = String(finalOpacity)
+      labelDivRef.current.style.pointerEvents = finalOpacity < 0.1 ? 'none' : 'auto'
+    }
   })
 
   return (
@@ -974,14 +998,13 @@ function PlanetOrb({
       )}
       <pointLight color={planet.colour} intensity={isSelected || isFlashing ? 0.7 : 0.3} distance={1.5} decay={2} />
       <Html position={[0, labelYOffset, 0]} center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', userSelect: 'none', overflow: 'visible' }}>
-        <div className="whitespace-nowrap select-none pointer-events-none"
+        <div ref={labelDivRef} className="whitespace-nowrap select-none pointer-events-none"
           style={{
             fontSize: '12px', color: 'white', opacity: (visible && !(showHelioLabel && planet.id === 'sun')) ? 0.85 : 0,
             textShadow: `0 0 8px ${planet.colour}80, 0 1px 3px rgba(0,0,0,0.8)`,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
             padding: '2px 6px', borderRadius: '6px',
             fontFamily: "'DM Sans', sans-serif",
-            transition: 'opacity 0.4s ease-out',
           }}>
           {showHelioLabel
             ? (planet.id === 'moon' ? planet.glyph : `${planet.glyph} ${planet.name}`)
@@ -1506,7 +1529,7 @@ function MoonOrbitRing({
 }
 
 // ─── Sun Centre Label (visible in helio view) ───────────────────────
-function SunCentreLabel({ phaseValuesRef, label }: { phaseValuesRef: React.MutableRefObject<PhaseValues>; label?: string }) {
+function SunCentreLabel({ phaseValuesRef, label, labelOpacityRef }: { phaseValuesRef: React.MutableRefObject<PhaseValues>; label?: string; labelOpacityRef?: React.MutableRefObject<number> }) {
   const spanRef = useRef<HTMLSpanElement>(null)
   const [show, setShow] = useState(false)
 
@@ -1515,7 +1538,8 @@ function SunCentreLabel({ phaseValuesRef, label }: { phaseValuesRef: React.Mutab
     if (opacity > 0.01 && !show) setShow(true)
     else if (opacity < 0.01 && show) setShow(false)
     if (spanRef.current) {
-      spanRef.current.style.opacity = String(opacity)
+      const labelVis = labelOpacityRef?.current ?? 1
+      spanRef.current.style.opacity = String(opacity * labelVis)
     }
   })
 
@@ -1529,13 +1553,21 @@ function SunCentreLabel({ phaseValuesRef, label }: { phaseValuesRef: React.Mutab
   )
 }
 
+// ─── Label Opacity Animator ──────────────────────────────────────────
+function LabelOpacityAnimator({ target, opacityRef }: { target: number; opacityRef: React.MutableRefObject<number> }) {
+  useFrame((_, delta) => {
+    opacityRef.current += (target - opacityRef.current) * Math.min(delta * 5, 0.25)
+  })
+  return null
+}
+
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
-  sunLabel,
+  sunLabel, showHelioLabels = true,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1546,6 +1578,9 @@ function WheelScene({
   // Transition state
   const phaseValuesRef = useRef<PhaseValues>({ zodiacOpacity: 1, smoothMoveT: 0, helioOpacity: 0, continuousPositions: null })
   const transitionProgress = useRef(0)
+
+  // Label visibility (helio view toggle)
+  const labelOpacityRef = useRef(showHelioLabels ? 1 : 0)
 
   // Phase 6: Entrance finishes at 3000ms
   useEffect(() => {
@@ -1575,6 +1610,9 @@ function WheelScene({
       <BackgroundParticles />
       <OrbitingLight />
 
+      {/* Label opacity animation (helio toggle) */}
+      <LabelOpacityAnimator target={showHelioLabels ? 1 : 0} opacityRef={labelOpacityRef} />
+
       {/* Transition system */}
       <TransitionController
         viewMode={viewMode}
@@ -1597,7 +1635,7 @@ function WheelScene({
         {/* Phase 1: Earth ignites (0ms) — moves in helio view */}
         <EarthPositionAnimator phaseValuesRef={phaseValuesRef} helioData={helioData}>
           <AnimatedScaleGroup sceneReady={sceneReady} delay={0}>
-            <EarthCentre onEarthTap={onEarthTap} kpIndex={kpIndex ?? null} />
+            <EarthCentre onEarthTap={onEarthTap} kpIndex={kpIndex ?? null} labelOpacityRef={labelOpacityRef} phaseValuesRef={phaseValuesRef} />
           </AnimatedScaleGroup>
         </EarthPositionAnimator>
 
@@ -1640,6 +1678,7 @@ function WheelScene({
               phaseValuesRef={phaseValuesRef}
               helioData={helioData}
               isTransitioning={isTransitioning}
+              labelOpacityRef={labelOpacityRef}
             />
           )
         })}
@@ -1666,7 +1705,7 @@ function WheelScene({
         </GeoFadeGroup>
 
         {/* Sun centre label — appears in helio view */}
-        <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} />
+        <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} labelOpacityRef={labelOpacityRef} />
       </group>
 
       {/* Phase 7: Cinematic tilt after entrance */}

@@ -48,6 +48,17 @@ function HomePage() {
   type ViewMode = 'geocentric' | 'heliocentric'
   const [viewMode, setViewMode] = useState<ViewMode>('geocentric')
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showHelioLabels, setShowHelioLabels] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('astrara-helio-labels')
+      return saved !== null ? saved === 'true' : true
+    }
+    return true
+  })
+
+  useEffect(() => {
+    localStorage.setItem('astrara-helio-labels', String(showHelioLabels))
+  }, [showHelioLabels])
 
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
@@ -298,7 +309,7 @@ function HomePage() {
           {/* Desktop layout: wheel left, weather right */}
           <div className="lg:flex lg:gap-8 lg:items-start">
             {/* Astro Wheel */}
-            <div className="lg:flex-1 lg:sticky lg:top-4 py-4">
+            <div className="lg:flex-1 lg:sticky lg:top-4 py-4 relative">
               {astroData ? (
                 <AstroWheel3DWrapper
                   planets={astroData.planets}
@@ -320,6 +331,7 @@ function HomePage() {
                   onTransitionComplete={() => setIsTransitioning(false)}
                   animationTimeRef={animationTimeRef}
                   animationSpeedRef={animationSpeedRef}
+                  showHelioLabels={showHelioLabels}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -327,6 +339,34 @@ function HomePage() {
                     Reading the stars...
                   </div>
                 </div>
+              )}
+
+              {/* Label visibility toggle — helio view only */}
+              {viewMode === 'heliocentric' && (
+                <button
+                  onClick={() => setShowHelioLabels(prev => !prev)}
+                  aria-label={showHelioLabels ? 'Hide planet labels' : 'Show planet labels'}
+                  className="absolute top-2 right-4 z-10
+                             w-9 h-9 rounded-full flex items-center justify-center
+                             backdrop-blur-md transition-all duration-200 active:scale-90
+                             bg-white/5 border border-white/8 text-white/45
+                             hover:text-white/70 hover:bg-white/8"
+                >
+                  {showHelioLabels ? (
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 7V4h16v3" />
+                      <path d="M9 20h6" />
+                      <path d="M12 4v16" />
+                    </svg>
+                  ) : (
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 7V4h16v3" />
+                      <path d="M9 20h6" />
+                      <path d="M12 4v16" />
+                      <line x1="3" y1="3" x2="21" y2="21" />
+                    </svg>
+                  )}
+                </button>
               )}
 
               {/* View Toggle — below wheel, above day nav */}

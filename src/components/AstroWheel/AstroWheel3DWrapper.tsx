@@ -28,6 +28,7 @@ interface Props {
   onTransitionComplete?: () => void
   animationTimeRef?: React.MutableRefObject<number>
   animationSpeedRef?: React.MutableRefObject<number>
+  showHelioLabels?: boolean
 }
 
 interface ErrorBoundaryState {
