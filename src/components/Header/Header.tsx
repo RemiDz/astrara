@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/LanguageContext'
 import type { UserLocation } from '@/lib/location'
@@ -15,6 +16,7 @@ interface HeaderProps {
   onAudioToggle: () => void
   onAboutOpen: () => void
   onSettingsOpen: () => void
+  headerDateRef?: React.RefObject<HTMLSpanElement | null>
 }
 
 const iconBtn =
@@ -31,6 +33,7 @@ export default function Header({
   onAudioToggle,
   onAboutOpen,
   onSettingsOpen,
+  headerDateRef,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang } = useLanguage()
@@ -69,7 +72,7 @@ export default function Header({
             className="text-sm mt-1 truncate"
             style={{ color: 'var(--text-muted)' }}
           >
-            {dateStr}
+            <span ref={headerDateRef}>{dateStr}</span>
             {timeStr ? ` \u00B7 ${timeStr}` : ''}
             {cityName ? ` \u00B7 ${cityName}` : ''}
           </span>

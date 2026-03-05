@@ -1,6 +1,6 @@
 'use client'
 
-import { Component, Suspense, lazy, type ReactNode } from 'react'
+import React, { Component, Suspense, lazy, type ReactNode } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import type { HelioData } from '@/lib/heliocentric'
 import AstroWheel from './AstroWheel'
@@ -26,6 +26,8 @@ interface Props {
   isTransitioning?: boolean
   helioData?: Record<string, HelioData>
   onTransitionComplete?: () => void
+  animationTimeRef?: React.MutableRefObject<number>
+  animationSpeedRef?: React.MutableRefObject<number>
 }
 
 interface ErrorBoundaryState {

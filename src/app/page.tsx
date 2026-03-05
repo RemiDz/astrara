@@ -73,65 +73,95 @@ function HomePage() {
   const astroData = useAstroData(targetDate, lat, lng)
   const { earthData, loading: earthLoading } = useEarthData()
 
-  // Autoplay time controls (helio view only)
+  // Continuous autoplay time controls (helio view only)
   type AutoplayDir = 'backward-fast' | 'backward' | 'stopped' | 'forward' | 'forward-fast'
   const [autoplayDirection, setAutoplayDirection] = useState<AutoplayDir>('stopped')
-  const autoplayInterval = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [animationDate, setAnimationDate] = useState(() => new Date())
-  const animationDateRef = useRef(new Date())
-
-  // Lightweight planet date: animationDate during autoplay, targetDate otherwise
   const isAutoplayActive = autoplayDirection !== 'stopped'
-  const planetDate = isAutoplayActive ? animationDate : targetDate
-  const helioData = useMemo(() => calculateAllHelioData(planetDate), [planetDate])
 
-  // Autoplay toggle helper — handles date sync on start/stop
-  const handleAutoplayToggle = useCallback((dir: AutoplayDir) => {
-    const wasStopped = autoplayDirection === 'stopped'
-    const willStop = autoplayDirection === dir
-    if (wasStopped && !willStop) {
-      // Starting autoplay — init animation from display date
-      const d = new Date(targetDate)
-      setAnimationDate(d)
-      animationDateRef.current = d
-    } else if (!wasStopped && willStop) {
-      // Stopping autoplay — sync display date to animation
-      setCustomDate(new Date(animationDateRef.current))
-      setDayOffset(0)
-    }
-    setAutoplayDirection(prev => prev === dir ? 'stopped' : dir)
-  }, [autoplayDirection, targetDate])
+  // Continuous time refs — driven by useFrame inside AstroWheel3D
+  const animationTimeRef = useRef(Date.now())
+  const animationSpeedRef = useRef(0)
 
+  // Speed: days per second of real time
+  const SPEED_NORMAL = 2    // 2 days per second
+  const SPEED_FAST = 14     // 14 days per second (2 weeks per second)
+  function daysPerSecondToMultiplier(daysPerSec: number): number {
+    return daysPerSec * 86400000 / 1000
+  }
+
+  // Helio data for static rendering (initial positions / when autoplay stopped)
+  const helioData = useMemo(() => calculateAllHelioData(targetDate), [targetDate])
+
+  // Header date display ref — updated by rAF during autoplay, avoids re-renders
+  const headerDateRef = useRef<HTMLSpanElement>(null)
+  const headerRafRef = useRef<number | null>(null)
+
+  // rAF loop to update header date during autoplay
   useEffect(() => {
-    if (autoplayInterval.current) {
-      clearInterval(autoplayInterval.current)
-      autoplayInterval.current = null
+    if (!isAutoplayActive) {
+      if (headerRafRef.current) cancelAnimationFrame(headerRafRef.current)
+      headerRafRef.current = null
+      return
     }
-    if (autoplayDirection === 'stopped') return
-    const daysPerTick = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 7 : 1
-    const direction = autoplayDirection.includes('backward') ? -1 : 1
-    const intervalMs = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 300 : 500
-    autoplayInterval.current = setInterval(() => {
-      setAnimationDate(prev => {
-        const next = new Date(prev)
-        next.setDate(next.getDate() + (daysPerTick * direction))
-        animationDateRef.current = next
-        return next
-      })
-    }, intervalMs)
+
+    let lastUpdate = 0
+    const tick = (time: number) => {
+      if (time - lastUpdate > 200) {
+        lastUpdate = time
+        if (headerDateRef.current) {
+          const d = new Date(animationTimeRef.current)
+          headerDateRef.current.textContent = d.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          })
+        }
+      }
+      headerRafRef.current = requestAnimationFrame(tick)
+    }
+    headerRafRef.current = requestAnimationFrame(tick)
     return () => {
-      if (autoplayInterval.current) clearInterval(autoplayInterval.current)
+      if (headerRafRef.current) cancelAnimationFrame(headerRafRef.current)
     }
-  }, [autoplayDirection])
+  }, [isAutoplayActive, lang])
+
+  // Autoplay toggle — set speed ref, sync dates on start/stop
+  const handleAutoplayToggle = useCallback((dir: AutoplayDir) => {
+    const willStop = autoplayDirection === dir
+
+    if (willStop) {
+      // Stopping — sync display date to current animation time
+      animationSpeedRef.current = 0
+      setCustomDate(new Date(animationTimeRef.current))
+      setDayOffset(0)
+      setAutoplayDirection('stopped')
+    } else {
+      // Starting or switching direction — init animation time from display date
+      if (autoplayDirection === 'stopped') {
+        animationTimeRef.current = targetDate.getTime()
+      }
+      const isFast = dir === 'forward-fast' || dir === 'backward-fast'
+      const isBackward = dir === 'backward' || dir === 'backward-fast'
+      const speed = isFast ? SPEED_FAST : SPEED_NORMAL
+      animationSpeedRef.current = daysPerSecondToMultiplier(isBackward ? -speed : speed)
+      setAutoplayDirection(dir)
+    }
+  }, [autoplayDirection, targetDate])
 
   // Stop autoplay when switching back to geocentric — sync display date
   useEffect(() => {
     if (viewMode === 'geocentric' && autoplayDirection !== 'stopped') {
-      setCustomDate(new Date(animationDateRef.current))
+      animationSpeedRef.current = 0
+      setCustomDate(new Date(animationTimeRef.current))
       setDayOffset(0)
       setAutoplayDirection('stopped')
     }
   }, [viewMode, autoplayDirection])
+
+  // Sync animationTime when not autoplaying and date changes manually
+  useEffect(() => {
+    if (autoplayDirection === 'stopped') {
+      animationTimeRef.current = targetDate.getTime()
+    }
+  }, [targetDate, autoplayDirection])
 
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
   const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
@@ -254,7 +284,8 @@ function HomePage() {
           location={location}
           locationLoading={locationLoading}
           now={now}
-          displayDate={isAutoplayActive ? animationDate : targetDate}
+          displayDate={targetDate}
+          headerDateRef={headerDateRef}
           isToday={isToday && !isAutoplayActive}
           audioPlaying={audioPlaying}
           audioWantsOn={wantsAudio}
@@ -287,6 +318,8 @@ function HomePage() {
                   isTransitioning={isTransitioning}
                   helioData={helioData}
                   onTransitionComplete={() => setIsTransitioning(false)}
+                  animationTimeRef={animationTimeRef}
+                  animationSpeedRef={animationSpeedRef}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -354,7 +387,7 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0); setAnimationDate(new Date()); animationDateRef.current = new Date() }}
+                    onClick={() => { animationSpeedRef.current = 0; animationTimeRef.current = Date.now(); setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
                     className="px-5 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/5 border border-white/8 text-white/60 text-sm font-medium hover:bg-white/10 hover:text-white/80 active:scale-95 transition-all duration-200"
                   >
                     {t('nav.today')}

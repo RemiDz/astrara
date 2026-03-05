@@ -6,7 +6,7 @@ import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
-import { HELIO_RING_RADII, type HelioData } from '@/lib/heliocentric'
+import { HELIO_RING_RADII, calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 
@@ -14,6 +14,7 @@ interface PhaseValues {
   zodiacOpacity: number
   smoothMoveT: number
   helioOpacity: number
+  continuousPositions: Record<string, HelioData> | null
 }
 
 interface AstroWheel3DProps {
@@ -34,6 +35,8 @@ interface AstroWheel3DProps {
   isTransitioning?: boolean
   helioData?: Record<string, HelioData>
   onTransitionComplete?: () => void
+  animationTimeRef?: React.MutableRefObject<number>
+  animationSpeedRef?: React.MutableRefObject<number>
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -910,15 +913,21 @@ function PlanetOrb({
     // Set position in useFrame (avoids reconciler flash on date change)
     if (groupRef.current) {
       const t = phaseValuesRef?.current.smoothMoveT ?? 0
+      const contPos = phaseValuesRef?.current.continuousPositions
       if (t > 0.001 && helioPos) {
+        // During continuous animation, use per-frame positions directly
+        const activeHelio = (t > 0.99 && contPos?.[helioKey]) ? contPos[helioKey] : helioPos
         const geoX = pos[0], geoY = pos[1], geoZ = pos[2]
-        const hX = helioPos.sceneX
-        const hZ = helioPos.sceneY
+        const hX = activeHelio.sceneX
+        const hZ = activeHelio.sceneY
         const targetX = geoX + (hX - geoX) * t
         const targetY = geoY + (0 - geoY) * t
         const targetZ = geoZ + (hZ - geoZ) * t
-        if (t > 0.99) {
-          // Smooth glide for date changes in helio view
+        if (t > 0.99 && contPos) {
+          // Continuous animation — set position directly, no lerp needed
+          groupRef.current.position.set(targetX, targetY, targetZ)
+        } else if (t > 0.99) {
+          // Static helio (no autoplay) — smooth glide for date changes
           const lr = Math.min(delta * 8, 0.3)
           groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
           groupRef.current.position.y += (targetY - groupRef.current.position.y) * lr
@@ -1171,6 +1180,37 @@ function GeoFadeGroup({
   return <group ref={groupRef}>{children}</group>
 }
 
+// ─── Continuous Time Animator (per-frame helio position updates) ─────
+function ContinuousTimeAnimator({
+  animationTimeRef,
+  animationSpeedRef,
+  phaseValuesRef,
+}: {
+  animationTimeRef: React.MutableRefObject<number>
+  animationSpeedRef: React.MutableRefObject<number>
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+}) {
+  useFrame((_, delta) => {
+    if (animationSpeedRef.current === 0) {
+      // Not animating — clear continuous positions
+      if (phaseValuesRef.current.continuousPositions !== null) {
+        phaseValuesRef.current.continuousPositions = null
+      }
+      return
+    }
+
+    // Advance animation time
+    const msAdvance = animationSpeedRef.current * delta * 1000
+    animationTimeRef.current += msAdvance
+
+    // Calculate all positions for the current fractional time
+    const currentDate = new Date(animationTimeRef.current)
+    phaseValuesRef.current.continuousPositions = calculateAllHelioData(currentDate)
+  })
+
+  return null
+}
+
 // ─── Transition Controller ──────────────────────────────────────────
 function TransitionController({
   viewMode,
@@ -1209,6 +1249,7 @@ function TransitionController({
       zodiacOpacity: 1 - clamp01(p / 0.25),
       smoothMoveT: smoothstep(clamp01((p - 0.25) / 0.6)),
       helioOpacity: clamp01((p - 0.7) / 0.3),
+      continuousPositions: phaseValuesRef.current.continuousPositions,
     }
   })
 
@@ -1297,10 +1338,15 @@ function EarthPositionAnimator({
   useFrame((_, delta) => {
     if (!groupRef.current || !helioData?.Earth) return
     const t = phaseValuesRef.current.smoothMoveT
+    const contPos = phaseValuesRef.current.continuousPositions
     if (t > 0.001) {
-      const targetX = helioData.Earth.sceneX * t
-      const targetZ = helioData.Earth.sceneY * t
-      if (t > 0.99) {
+      const activeEarth = (t > 0.99 && contPos?.Earth) ? contPos.Earth : helioData.Earth
+      const targetX = activeEarth.sceneX * t
+      const targetZ = activeEarth.sceneY * t
+      if (t > 0.99 && contPos) {
+        // Continuous animation — set directly
+        groupRef.current.position.set(targetX, 0, targetZ)
+      } else if (t > 0.99) {
         const lr = Math.min(delta * 8, 0.3)
         groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
         groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
@@ -1422,11 +1468,15 @@ function MoonOrbitRing({
     if (!groupRef.current || !helioData?.Earth) return
     const t = phaseValuesRef.current.smoothMoveT
     const helioOpacity = phaseValuesRef.current.helioOpacity
+    const contPos = phaseValuesRef.current.continuousPositions
 
     // Follow Earth's interpolated position
-    const targetX = helioData.Earth.sceneX * t
-    const targetZ = helioData.Earth.sceneY * t
-    if (t > 0.99) {
+    const activeEarth = (t > 0.99 && contPos?.Earth) ? contPos.Earth : helioData.Earth
+    const targetX = activeEarth.sceneX * t
+    const targetZ = activeEarth.sceneY * t
+    if (t > 0.99 && contPos) {
+      groupRef.current.position.set(targetX, 0, targetZ)
+    } else if (t > 0.99) {
       const lr = Math.min(delta * 8, 0.3)
       groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
       groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
@@ -1484,6 +1534,7 @@ function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
+  animationTimeRef, animationSpeedRef,
   sunLabel,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
@@ -1493,7 +1544,7 @@ function WheelScene({
   const prevAzimuth = useRef(0)
 
   // Transition state
-  const phaseValuesRef = useRef<PhaseValues>({ zodiacOpacity: 1, smoothMoveT: 0, helioOpacity: 0 })
+  const phaseValuesRef = useRef<PhaseValues>({ zodiacOpacity: 1, smoothMoveT: 0, helioOpacity: 0, continuousPositions: null })
   const transitionProgress = useRef(0)
 
   // Phase 6: Entrance finishes at 3000ms
@@ -1534,6 +1585,13 @@ function WheelScene({
       />
       <CameraDistanceAnimator transitionProgress={transitionProgress} />
       <HelioTiltAnimator controlsRef={controlsRef} transitionProgress={transitionProgress} />
+      {animationTimeRef && animationSpeedRef && (
+        <ContinuousTimeAnimator
+          animationTimeRef={animationTimeRef}
+          animationSpeedRef={animationSpeedRef}
+          phaseValuesRef={phaseValuesRef}
+        />
+      )}
 
       <group>
         {/* Phase 1: Earth ignites (0ms) — moves in helio view */}
