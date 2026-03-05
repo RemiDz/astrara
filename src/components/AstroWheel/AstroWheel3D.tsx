@@ -889,7 +889,7 @@ function PlanetOrb({
 
     // Helio scale: planets grow 1.8× in heliocentric view (Sun only 1.3×)
     const moveT = phaseValuesRef?.current.smoothMoveT ?? 0
-    const helioScaleFactor = planet.id === 'sun' ? 1.3 : 1.8
+    const helioScaleFactor = planet.id === 'sun' ? 2.5 : 3.5
     const viewScale = 1.0 + (helioScaleFactor - 1.0) * moveT
     if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current * viewScale)
 
@@ -1248,8 +1248,8 @@ function EarthPositionAnimator({
     } else {
       groupRef.current.position.set(0, 0, 0)
     }
-    // Scale Earth 1.8× in helio view
-    const earthScale = 1.0 + (1.8 - 1.0) * t
+    // Scale Earth 3.5× in helio view
+    const earthScale = 1.0 + (3.5 - 1.0) * t
     groupRef.current.scale.setScalar(earthScale)
   })
 
