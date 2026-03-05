@@ -336,9 +336,9 @@ function HomePage() {
 
         <main className="max-w-5xl mx-auto px-4 pb-12">
           {/* Desktop layout: wheel left, weather right */}
-          <div className="lg:flex lg:gap-8 lg:items-start">
+          <div className="xl:flex xl:gap-8 xl:items-start">
             {/* Astro Wheel */}
-            <div className="lg:flex-1 lg:sticky lg:top-4 py-4 relative">
+            <div className="xl:flex-1 xl:sticky xl:top-4 py-4 relative">
               {astroData ? (
                 <AstroWheel3DWrapper
                   planets={astroData.planets}
@@ -554,7 +554,7 @@ function HomePage() {
             </div>
 
             {/* Cosmic Weather Panel */}
-            <div className="lg:w-[400px] lg:flex-shrink-0 mt-6 lg:mt-4">
+            <div className="xl:w-[400px] xl:flex-shrink-0 mt-6 xl:mt-4">
               {astroData ? (
                 <CosmicWeather
                   planets={astroData.planets}
