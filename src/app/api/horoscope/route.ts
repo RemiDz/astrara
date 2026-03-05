@@ -70,7 +70,7 @@ Generate the following sections. Use clear section headers. Keep the total respo
     if (!response.ok) {
       const error = await response.text()
       console.error('Anthropic API error:', error)
-      return NextResponse.json({ error: 'Failed to generate horoscope' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to generate horoscope', details: error }, { status: 500 })
     }
 
     const data = await response.json()
