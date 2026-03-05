@@ -37,8 +37,9 @@ export const aboutContent: AboutContent = {
       icon: '\u2726',
       heading: 'The Astro Wheel',
       paragraphs: [
-        'The wheel at the centre of Astrara is a live map of the solar system as seen from Earth. You are standing at the centre \u2014 the small blue Earth \u2014 and everything around you is positioned exactly where it appears in the sky right now.',
-        'The twelve zodiac signs mark the sections of the sky. The planets are placed at their real astronomical positions. As you swipe between days, the planets move to where they actually were or will be.',
+        'The wheel at the centre of Astrara is a live map of the zodiac as seen from Earth. You are standing at the centre \u2014 the small blue Earth \u2014 and the planets are placed at their real angular positions along the ecliptic, the band of sky through which all planets travel.',
+        'The twelve zodiac signs mark 30\u00b0 sections of this band. Each planet sits at the exact degree where it actually appears in the sky right now. As you swipe between days, the planets move to where they actually were or will be.',
+        'The distance of each planet from the centre is arranged for visual clarity \u2014 it does not represent real astronomical distance. Think of it like a clock face: the angle is precise, the distance from the middle is just layout.',
         'All positions are calculated locally on your device using an open-source astronomical library called astronomy-engine, which is accurate to within a fraction of a degree and verified against NASA JPL data. No internet connection is needed for the calculations \u2014 your phone does the maths.',
       ],
     },
