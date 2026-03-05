@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Astrara \u00B7 Learning Reference',
+  title: 'Astrara · Learning Reference',
   robots: 'noindex, nofollow',
 }
 
@@ -76,7 +76,7 @@ export default function AboutPage() {
             <h2 className="text-2xl font-serif text-white/90 mb-8">The Ten Celestial Bodies</h2>
 
             <PlanetEntry
-              glyph="\u2609"
+              glyph="☉"
               name="Sun"
               domain="Core identity, vitality, life purpose, ego, consciousness"
               daily="When the Sun is emphasised by aspect or sign change, you feel a renewed sense of purpose. Your confidence strengthens. Questions of identity and self-expression come to the surface. You notice what genuinely lights you up versus what you do out of habit."
@@ -89,7 +89,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u263D"
+              glyph="☽"
               name="Moon"
               domain="Emotions, instincts, subconscious, nurturing, inner world"
               daily="The Moon sets the emotional temperature of each day. When the Moon changes sign, you may notice a shift in mood that has no obvious external cause. The Moon governs our needs for comfort, safety, and belonging. Pay attention to what your body and heart want, not just what your mind says."
@@ -102,7 +102,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u263F"
+              glyph="☿"
               name="Mercury"
               domain="Communication, thinking, learning, travel, technology"
               daily="When Mercury is active, conversations matter more. You think faster, write more clearly, and make connections between ideas. When Mercury is retrograde, the reverse happens — miscommunications, tech glitches, travel delays. These are not punishments. They are invitations to slow down and review."
@@ -115,7 +115,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2640"
+              glyph="♀"
               name="Venus"
               domain="Love, beauty, relationships, values, pleasure, art"
               daily="When Venus is active, you are drawn to beauty, comfort, and connection. Relationships feel warmer. You notice aesthetics more. You spend time on what brings pleasure rather than just productivity. Venus days are good for creative work, date nights, and treating yourself with kindness."
@@ -128,7 +128,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2642"
+              glyph="♂"
               name="Mars"
               domain="Drive, energy, action, courage, conflict, sexuality"
               daily="When Mars is active, your energy levels rise. You feel more assertive, more willing to take risks, and less patient with delay. Physical activity feels satisfying. Arguments can flare up more easily. Mars does not create conflict — it reveals where you already feel frustrated and gives you the courage to act."
@@ -141,7 +141,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2643"
+              glyph="♃"
               name="Jupiter"
               domain="Growth, expansion, luck, wisdom, abundance, travel"
               daily="When Jupiter is emphasised, opportunities appear. Your perspective broadens. You feel more optimistic and generous. Learning feels exciting. There is a risk of overextending — Jupiter does not know the word enough. Moderation is not its strength. Enjoy the expansion, but keep one foot on the ground."
@@ -154,7 +154,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2644"
+              glyph="♄"
               name="Saturn"
               domain="Structure, discipline, responsibility, limitations, karma, time"
               daily="When Saturn is active, reality checks arrive. Deadlines feel heavier. Responsibilities cannot be avoided. This is not negative — Saturn is the master teacher. It shows you where you need to build stronger foundations. The discomfort you feel under Saturn is the discomfort of growing up."
@@ -167,7 +167,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2645"
+              glyph="♅"
               name="Uranus"
               domain="Revolution, innovation, sudden change, freedom, awakening"
               daily="When Uranus is active, expect the unexpected. Routines break. New ideas arrive like lightning. You feel restless with anything that feels too predictable. Uranus energy is exciting but destabilising. It is the planet of breakthrough — but breakthrough requires something to break."
@@ -180,7 +180,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2646"
+              glyph="♆"
               name="Neptune"
               domain="Spirituality, dreams, illusion, intuition, transcendence, compassion"
               daily="When Neptune is active, boundaries dissolve. Imagination expands. You may feel more creative, more empathetic, or more confused — sometimes all three at once. Neptune makes the rational mind uncomfortable because it operates on feeling and intuition. Trust your inner knowing, but verify important decisions with clear-headed thinking."
@@ -193,7 +193,7 @@ export default function AboutPage() {
             />
 
             <PlanetEntry
-              glyph="\u2647"
+              glyph="♇"
               name="Pluto"
               domain="Transformation, death and rebirth, power, the unconscious, evolution"
               daily="When Pluto is active, superficial approaches fail. You are drawn to the deeper truth beneath surface appearances. Power dynamics become visible. Something may need to end so that something new can begin. Pluto transits are intense but always evolutionary — they strip away what is false and leave what is real."
@@ -213,65 +213,65 @@ export default function AboutPage() {
             <h2 className="text-2xl font-serif text-white/90 mb-8">The Twelve Zodiac Signs</h2>
 
             <SignEntry
-              glyph="\u2648"
+              glyph="♈"
               name="Aries"
-              dates="21 March \u2013 19 April"
+              dates="21 March – 19 April"
               element="Fire"
               modality="Cardinal"
               ruler="Mars"
               themes="Initiation, courage, independence, pioneering energy. Aries is the first sign — the spark that starts the fire. It represents raw will, the desire to begin, and the courage to act before thinking. Aries energy is direct, honest, and impatient with unnecessary complexity."
               body="Head, face, adrenal glands"
               shadow="Impulsiveness, selfishness, anger, impatience. Aries can start many things and finish few. The shadow is acting without considering impact on others."
-              sound="396 Hz solfeggio (liberation, releasing fear). Frame drums, fast rhythms, fire ceremony sounds. Aries responds to driving, energetic soundscapes that match its active nature. Use higher tempo binaural beats in the Beta range (14\u201330 Hz) to channel Aries energy productively."
+              sound="396 Hz solfeggio (liberation, releasing fear). Frame drums, fast rhythms, fire ceremony sounds. Aries responds to driving, energetic soundscapes that match its active nature. Use higher tempo binaural beats in the Beta range (14–30 Hz) to channel Aries energy productively."
               cluster="When multiple planets transit Aries, collective energy becomes assertive and competitive. New projects launch. Patience runs thin. Leadership struggles emerge. It is a time for bold action, not careful planning."
             />
 
             <SignEntry
-              glyph="\u2649"
+              glyph="♉"
               name="Taurus"
-              dates="20 April \u2013 20 May"
+              dates="20 April – 20 May"
               element="Earth"
               modality="Fixed"
               ruler="Venus"
               themes="Stability, sensuality, values, material security, patience. Taurus is the builder — slow, steady, and deeply connected to the physical world. It represents what we value enough to nurture over time. Taurus energy is loyal, practical, and appreciates beauty in tangible forms."
               body="Throat, neck, thyroid"
               shadow="Stubbornness, possessiveness, resistance to change, overindulgence. Taurus can hold on to things, people, and habits long past their usefulness. The shadow is confusing stability with stagnation."
-              sound="417 Hz solfeggio (facilitating change). Monochord drones, crystal bowls in lower octaves, root frequency 256 Hz. Taurus responds to sustained, grounding tones that vibrate through the body. Use Alpha brainwave binaural beats (8\u201314 Hz) for deep relaxation."
+              sound="417 Hz solfeggio (facilitating change). Monochord drones, crystal bowls in lower octaves, root frequency 256 Hz. Taurus responds to sustained, grounding tones that vibrate through the body. Use Alpha brainwave binaural beats (8–14 Hz) for deep relaxation."
               cluster="When multiple planets transit Taurus, collective focus turns to finances, food, comfort, and security. The economy gets attention. People crave stability. Change happens slowly but permanently."
             />
 
             <SignEntry
-              glyph="\u264A"
+              glyph="♊"
               name="Gemini"
-              dates="21 May \u2013 20 June"
+              dates="21 May – 20 June"
               element="Air"
               modality="Mutable"
               ruler="Mercury"
               themes="Communication, curiosity, duality, versatility, connection. Gemini is the messenger — quick, sociable, and endlessly curious. It represents the mind&apos;s desire to understand everything by connecting to everything. Gemini energy is light, adaptable, and thrives on variety."
               body="Hands, arms, lungs, nervous system"
               shadow="Superficiality, inconsistency, gossip, scattered energy. Gemini can know a little about everything and a lot about nothing. The shadow is mistaking information for understanding."
-              sound="528 Hz solfeggio (transformation, DNA repair). Tuning forks, wind chimes, higher-pitched singing bowls. Gemini responds to bright, varied sounds with changing patterns. Use Alpha-Beta bridge binaural beats (12\u201315 Hz) for mental clarity without overstimulation."
+              sound="528 Hz solfeggio (transformation, DNA repair). Tuning forks, wind chimes, higher-pitched singing bowls. Gemini responds to bright, varied sounds with changing patterns. Use Alpha-Beta bridge binaural beats (12–15 Hz) for mental clarity without overstimulation."
               cluster="When multiple planets transit Gemini, communication speeds up. Social media buzzes. People talk more than they listen. Information overload is real. It is a time for learning, networking, and exchanging ideas."
             />
 
             <SignEntry
-              glyph="\u264B"
+              glyph="♋"
               name="Cancer"
-              dates="21 June \u2013 22 July"
+              dates="21 June – 22 July"
               element="Water"
               modality="Cardinal"
               ruler="Moon"
               themes="Home, family, emotional security, nurturing, memory. Cancer is the protector — deeply caring, intuitive, and connected to ancestral roots. It represents our need to belong, to feel safe, and to care for others. Cancer energy is sensitive, receptive, and fiercely protective of what it loves."
               body="Chest, breasts, stomach"
               shadow="Clinginess, moodiness, over-sensitivity, emotional manipulation. Cancer can use care as a form of control. The shadow is building walls instead of homes."
-              sound="639 Hz solfeggio (connecting, relationships). Ocean drums, rain sticks, water sounds, gentle gong washes. Cancer responds to flowing, enveloping soundscapes that feel like being held. Use Theta binaural beats (4\u20138 Hz) for deep emotional processing."
+              sound="639 Hz solfeggio (connecting, relationships). Ocean drums, rain sticks, water sounds, gentle gong washes. Cancer responds to flowing, enveloping soundscapes that feel like being held. Use Theta binaural beats (4–8 Hz) for deep emotional processing."
               cluster="When multiple planets transit Cancer, emotional themes dominate. Family matters surface. People nest and seek comfort. Nostalgia increases. It is a time for healing old wounds and strengthening bonds."
             />
 
             <SignEntry
-              glyph="\u264C"
+              glyph="♌"
               name="Leo"
-              dates="23 July \u2013 22 August"
+              dates="23 July – 22 August"
               element="Fire"
               modality="Fixed"
               ruler="Sun"
@@ -283,9 +283,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u264D"
+              glyph="♍"
               name="Virgo"
-              dates="23 August \u2013 22 September"
+              dates="23 August – 22 September"
               element="Earth"
               modality="Mutable"
               ruler="Mercury"
@@ -297,9 +297,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u264E"
+              glyph="♎"
               name="Libra"
-              dates="23 September \u2013 22 October"
+              dates="23 September – 22 October"
               element="Air"
               modality="Cardinal"
               ruler="Venus"
@@ -311,9 +311,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u264F"
+              glyph="♏"
               name="Scorpio"
-              dates="23 October \u2013 21 November"
+              dates="23 October – 21 November"
               element="Water"
               modality="Fixed"
               ruler="Pluto (traditional: Mars)"
@@ -325,9 +325,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u2650"
+              glyph="♐"
               name="Sagittarius"
-              dates="22 November \u2013 21 December"
+              dates="22 November – 21 December"
               element="Fire"
               modality="Mutable"
               ruler="Jupiter"
@@ -339,9 +339,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u2651"
+              glyph="♑"
               name="Capricorn"
-              dates="22 December \u2013 19 January"
+              dates="22 December – 19 January"
               element="Earth"
               modality="Cardinal"
               ruler="Saturn"
@@ -353,9 +353,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u2652"
+              glyph="♒"
               name="Aquarius"
-              dates="20 January \u2013 18 February"
+              dates="20 January – 18 February"
               element="Air"
               modality="Fixed"
               ruler="Uranus (traditional: Saturn)"
@@ -367,9 +367,9 @@ export default function AboutPage() {
             />
 
             <SignEntry
-              glyph="\u2653"
+              glyph="♓"
               name="Pisces"
-              dates="19 February \u2013 20 March"
+              dates="19 February – 20 March"
               element="Water"
               modality="Mutable"
               ruler="Neptune (traditional: Jupiter)"
@@ -430,11 +430,11 @@ export default function AboutPage() {
           <section id="aspects">
             <h2 className="text-2xl font-serif text-white/90 mb-8">Planetary Aspects Explained</h2>
 
-            <AspectEntry angle="0\u00B0" name="Conjunction" description="Planets in the same sign. Their energies merge and amplify each other. Like two musicians playing the same note — powerful and focused. Conjunctions concentrate energy. The planets involved lose some individual identity and create something new together. A Sun-Mars conjunction feels like willpower on fire. A Venus-Saturn conjunction feels like love getting serious." />
-            <AspectEntry angle="60\u00B0" name="Sextile" description="Planets two signs apart. A harmonious, supportive connection. Opportunities that require a small effort to activate. Sextiles are gentle nudges — they do not force anything, but they make certain paths easier. You have to notice them and act. A Mercury-Jupiter sextile opens doors for learning, but you have to walk through them." />
-            <AspectEntry angle="90\u00B0" name="Square" description="Planets three signs apart. Friction, tension, challenge. These are growth aspects — uncomfortable but productive. Squares force you to act because the status quo becomes unbearable. They are the most dynamic aspects in astrology. A Moon-Saturn square feels emotionally heavy, but it builds emotional resilience." />
-            <AspectEntry angle="120\u00B0" name="Trine" description="Planets four signs apart. Natural harmony and flow. Talents and gifts that come easily. Trines feel good but can also mean complacency — when everything flows, there is less motivation to push. A Venus-Neptune trine gives effortless creativity and romantic idealism, but may lack practical grounding." />
-            <AspectEntry angle="180\u00B0" name="Opposition" description="Planets six signs apart. Awareness, polarity, balance. Forces you to see both sides. Oppositions often manifest through relationships and external events — other people embody the energy you are not expressing. A Sun-Moon opposition (Full Moon) illuminates what was hidden and demands integration of two opposing needs." />
+            <AspectEntry angle="0°" name="Conjunction" description="Planets in the same sign. Their energies merge and amplify each other. Like two musicians playing the same note — powerful and focused. Conjunctions concentrate energy. The planets involved lose some individual identity and create something new together. A Sun-Mars conjunction feels like willpower on fire. A Venus-Saturn conjunction feels like love getting serious." />
+            <AspectEntry angle="60°" name="Sextile" description="Planets two signs apart. A harmonious, supportive connection. Opportunities that require a small effort to activate. Sextiles are gentle nudges — they do not force anything, but they make certain paths easier. You have to notice them and act. A Mercury-Jupiter sextile opens doors for learning, but you have to walk through them." />
+            <AspectEntry angle="90°" name="Square" description="Planets three signs apart. Friction, tension, challenge. These are growth aspects — uncomfortable but productive. Squares force you to act because the status quo becomes unbearable. They are the most dynamic aspects in astrology. A Moon-Saturn square feels emotionally heavy, but it builds emotional resilience." />
+            <AspectEntry angle="120°" name="Trine" description="Planets four signs apart. Natural harmony and flow. Talents and gifts that come easily. Trines feel good but can also mean complacency — when everything flows, there is less motivation to push. A Venus-Neptune trine gives effortless creativity and romantic idealism, but may lack practical grounding." />
+            <AspectEntry angle="180°" name="Opposition" description="Planets six signs apart. Awareness, polarity, balance. Forces you to see both sides. Oppositions often manifest through relationships and external events — other people embody the energy you are not expressing. A Sun-Moon opposition (Full Moon) illuminates what was hidden and demands integration of two opposing needs." />
           </section>
 
           <Divider />
@@ -447,7 +447,7 @@ export default function AboutPage() {
               element="Fire"
               signs="Aries, Leo, Sagittarius"
               description="High energy, activation, inspiration. Fire energy is warm, bright, and upward-moving. It wants to DO. In sound healing, fire energy calls for rhythmic, energising sounds that move the body and ignite the spirit."
-              brainwave="Beta brainwaves (14\u201330 Hz binaural beats)"
+              brainwave="Beta brainwaves (14–30 Hz binaural beats)"
               instruments="Frame drums, djembe, didgeridoo, fire gong, rapid rhythmic patterns"
               frequencies="Higher tempo, driving beats. Mars frequency (144.72 Hz) as base. The goal is activation, not relaxation."
             />
@@ -456,7 +456,7 @@ export default function AboutPage() {
               element="Earth"
               signs="Taurus, Virgo, Capricorn"
               description="Grounding energy, stability, embodiment. Earth energy is slow, solid, and downward-rooting. It wants to BUILD. In sound healing, earth energy calls for sustained, anchoring sounds that bring awareness into the body and bones."
-              brainwave="Alpha brainwaves (8\u201314 Hz binaural beats)"
+              brainwave="Alpha brainwaves (8–14 Hz binaural beats)"
               instruments="Monochord, crystal bowls in lower octaves, Tibetan singing bowls, body-resonant drones"
               frequencies="Root frequency 256 Hz. Saturn frequency (147.85 Hz). Sustained tones, minimal variation. The goal is to ground and stabilise."
             />
@@ -465,7 +465,7 @@ export default function AboutPage() {
               element="Air"
               signs="Gemini, Libra, Aquarius"
               description="Mental clarity, communication, connection. Air energy is quick, light, and outward-reaching. It wants to THINK and CONNECT. In sound healing, air energy calls for bright, clear sounds that sharpen the mind without overwhelming it."
-              brainwave="Alpha-Beta bridge (12\u201315 Hz binaural beats)"
+              brainwave="Alpha-Beta bridge (12–15 Hz binaural beats)"
               instruments="Singing bowls, wind chimes, tuning forks, higher octave tones, bells"
               frequencies="Mercury frequency (141.27 Hz). Brighter, cleaner tones. The goal is mental clarity and open communication."
             />
@@ -474,7 +474,7 @@ export default function AboutPage() {
               element="Water"
               signs="Cancer, Scorpio, Pisces"
               description="Deep feeling, intuition, healing. Water energy is flowing, receptive, and inward-moving. It wants to FEEL and DISSOLVE. In sound healing, water energy calls for formless, immersive sounds that allow emotional release and spiritual connection."
-              brainwave="Theta brainwaves (4\u20138 Hz binaural beats)"
+              brainwave="Theta brainwaves (4–8 Hz binaural beats)"
               instruments="Ocean drum, rain stick, gong baths, ambient drones, singing bowls with water"
               frequencies="432 Hz tuning. Neptune frequency (211.44 Hz). Solfeggio frequencies. The goal is to dissolve barriers and access deeper feeling."
             />
@@ -534,16 +534,16 @@ export default function AboutPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <Tr cells={['\u2609 Sun', '126.22', 'B', 'Solar Plexus / Heart', 'Gold / Orange']} />
-                  <Tr cells={['\u263D Moon', '210.42', 'G#', 'Sacral', 'Silver / Violet']} />
-                  <Tr cells={['\u263F Mercury', '141.27', 'C# / D', 'Throat', 'Yellow-Green']} />
-                  <Tr cells={['\u2640 Venus', '221.23', 'A', 'Heart / Sacral', 'Green / Pink']} />
-                  <Tr cells={['\u2642 Mars', '144.72', 'D', 'Solar Plexus / Root', 'Red']} />
-                  <Tr cells={['\u2643 Jupiter', '183.58', 'F#', 'Crown', 'Blue / Purple']} />
-                  <Tr cells={['\u2644 Saturn', '147.85', 'D', 'Root', 'Dark Blue / Black']} />
-                  <Tr cells={['\u2645 Uranus', '207.36', 'G#', 'Third Eye', 'Electric Blue']} />
-                  <Tr cells={['\u2646 Neptune', '211.44', 'G#', 'Crown', 'Turquoise / Sea Green']} />
-                  <Tr cells={['\u2647 Pluto', '140.25', 'C#', 'Root', 'Deep Crimson / Black']} />
+                  <Tr cells={['☉ Sun', '126.22', 'B', 'Solar Plexus / Heart', 'Gold / Orange']} />
+                  <Tr cells={['☽ Moon', '210.42', 'G#', 'Sacral', 'Silver / Violet']} />
+                  <Tr cells={['☿ Mercury', '141.27', 'C# / D', 'Throat', 'Yellow-Green']} />
+                  <Tr cells={['♀ Venus', '221.23', 'A', 'Heart / Sacral', 'Green / Pink']} />
+                  <Tr cells={['♂ Mars', '144.72', 'D', 'Solar Plexus / Root', 'Red']} />
+                  <Tr cells={['♃ Jupiter', '183.58', 'F#', 'Crown', 'Blue / Purple']} />
+                  <Tr cells={['♄ Saturn', '147.85', 'D', 'Root', 'Dark Blue / Black']} />
+                  <Tr cells={['♅ Uranus', '207.36', 'G#', 'Third Eye', 'Electric Blue']} />
+                  <Tr cells={['♆ Neptune', '211.44', 'G#', 'Crown', 'Turquoise / Sea Green']} />
+                  <Tr cells={['♇ Pluto', '140.25', 'C#', 'Root', 'Deep Crimson / Black']} />
                 </tbody>
               </table>
             </div>
@@ -557,18 +557,18 @@ export default function AboutPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <Tr cells={['\u2648 Aries', '396', 'Liberation, releasing fear']} />
-                  <Tr cells={['\u2649 Taurus', '417', 'Facilitating change']} />
-                  <Tr cells={['\u264A Gemini', '528', 'Transformation, DNA repair']} />
-                  <Tr cells={['\u264B Cancer', '639', 'Connecting, relationships']} />
-                  <Tr cells={['\u264C Leo', '741', 'Expression, solutions']} />
-                  <Tr cells={['\u264D Virgo', '852', 'Returning to spiritual order']} />
-                  <Tr cells={['\u264E Libra', '639', 'Connecting, harmony']} />
-                  <Tr cells={['\u264F Scorpio', '174', 'Foundation, pain reduction']} />
-                  <Tr cells={['\u2650 Sagittarius', '741', 'Expression, awakening intuition']} />
-                  <Tr cells={['\u2651 Capricorn', '285', 'Influence, energy field healing']} />
-                  <Tr cells={['\u2652 Aquarius', '963', 'Awakening, cosmic consciousness']} />
-                  <Tr cells={['\u2653 Pisces', '852', 'Intuition, inner vision']} />
+                  <Tr cells={['♈ Aries', '396', 'Liberation, releasing fear']} />
+                  <Tr cells={['♉ Taurus', '417', 'Facilitating change']} />
+                  <Tr cells={['♊ Gemini', '528', 'Transformation, DNA repair']} />
+                  <Tr cells={['♋ Cancer', '639', 'Connecting, relationships']} />
+                  <Tr cells={['♌ Leo', '741', 'Expression, solutions']} />
+                  <Tr cells={['♍ Virgo', '852', 'Returning to spiritual order']} />
+                  <Tr cells={['♎ Libra', '639', 'Connecting, harmony']} />
+                  <Tr cells={['♏ Scorpio', '174', 'Foundation, pain reduction']} />
+                  <Tr cells={['♐ Sagittarius', '741', 'Expression, awakening intuition']} />
+                  <Tr cells={['♑ Capricorn', '285', 'Influence, energy field healing']} />
+                  <Tr cells={['♒ Aquarius', '963', 'Awakening, cosmic consciousness']} />
+                  <Tr cells={['♓ Pisces', '852', 'Intuition, inner vision']} />
                 </tbody>
               </table>
             </div>
