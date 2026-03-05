@@ -7,7 +7,16 @@
       "Bash(mkdir:*)",
       "Bash(npm run:*)",
       "Bash(python3:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(npx next:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm root:*)",
+      "Bash(where playwright:*)",
+      "Bash(npx:*)",
+      "Bash(rm:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }
