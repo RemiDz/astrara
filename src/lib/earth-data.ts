@@ -46,7 +46,7 @@ export async function fetchEarthData(): Promise<EarthData> {
       if (kpData.length > 1) {
         const latest = kpData[kpData.length - 1]
         const kp = parseFloat(latest[1])
-        defaults.kpIndex = kp
+        defaults.kpIndex = isNaN(kp) ? 0 : kp
         defaults.kpTimestamp = latest[0]
         defaults.kpLabel = getKpLabel(kp)
       }

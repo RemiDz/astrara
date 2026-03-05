@@ -11,7 +11,7 @@ export function useEarthData() {
     fetchEarthData().then(data => {
       setEarthData(data)
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
 
     const interval = setInterval(() => {
       fetchEarthData().then(setEarthData)

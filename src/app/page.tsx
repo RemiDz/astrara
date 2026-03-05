@@ -10,11 +10,10 @@ import { useCosmicAudio } from '@/audio/useCosmicAudio'
 import { useEarthData } from '@/hooks/useEarthData'
 import { searchCity, type UserLocation } from '@/lib/location'
 import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
-import { calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
+import { calculateAllHelioData } from '@/lib/heliocentric'
 import { calculateAspects } from '@/lib/aspects'
 import CosmicBackground from '@/components/Starfield/CosmicBackground'
 import Header from '@/components/Header/Header'
-import AstroWheel from '@/components/AstroWheel/AstroWheel'
 import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
 import WheelTooltip, { type TooltipData } from '@/components/AstroWheel/WheelTooltip'
 import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
@@ -68,6 +67,7 @@ function HomePage() {
   const [birthSubmitted, setBirthSubmitted] = useState(false)
   const [birthChartData, setBirthChartData] = useState<{ planets: PlanetPosition[], aspects: AspectData[] } | null>(null)
   const birthSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const headphoneHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const baseDate = customDate ?? now
   const isToday = !customDate && dayOffset === 0
@@ -211,7 +211,8 @@ function HomePage() {
       if (!hintShown) {
         setShowHeadphoneHint(true)
         localStorage.setItem('astrara-audio-hint', '1')
-        setTimeout(() => setShowHeadphoneHint(false), 3000)
+        if (headphoneHintTimerRef.current) clearTimeout(headphoneHintTimerRef.current)
+        headphoneHintTimerRef.current = setTimeout(() => setShowHeadphoneHint(false), 3000)
       }
     }
   }, [toggleAudio, audioPlaying])
@@ -670,8 +671,9 @@ function HomePage() {
 
                 {/* Sun & Moon highlights */}
                 {(() => {
-                  const sun = birthChartData.planets.find(p => p.id === 'sun')!
-                  const moon = birthChartData.planets.find(p => p.id === 'moon')!
+                  const sun = birthChartData.planets.find(p => p.id === 'sun')
+                  const moon = birthChartData.planets.find(p => p.id === 'moon')
+                  if (!sun || !moon) return null
                   return (
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>

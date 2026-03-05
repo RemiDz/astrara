@@ -48,8 +48,8 @@ class Wheel3DErrorBoundary extends Component<
     return { hasError: true }
   }
 
-  componentDidCatch(error: Error) {
-    console.warn('3D wheel failed, falling back to 2D:', error.message)
+  componentDidCatch() {
+    // Silent fallback to 2D wheel
   }
 
   render() {

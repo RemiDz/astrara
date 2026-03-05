@@ -88,12 +88,13 @@ One evocative word.`
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('Anthropic API error:', error)
-      return NextResponse.json({ error: 'Failed to generate horoscope', details: error }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to generate horoscope' }, { status: 500 })
     }
 
     const data = await response.json()
+    if (!data.content || !Array.isArray(data.content)) {
+      return NextResponse.json({ error: 'Unexpected API response' }, { status: 500 })
+    }
     const horoscope = data.content
       .filter((block: { type: string }) => block.type === 'text')
       .map((block: { text: string }) => block.text)

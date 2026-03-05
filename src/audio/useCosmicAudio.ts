@@ -58,6 +58,14 @@ export function useCosmicAudio(planets: PlanetPosition[], moonSign: string) {
     engineRef.current?.updateRotationVelocity(velocity)
   }, [])
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      engineRef.current?.stop()
+      engineRef.current?.stopRotationSound()
+    }
+  }, [])
+
   // Update audio when Moon sign / day changes
   useEffect(() => {
     if (isPlaying && engineRef.current) {

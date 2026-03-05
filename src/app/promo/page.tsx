@@ -6,8 +6,7 @@ import * as Astronomy from 'astronomy-engine'
 import { getPlanetPositions, getMoonData, type PlanetPosition, type MoonData } from '@/lib/astronomy'
 import { fetchEarthData, type EarthData } from '@/lib/earth-data'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
-import { PLANETS } from '@/lib/planets'
-import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
+import { LanguageProvider } from '@/i18n/LanguageContext'
 import { useTranslation } from '@/i18n/useTranslation'
 import LanguageToggle from '@/components/LanguageToggle'
 
@@ -179,8 +178,8 @@ function PromoPage() {
       if (!response.ok) throw new Error('Failed to generate weekly horoscope')
       const data = await response.json()
       setWeeklyHoroscope(data.horoscope)
-    } catch (err) {
-      console.error(err)
+    } catch {
+      setWeeklyHoroscope('')
     } finally {
       setIsGeneratingWeekly(false)
     }
@@ -220,8 +219,8 @@ function PromoPage() {
       if (!response.ok) throw new Error('Failed to generate daily reading')
       const data = await response.json()
       setDailyReading(data.reading)
-    } catch (err) {
-      console.error(err)
+    } catch {
+      setDailyReading('')
     } finally {
       setIsGeneratingDaily(false)
     }
@@ -709,6 +708,7 @@ function CaptionBlock({ label, content, copied, onCopy }: {
   copied: boolean
   onCopy: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="p-4 rounded-xl border border-white/5" style={{ background: 'rgba(255,255,255,0.03)' }}>
       <div className="flex items-center justify-between mb-3">
@@ -719,7 +719,7 @@ function CaptionBlock({ label, content, copied, onCopy }: {
           onClick={onCopy}
           className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('promo.copied') : t('promo.copy')}
         </button>
       </div>
       <pre className="text-white/70 text-sm whitespace-pre-wrap font-[family-name:var(--font-body)] leading-relaxed">
