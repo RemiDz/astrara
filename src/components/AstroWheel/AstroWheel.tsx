@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import ZodiacRing from './ZodiacRing'
 import PlanetMarker from './PlanetMarker'
-import AspectLines from './AspectLines'
 
 interface AstroWheelProps {
   planets: PlanetPosition[]
@@ -125,11 +124,6 @@ export default function AstroWheel({
   const innerRadius = 170
   const planetRadius = 140
 
-  // Filter aspects for selected planet
-  const visibleAspects = selectedPlanet
-    ? aspects.filter(a => a.planet1 === selectedPlanet || a.planet2 === selectedPlanet)
-    : aspects
-
   return (
     <div className="relative w-full max-w-[90vw] md:max-w-[60vw] lg:max-w-[min(500px,45vw)] mx-auto aspect-square">
       <svg
@@ -171,14 +165,6 @@ export default function AstroWheel({
             onSignTap={onSignTap}
           />
 
-          {/* Aspect lines */}
-          <AspectLines
-            aspects={visibleAspects}
-            planets={planets}
-            center={center}
-            radius={planetRadius}
-          />
-
           {/* Planet markers */}
           {planets.map(planet => (
             <PlanetMarker
@@ -196,31 +182,6 @@ export default function AstroWheel({
         {/* Center earth dot */}
         <circle cx={center} cy={center} r={3} fill="rgba(255,255,255,0.2)" />
 
-        {/* Aspect tap zones (invisible, on top) */}
-        <g transform={`rotate(${rotation} ${center} ${center})`}>
-          {visibleAspects.map((aspect, i) => {
-            const p1 = planets.find(p => p.id === aspect.planet1)
-            const p2 = planets.find(p => p.id === aspect.planet2)
-            if (!p1 || !p2) return null
-            const angle1 = (p1.eclipticLongitude - 90) * (Math.PI / 180)
-            const angle2 = (p2.eclipticLongitude - 90) * (Math.PI / 180)
-            const x1 = center + Math.cos(angle1) * planetRadius
-            const y1 = center + Math.sin(angle1) * planetRadius
-            const x2 = center + Math.cos(angle2) * planetRadius
-            const y2 = center + Math.sin(angle2) * planetRadius
-            return (
-              <line
-                key={`aspect-hit-${i}`}
-                x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="transparent"
-                strokeWidth={16}
-                data-interactive="true"
-                className="cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); onAspectTap(aspect) }}
-              />
-            )
-          })}
-        </g>
       </svg>
     </div>
   )
