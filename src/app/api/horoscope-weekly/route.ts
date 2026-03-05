@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { sign, weekPositions, weekStart, weekEnd } = await req.json()
+    const { sign, weekPositions, weekStart, weekEnd, lang } = await req.json()
 
     if (!sign || !weekPositions) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -26,7 +26,7 @@ WRITING RULES — follow these strictly:
 - Be specific. Reference actual planet names, signs, and degrees.
 - Be warm and encouraging, never alarming or negative.
 - Sound like a knowledgeable friend giving weekly advice.
-- Mention sound healing tips where naturally relevant.`
+- Mention sound healing tips where naturally relevant.${lang === 'lt' ? '\n- Write the entire reading in Lithuanian language.' : ''}`
 
     const userPrompt = `Generate a WEEKLY horoscope for ${sign} for the week of ${weekStart} to ${weekEnd}.
 

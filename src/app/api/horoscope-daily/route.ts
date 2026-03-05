@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { positions, moonPhase, kpIndex, solarClass, overallImpact, date } = await req.json()
+    const { positions, moonPhase, kpIndex, solarClass, overallImpact, date, lang } = await req.json()
 
     if (!positions) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -27,7 +27,7 @@ WRITING RULES — follow these strictly:
 - Be warm and encouraging, never alarming or negative.
 - Sound like a knowledgeable friend giving a morning briefing about the sky.
 - Mention sound healing connections where naturally relevant — frequencies, instruments, or techniques.
-- Write for social media — this will be posted on TikTok and Instagram.`
+- Write for social media — this will be posted on TikTok and Instagram.${lang === 'lt' ? '\n- Write the entire reading in Lithuanian language.' : ''}`
 
     const userPrompt = `Generate a general daily cosmic reading for ${date}. This is for EVERYONE, not a specific zodiac sign.
 

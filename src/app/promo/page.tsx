@@ -7,6 +7,9 @@ import { getPlanetPositions, getMoonData, type PlanetPosition, type MoonData } f
 import { fetchEarthData, type EarthData } from '@/lib/earth-data'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { PLANETS } from '@/lib/planets'
+import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
+import { useTranslation } from '@/i18n/useTranslation'
+import LanguageToggle from '@/components/LanguageToggle'
 
 const markdownComponents = {
   h2: ({ children }: { children?: React.ReactNode }) => (
@@ -33,7 +36,16 @@ const markdownComponents = {
   ),
 }
 
-export default function PromoPage() {
+export default function Page() {
+  return (
+    <LanguageProvider>
+      <PromoPage />
+    </LanguageProvider>
+  )
+}
+
+function PromoPage() {
+  const { t, lang } = useTranslation()
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [selectedSign, setSelectedSign] = useState<string>('Aries')
   const [earthData, setEarthData] = useState<EarthData | null>(null)
@@ -126,6 +138,7 @@ export default function PromoPage() {
           date: selectedDate.toLocaleDateString('en-GB', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
           }),
+          lang,
         }),
       })
 
@@ -133,11 +146,11 @@ export default function PromoPage() {
       const data = await response.json()
       setHoroscope(data.horoscope)
     } catch {
-      setGenerationError('Failed to generate horoscope. Check your API key.')
+      setGenerationError(t('promo.failedGenerate'))
     } finally {
       setIsGenerating(false)
     }
-  }, [impacts, positions, moonData, earthData, selectedDate])
+  }, [impacts, positions, moonData, earthData, selectedDate, lang, t])
 
   // Weekly horoscope generation
   const generateWeeklyHoroscope = useCallback(async (sign: string) => {
@@ -153,6 +166,7 @@ export default function PromoPage() {
           weekPositions: weekData,
           weekStart: weekData.weekStart,
           weekEnd: weekData.weekEnd,
+          lang,
         }),
       })
 
@@ -164,7 +178,7 @@ export default function PromoPage() {
     } finally {
       setIsGeneratingWeekly(false)
     }
-  }, [weekData])
+  }, [weekData, lang])
 
   // Daily cosmic reading generation
   const generateDailyReading = useCallback(async () => {
@@ -193,6 +207,7 @@ export default function PromoPage() {
           date: selectedDate.toLocaleDateString('en-GB', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
           }),
+          lang,
         }),
       })
 
@@ -204,7 +219,7 @@ export default function PromoPage() {
     } finally {
       setIsGeneratingDaily(false)
     }
-  }, [positions, moonData, earthData, overallImpact, selectedDate])
+  }, [positions, moonData, earthData, overallImpact, selectedDate, lang])
 
   // Auto-generate when sign changes
   const signRef = useRef(selectedSign)
@@ -303,9 +318,12 @@ export default function PromoPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-semibold tracking-wide text-white/90">
-            ASTRARA <span className="text-white/30 font-normal">Content Studio</span>
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-semibold tracking-wide text-white/90">
+              ASTRARA <span className="text-white/30 font-normal">{t('promo.title')}</span>
+            </h1>
+            <LanguageToggle />
+          </div>
           <div className="mt-4">
             <input
               type="date"
@@ -326,7 +344,7 @@ export default function PromoPage() {
         <section className="mb-8">
           <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider">
-              Today&apos;s Cosmic Weather
+              {t('promo.cosmicWeather')}
             </h2>
             <div className="flex items-center gap-3">
               <div className="flex gap-1">
@@ -350,7 +368,7 @@ export default function PromoPage() {
 
           {/* Planetary Positions */}
           <div className="mb-4">
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Planetary Positions</p>
+            <p className="text-white/30 text-xs uppercase tracking-wider mb-2">{t('promo.planetaryPositions')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/60">
               {positions.map(p => (
                 <span key={p.id}>
@@ -364,17 +382,17 @@ export default function PromoPage() {
           {/* Moon Phase & Space Weather */}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-white/50">
             <span>
-              Moon Phase: {moonData.phase} ({Math.round(moonData.illumination * 100)}%)
+              {t('promo.moonPhase')}: {moonData.phase} ({Math.round(moonData.illumination * 100)}%)
             </span>
             {earthData && !earthData.fetchError ? (
               <>
-                <span>Kp Index: {earthData.kpIndex} ({earthData.kpLabel})</span>
-                <span>Solar: {earthData.solarFlareClass}</span>
+                <span>{t('promo.kpIndex')}: {earthData.kpIndex} ({earthData.kpLabel})</span>
+                <span>{t('promo.solar')}: {earthData.solarFlareClass}</span>
               </>
             ) : earthLoading ? (
-              <span className="text-white/20">Loading space weather...</span>
+              <span className="text-white/20">{t('promo.loadingWeather')}</span>
             ) : (
-              <span className="text-white/20">Space weather data unavailable</span>
+              <span className="text-white/20">{t('promo.weatherUnavailable')}</span>
             )}
           </div>
         </section>
@@ -383,14 +401,14 @@ export default function PromoPage() {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
-              Daily Cosmic Reading
+              {t('promo.dailyCosmic')}
             </h2>
             <button
               onClick={generateDailyReading}
               disabled={isGeneratingDaily}
               className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              {isGeneratingDaily ? 'Generating...' : dailyReading ? '\u21BB Regenerate' : '\u2728 Generate Daily Reading'}
+              {isGeneratingDaily ? t('promo.generating') : dailyReading ? `\u21BB ${t('promo.regenerateDaily')}` : `\u2728 ${t('promo.generateDaily')}`}
             </button>
           </div>
 
@@ -398,7 +416,7 @@ export default function PromoPage() {
             {isGeneratingDaily && (
               <div className="flex items-center gap-3 text-white/40">
                 <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                <span className="text-sm">Reading today&apos;s cosmic weather...</span>
+                <span className="text-sm">{t('promo.readingCosmic')}</span>
               </div>
             )}
 
@@ -412,7 +430,7 @@ export default function PromoPage() {
                     onClick={() => handleCopy('dailyReading', dailyReading)}
                     className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
                   >
-                    {copiedField === 'dailyReading' ? 'Copied' : 'Copy Reading'}
+                    {copiedField === 'dailyReading' ? t('promo.copied') : t('promo.copyReading')}
                   </button>
                 </div>
               </div>
@@ -420,7 +438,7 @@ export default function PromoPage() {
 
             {!dailyReading && !isGeneratingDaily && (
               <p className="text-white/30 text-sm italic">
-                Click &ldquo;Generate Daily Reading&rdquo; for today&apos;s universal cosmic briefing.
+                {t('promo.clickDaily')}
               </p>
             )}
           </div>
@@ -448,7 +466,7 @@ export default function PromoPage() {
         {/* Zodiac Impact Rankings */}
         <section className="mb-8">
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            Zodiac Impact Rankings
+            {t('promo.impactRankings')}
           </h2>
           <div className="space-y-1">
             {impacts.map((impact, i) => (
@@ -484,7 +502,7 @@ export default function PromoPage() {
                     color: impact.colour,
                   }}
                 >
-                  {impact.level}
+                  {t(`promo.${impact.level}`)}
                 </span>
               </div>
             ))}
@@ -496,7 +514,7 @@ export default function PromoPage() {
         {/* Zodiac Reading */}
         <section className="mb-8">
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            Zodiac Reading
+            {t('promo.zodiacReading')}
           </h2>
           <select
             value={selectedSign}
@@ -527,29 +545,29 @@ export default function PromoPage() {
           <div className="mt-6 p-6 rounded-xl border border-white/5 min-h-[200px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white/80 text-lg font-medium font-[family-name:var(--font-display)]">
-                {selectedImpact?.glyph} {selectedSign} &middot; Daily Reading
+                {selectedImpact?.glyph} {selectedSign} &middot; {t('promo.dailyReading')}
               </h3>
               <button
                 onClick={() => generateHoroscope(selectedSign)}
                 disabled={isGenerating}
                 className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
               >
-                {isGenerating ? 'Generating...' : '\u21BB Regenerate'}
+                {isGenerating ? t('promo.generating') : `\u21BB ${t('promo.regenerate')}`}
               </button>
             </div>
 
             {isGenerating && (
               <div className="flex items-center gap-3 text-white/40">
                 <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                <span className="text-sm">Reading the stars for {selectedSign}...</span>
+                <span className="text-sm">{t('promo.readingStars')} {selectedSign}...</span>
               </div>
             )}
 
             {generationError && (
               <div className="text-sm space-y-2">
-                <p className="text-amber-400/80">{generationError}</p>
+                <p className="text-amber-400/80">{t('promo.failedGenerate')}</p>
                 <p className="text-white/30">
-                  Add ANTHROPIC_API_KEY to your .env.local file or Vercel environment variables.
+                  {t('promo.apiKeyHint')}
                 </p>
               </div>
             )}
@@ -564,7 +582,7 @@ export default function PromoPage() {
                     onClick={() => handleCopy('horoscope', horoscope)}
                     className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
                   >
-                    {copiedField === 'horoscope' ? 'Copied' : 'Copy Reading'}
+                    {copiedField === 'horoscope' ? t('promo.copied') : t('promo.copyReading')}
                   </button>
                 </div>
               </div>
@@ -572,7 +590,7 @@ export default function PromoPage() {
 
             {!horoscope && !isGenerating && !generationError && (
               <p className="text-white/30 text-sm italic">
-                Click &ldquo;Regenerate&rdquo; to generate a reading for {selectedSign}.
+                {t('promo.clickRegenerate')} {selectedSign}.
               </p>
             )}
           </div>
@@ -581,18 +599,18 @@ export default function PromoPage() {
           <div className="mt-12">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
-                Weekly Reading
+                {t('promo.weeklyReading')}
               </h2>
               <div className="flex items-center gap-3">
                 <span className="text-white/40 text-sm">
-                  Week of {weekData.weekStart}
+                  {t('promo.weekOf')} {weekData.weekStart}
                 </span>
                 <button
                   onClick={() => generateWeeklyHoroscope(selectedSign)}
                   disabled={isGeneratingWeekly}
                   className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  {isGeneratingWeekly ? 'Generating...' : '\u21BB Generate Weekly'}
+                  {isGeneratingWeekly ? t('promo.generating') : `\u21BB ${t('promo.generateWeekly')}`}
                 </button>
               </div>
             </div>
@@ -601,7 +619,7 @@ export default function PromoPage() {
               {isGeneratingWeekly && (
                 <div className="flex items-center gap-3 text-white/40">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                  <span className="text-sm">Reading the stars for {selectedSign}&apos;s week ahead...</span>
+                  <span className="text-sm">{t('promo.readingWeekStars')} {selectedSign} {t('promo.weekAhead')}</span>
                 </div>
               )}
 
@@ -615,7 +633,7 @@ export default function PromoPage() {
                       onClick={() => handleCopy('weekly', weeklyHoroscope)}
                       className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
                     >
-                      {copiedField === 'weekly' ? 'Copied' : 'Copy Weekly Reading'}
+                      {copiedField === 'weekly' ? t('promo.copied') : t('promo.copyWeekly')}
                     </button>
                   </div>
                 </div>
@@ -623,7 +641,7 @@ export default function PromoPage() {
 
               {!weeklyHoroscope && !isGeneratingWeekly && (
                 <p className="text-white/30 text-sm italic">
-                  Click &ldquo;Generate Weekly&rdquo; to create a weekly reading for {selectedSign}.
+                  {t('promo.clickWeekly')} {selectedSign}.
                 </p>
               )}
             </div>
@@ -635,7 +653,7 @@ export default function PromoPage() {
         {/* Social Captions */}
         <section className="mb-8">
           <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            Social Captions
+            {t('promo.socialCaptions')}
           </h2>
           {captions && (
             <div className="space-y-4">

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { sign, positions, moonPhase, kpIndex, solarClass, impactScore, impactFactors, date } = await req.json()
+    const { sign, positions, moonPhase, kpIndex, solarClass, impactScore, impactFactors, date, lang } = await req.json()
 
     if (!sign || !positions) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -30,7 +30,7 @@ WRITING RULES — follow these strictly:
 - Be specific. Reference actual planet names, signs, and degrees from the data provided.
 - Be warm and encouraging, never alarming or negative.
 - Sound like a knowledgeable friend, not a textbook or fortune cookie.
-- Where relevant, briefly mention sound healing connections — frequencies, instruments, or techniques that align with today's energy. Keep these natural, not forced.`
+- Where relevant, briefly mention sound healing connections — frequencies, instruments, or techniques that align with today's energy. Keep these natural, not forced.${lang === 'lt' ? '\n- Write the entire reading in Lithuanian language.' : ''}`
 
     const userPrompt = `Generate a daily horoscope for ${sign} for ${date}.
 
