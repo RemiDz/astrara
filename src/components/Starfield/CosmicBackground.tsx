@@ -83,101 +83,130 @@ function createStarSpriteTexture(hasDiffraction: boolean): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas)
 }
 
-function createNebulaTexture(hue: number, saturation: number, complexity: number): THREE.CanvasTexture {
-  const size = 512
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')!
+// ─── Nebula Particle Shaders ────────────────────────────────────
+const nebulaVertexShader = /* glsl */ `
+  attribute float aOpacity;
+  attribute float aSize;
+  attribute vec3 aColor;
+  varying float vOpacity;
+  varying vec3 vColor;
+  uniform float uGlobalOpacity;
 
-  // Transparent background — additive blending makes rgba(0,0,0,0) invisible
-  ctx.clearRect(0, 0, size, size)
-
-  const colour = new THREE.Color()
-
-  // Large base clouds
-  for (let i = 0; i < complexity * 8; i++) {
-    const x = size * 0.2 + Math.random() * size * 0.6
-    const y = size * 0.2 + Math.random() * size * 0.6
-    const radius = size * (0.15 + Math.random() * 0.35)
-
-    colour.setHSL(
-      hue + (Math.random() - 0.5) * 0.1,
-      saturation * (0.5 + Math.random() * 0.5),
-      0.3 + Math.random() * 0.2
-    )
-
-    const r = (colour.r * 255) | 0
-    const g = (colour.g * 255) | 0
-    const b = (colour.b * 255) | 0
-
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
-    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.18)`)
-    grad.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, 0.10)`)
-    grad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, 0.04)`)
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
-
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, size, size)
+  void main() {
+    vOpacity = aOpacity * uGlobalOpacity;
+    vColor = aColor;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    float dist = length(mvPosition.xyz);
+    gl_PointSize = aSize * (600.0 / max(1.0, dist));
+    gl_Position = projectionMatrix * mvPosition;
   }
+`
 
-  // Small detail wisps for realism
-  for (let i = 0; i < complexity * 5; i++) {
-    const x = size * 0.15 + Math.random() * size * 0.7
-    const y = size * 0.15 + Math.random() * size * 0.7
-    const radius = size * (0.05 + Math.random() * 0.15)
+const nebulaFragmentShader = /* glsl */ `
+  varying float vOpacity;
+  varying vec3 vColor;
 
-    colour.setHSL(
-      hue + (Math.random() - 0.5) * 0.15,
-      saturation * (0.6 + Math.random() * 0.4),
-      0.35 + Math.random() * 0.25
-    )
-
-    const r = (colour.r * 255) | 0
-    const g = (colour.g * 255) | 0
-    const b = (colour.b * 255) | 0
-
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
-    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.22)`)
-    grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.08)`)
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
-
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, size, size)
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5));
+    if (d > 0.5) discard;
+    float alpha = smoothstep(0.5, 0.0, d) * vOpacity;
+    gl_FragColor = vec4(vColor, alpha);
   }
+`
 
-  // Radial vignette — fade to transparent at edges so sprite boundary is invisible
-  ctx.globalCompositeOperation = 'destination-in'
-  const vignette = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.5)
-  vignette.addColorStop(0, 'rgba(255, 255, 255, 1)')
-  vignette.addColorStop(0.55, 'rgba(255, 255, 255, 1)')
-  vignette.addColorStop(0.85, 'rgba(255, 255, 255, 0.4)')
-  vignette.addColorStop(1, 'rgba(255, 255, 255, 0)')
-  ctx.fillStyle = vignette
-  ctx.fillRect(0, 0, size, size)
-
-  return new THREE.CanvasTexture(canvas)
+// ─── Nebula Configs ─────────────────────────────────────────────
+interface NebulaConfig {
+  centreX: number; centreY: number; centreZ: number
+  spreadX: number; spreadY: number; spreadZ: number
+  particleCount: number
+  colour1: string; colour2: string
+  maxOpacity: number
 }
 
-function createGalaxyTexture(): THREE.CanvasTexture {
-  const w = 128
-  const h = 64
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')!
+const NEBULA_CONFIGS: NebulaConfig[] = [
+  {
+    centreX: -50, centreY: 30, centreZ: -120,
+    spreadX: 25, spreadY: 18, spreadZ: 8,
+    particleCount: 800,
+    colour1: '#1e1040', colour2: '#0d1f3c',
+    maxOpacity: 0.35,
+  },
+  {
+    centreX: 40, centreY: 25, centreZ: -110,
+    spreadX: 15, spreadY: 20, spreadZ: 6,
+    particleCount: 500,
+    colour1: '#0a2a2a', colour2: '#0d1f3c',
+    maxOpacity: 0.25,
+  },
+  {
+    centreX: 5, centreY: -35, centreZ: -130,
+    spreadX: 30, spreadY: 12, spreadZ: 10,
+    particleCount: 600,
+    colour1: '#2a1a0a', colour2: '#1a0a1a',
+    maxOpacity: 0.20,
+  },
+  {
+    centreX: 0, centreY: 0, centreZ: -140,
+    spreadX: 40, spreadY: 30, spreadZ: 15,
+    particleCount: 1000,
+    colour1: '#0a0a20', colour2: '#100a18',
+    maxOpacity: 0.15,
+  },
+  {
+    centreX: 55, centreY: -10, centreZ: -100,
+    spreadX: 8, spreadY: 10, spreadZ: 5,
+    particleCount: 300,
+    colour1: '#1a0a2a', colour2: '#0a1a2a',
+    maxOpacity: 0.30,
+  },
+]
 
-  const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 3)
-  gradient.addColorStop(0, 'rgba(255, 255, 240, 0.6)')
-  gradient.addColorStop(0.3, 'rgba(200, 200, 255, 0.2)')
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+function gaussianRandom(): number {
+  let u = 0, v = 0
+  while (u === 0) u = Math.random()
+  while (v === 0) v = Math.random()
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
+}
 
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, w, h)
+function generateNebulaParticles(config: NebulaConfig) {
+  const count = config.particleCount
+  const positions = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  const opacities = new Float32Array(count)
+  const sizes = new Float32Array(count)
 
-  return new THREE.CanvasTexture(canvas)
+  const c1 = new THREE.Color(config.colour1)
+  const c2 = new THREE.Color(config.colour2)
+  const mixed = new THREE.Color()
+
+  for (let i = 0; i < count; i++) {
+    const gx = gaussianRandom()
+    const gy = gaussianRandom()
+    const gz = gaussianRandom()
+
+    positions[i * 3] = gx * config.spreadX
+    positions[i * 3 + 1] = gy * config.spreadY
+    positions[i * 3 + 2] = gz * config.spreadZ
+
+    const blend = Math.random()
+    mixed.copy(c1).lerp(c2, blend)
+    const dimming = 0.3 + Math.random() * 0.7
+    colors[i * 3] = mixed.r * dimming
+    colors[i * 3 + 1] = mixed.g * dimming
+    colors[i * 3 + 2] = mixed.b * dimming
+
+    const dist = Math.sqrt(gx * gx + gy * gy + gz * gz)
+    opacities[i] = Math.max(0.05, 1.0 - dist * 0.3)
+    sizes[i] = Math.max(1.0, 4.0 - dist * 0.8)
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1))
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1))
+
+  return geometry
 }
 
 // ─── Star Color ──────────────────────────────────────────────────
@@ -384,105 +413,48 @@ function AccentStars() {
   )
 }
 
-// ─── Nebula Clouds (immersive only) ──────────────────────────────
-const NEBULAE = [
-  { hue: 0.75, saturation: 0.6, x: -40, y: 20, z: -90, scale: 60, rotation: 0.3, complexity: 3 },
-  { hue: 0.55, saturation: 0.5, x: 35, y: -15, z: -85, scale: 50, rotation: -0.5, complexity: 2 },
-  { hue: 0.65, saturation: 0.4, x: 10, y: 30, z: -95, scale: 45, rotation: 0.8, complexity: 3 },
-  { hue: 0.08, saturation: 0.3, x: -25, y: -25, z: -80, scale: 35, rotation: -0.2, complexity: 2 },
-]
-
-function NebulaClouds({ immersiveUniverse }: { immersiveUniverse: boolean }) {
-  const groupRef = useRef<THREE.Group>(null)
+// ─── Nebula Particle Cloud (immersive only) ─────────────────────
+function NebulaCloud({ config, visible, index }: { config: NebulaConfig; visible: boolean; index: number }) {
+  const pointsRef = useRef<THREE.Points>(null)
   const currentOpacity = useRef(0)
 
-  const nebulaTextures = useMemo(
-    () => NEBULAE.map((n) => createNebulaTexture(n.hue, n.saturation, n.complexity)),
+  const geometry = useMemo(() => generateNebulaParticles(config), [])
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: nebulaVertexShader,
+        fragmentShader: nebulaFragmentShader,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uGlobalOpacity: { value: 0 } },
+      }),
     []
   )
 
   useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return
+    if (!pointsRef.current) return
 
-    const target = immersiveUniverse ? 0.4 : 0
-    const speed = immersiveUniverse ? 0.7 : 1.5
+    const target = visible ? config.maxOpacity : 0
+    const speed = visible ? 1.0 : 1.5
     currentOpacity.current += (target - currentOpacity.current) * Math.min(delta * speed, 0.05)
+    material.uniforms.uGlobalOpacity.value = currentOpacity.current
 
-    const entrance = Math.min(1, Math.max(0, (clock.elapsedTime * 1000 - 800) / 1200))
-    const opacity = currentOpacity.current * entrance
-
-    groupRef.current.children.forEach((child, i) => {
-      const sprite = child as THREE.Sprite
-      sprite.material.opacity = opacity
-      sprite.material.rotation += delta * 0.005
-      const config = NEBULAE[i]
-      sprite.position.x = config.x + Math.sin(clock.elapsedTime * 0.02 + i) * 0.5
-      sprite.position.y = config.y + Math.cos(clock.elapsedTime * 0.015 + i * 0.7) * 0.3
-    })
+    const t = clock.elapsedTime
+    pointsRef.current.position.x = config.centreX + Math.sin(t * 0.008 + index * 1.3) * 0.5
+    pointsRef.current.position.y = config.centreY + Math.cos(t * 0.006 + index * 0.9) * 0.3
+    pointsRef.current.position.z = config.centreZ
   })
 
   return (
-    <group ref={groupRef} renderOrder={-5}>
-      {NEBULAE.map((config, i) => (
-        <sprite key={i} position={[config.x, config.y, config.z]} scale={[config.scale, config.scale, 1]}>
-          <spriteMaterial
-            map={nebulaTextures[i]}
-            transparent
-            opacity={0}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            depthTest
-            rotation={config.rotation}
-          />
-        </sprite>
-      ))}
-    </group>
-  )
-}
-
-// ─── Galaxy Smudges (immersive only) ─────────────────────────────
-const GALAXIES = [
-  { x: 50, y: 35, z: -100, scaleX: 6, scaleY: 3, rotation: 0.7 },
-  { x: -45, y: -30, z: -100, scaleX: 5, scaleY: 2.5, rotation: -0.4 },
-]
-
-function GalaxySmudges({ immersiveUniverse }: { immersiveUniverse: boolean }) {
-  const groupRef = useRef<THREE.Group>(null)
-  const currentOpacity = useRef(0)
-
-  const texture = useMemo(() => createGalaxyTexture(), [])
-
-  useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return
-
-    const target = immersiveUniverse ? 0.3 : 0
-    const speed = immersiveUniverse ? 0.7 : 1.5
-    currentOpacity.current += (target - currentOpacity.current) * Math.min(delta * speed, 0.05)
-
-    const entrance = Math.min(1, Math.max(0, (clock.elapsedTime * 1000 - 1000) / 1000))
-    const opacity = currentOpacity.current * entrance
-
-    groupRef.current.children.forEach((child) => {
-      ;(child as THREE.Sprite).material.opacity = opacity
-    })
-  })
-
-  return (
-    <group ref={groupRef} renderOrder={-6}>
-      {GALAXIES.map((config, i) => (
-        <sprite key={i} position={[config.x, config.y, config.z]} scale={[config.scaleX, config.scaleY, 1]}>
-          <spriteMaterial
-            map={texture}
-            transparent
-            opacity={0}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            depthTest
-            rotation={config.rotation}
-          />
-        </sprite>
-      ))}
-    </group>
+    <points
+      ref={pointsRef}
+      geometry={geometry}
+      material={material}
+      position={[config.centreX, config.centreY, config.centreZ]}
+      renderOrder={-5}
+    />
   )
 }
 
@@ -503,8 +475,9 @@ export default function CosmicBackground({ immersiveUniverse }: CosmicBackground
         <DeepStars />
         <MidStars />
         <AccentStars />
-        <NebulaClouds immersiveUniverse={immersiveUniverse} />
-        <GalaxySmudges immersiveUniverse={immersiveUniverse} />
+        {NEBULA_CONFIGS.map((config, i) => (
+          <NebulaCloud key={i} config={config} visible={immersiveUniverse} index={i} />
+        ))}
       </Canvas>
     </div>
   )
