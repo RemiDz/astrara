@@ -886,7 +886,12 @@ function PlanetOrb({
     // Scale animation
     const targetScale = visible ? 1 : 0
     currentScale.current += (targetScale - currentScale.current) * Math.min(delta * 3, 0.15)
-    if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current)
+
+    // Helio scale: planets grow 1.8× in heliocentric view (Sun only 1.3×)
+    const moveT = phaseValuesRef?.current.smoothMoveT ?? 0
+    const helioScaleFactor = planet.id === 'sun' ? 1.3 : 1.8
+    const viewScale = 1.0 + (helioScaleFactor - 1.0) * moveT
+    if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current * viewScale)
 
     // Lerp position between geo and helio
     if (groupRef.current && phaseValuesRef && helioPos) {
@@ -1206,7 +1211,7 @@ function CameraDistanceAnimator({
 
     const p = transitionProgress.current
     const geoDistance = initialDistance.current
-    const helioDistance = geoDistance * 4.5 // pull back enough for Pluto at r=17
+    const helioDistance = geoDistance * 6.0 // pull back enough for Pluto at r=17 with padding on 375px
     const targetDistance = geoDistance + (helioDistance - geoDistance) * p
 
     const currentDistance = camera.position.length()
@@ -1243,6 +1248,9 @@ function EarthPositionAnimator({
     } else {
       groupRef.current.position.set(0, 0, 0)
     }
+    // Scale Earth 1.8× in helio view
+    const earthScale = 1.0 + (1.8 - 1.0) * t
+    groupRef.current.scale.setScalar(earthScale)
   })
 
   return <group ref={groupRef}>{children}</group>
