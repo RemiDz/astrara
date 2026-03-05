@@ -114,5 +114,9 @@
   "settings.paused": "Sustabdyta",
   "settings.fast": "Greitas",
   "settings.reset": "Atkurti Numatytuosius",
-  "nav.backToToday": "Grįžti į Šiandien"
+  "nav.backToToday": "Grįžti į Šiandien",
+  "planet.distanceFromEarth": "Atstumas nuo Žemės",
+  "planet.atSpeedOfLight": "šviesos greičiu",
+  "planet.nearPerigee": "Artėja perigėjus (arčiausiai)",
+  "planet.nearApogee": "Artėja apogėjus (toliausiai)"
 }

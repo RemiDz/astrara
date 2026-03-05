@@ -11,6 +11,7 @@ export interface PlanetPosition {
   signGlyph: string
   degreeInSign: number
   isRetrograde: boolean
+  distanceAU: number
   riseTime: Date | null
   setTime: Date | null
   colour: string
@@ -67,6 +68,11 @@ function getEclipticLongitude(body: Astronomy.Body, date: Date): number {
   return Astronomy.EclipticLongitude(body, date)
 }
 
+function getDistanceAU(body: Astronomy.Body, date: Date): number {
+  const vector = Astronomy.GeoVector(body, date, true)
+  return Math.sqrt(vector.x ** 2 + vector.y ** 2 + vector.z ** 2)
+}
+
 function checkRetrograde(body: Astronomy.Body, date: Date): boolean {
   if (body === ('Sun' as Astronomy.Body) || body === ('Moon' as Astronomy.Body)) return false
   const now = getEclipticLongitude(body, date)
@@ -87,6 +93,7 @@ export function getPlanetPositions(date: Date, lat: number, lng: number): Planet
     const sign = getSignFromLongitude(longitude)
     const degree = getDegreeInSign(longitude)
     const isRetrograde = checkRetrograde(body, date)
+    const distanceAU = getDistanceAU(body, date)
 
     let riseTime: Date | null = null
     let setTime: Date | null = null
@@ -108,6 +115,7 @@ export function getPlanetPositions(date: Date, lat: number, lng: number): Planet
       signGlyph: sign.glyph,
       degreeInSign: degree,
       isRetrograde,
+      distanceAU,
       riseTime,
       setTime,
       colour: meta.colour,

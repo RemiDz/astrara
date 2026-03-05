@@ -114,5 +114,9 @@
   "settings.paused": "Paused",
   "settings.fast": "Fast",
   "settings.reset": "Reset to Defaults",
-  "nav.backToToday": "Back to Today"
+  "nav.backToToday": "Back to Today",
+  "planet.distanceFromEarth": "Distance from Earth",
+  "planet.atSpeedOfLight": "at the speed of light",
+  "planet.nearPerigee": "Near perigee (closest)",
+  "planet.nearApogee": "Near apogee (furthest)"
 }

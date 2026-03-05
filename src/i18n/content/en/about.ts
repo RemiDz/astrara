@@ -93,6 +93,10 @@ export const aboutContent: AboutContent = {
         a: 'The solfeggio frequencies (174, 285, 396, 417, 528, 639, 741, 852, 963 Hz) are a set of tones that many sound healing traditions associate with specific physical and emotional qualities. While scientific evidence for their specific healing properties is still emerging, they provide a meaningful and intentional framework for tuning the soundscape to the current cosmic energy.',
       },
       {
+        q: 'Are the distances shown real?',
+        a: 'Yes. The distance from Earth to each planet is calculated in real time using the same astronomical library that powers the wheel. These distances change constantly as the planets orbit \u2014 the Moon alone varies by about 50,000 km between its closest and furthest points each month. The light travel time shows how long a beam of light would take to cross that distance, giving you an intuitive sense of the vast scale of our solar system.',
+      },
+      {
         q: 'Where does the Earth data come from?',
         a: 'Directly from NOAA\u2019s Space Weather Prediction Center \u2014 the same data that power companies and airlines use to prepare for geomagnetic storms. It\u2019s updated every few minutes from satellites monitoring the Sun and Earth\u2019s magnetic field.',
       },

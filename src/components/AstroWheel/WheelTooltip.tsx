@@ -2,6 +2,7 @@
 
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
+import { calculateDistance } from '@/lib/distance'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import Modal from '@/components/ui/Modal'
@@ -39,9 +40,28 @@ export default function WheelTooltip({ tooltip, planets, onClose }: WheelTooltip
   )
 }
 
+function MoonProximityLabel({ km, t }: { km: number; t: (k: string) => string }) {
+  if (km < 360_000) {
+    return (
+      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        {t('planet.nearPerigee')}
+      </span>
+    )
+  }
+  if (km > 404_000) {
+    return (
+      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        {t('planet.nearApogee')}
+      </span>
+    )
+  }
+  return null
+}
+
 function PlanetDetail({ planet, t, content }: { planet: PlanetPosition; t: (k: string) => string; content: ReturnType<typeof useContent> }) {
   const sign = ZODIAC_SIGNS.find(s => s.id === planet.zodiacSign)
   const insight = content?.planetMeanings?.[planet.id]?.[planet.zodiacSign]
+  const dist = calculateDistance(planet.distanceAU)
 
   return (
     <div>
@@ -59,6 +79,29 @@ function PlanetDetail({ planet, t, content }: { planet: PlanetPosition; t: (k: s
               </span>
             )}
           </p>
+        </div>
+      </div>
+
+      {/* Distance from Earth */}
+      <div className="mb-4">
+        <h3 className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
+          {t('planet.distanceFromEarth')}
+        </h3>
+        <div className="glass-card p-3 space-y-1.5">
+          <p className="text-sm flex flex-wrap items-baseline gap-x-1">
+            <span className="opacity-50">📏</span>
+            <span className="font-medium" style={{ color: planet.colour }}>{dist.formattedKm}</span>
+            <span style={{ color: 'var(--text-muted)' }}>km</span>
+            <span style={{ color: 'var(--text-muted)' }}> · </span>
+            <span className="font-medium" style={{ color: planet.colour }}>{dist.formattedMiles}</span>
+            <span style={{ color: 'var(--text-muted)' }}>mi</span>
+          </p>
+          <p className="text-sm flex items-baseline gap-x-1">
+            <span className="opacity-50">💡</span>
+            <span className="font-medium" style={{ color: planet.colour }}>{dist.formattedLightTravel}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('planet.atSpeedOfLight')}</span>
+          </p>
+          {planet.id === 'moon' && <MoonProximityLabel km={dist.km} t={t} />}
         </div>
       </div>
 

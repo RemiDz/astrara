@@ -68,6 +68,10 @@ export const aboutContent: AboutContent = {
         a: 'Solfed\u017Eio da\u017Eniai (174, 285, 396, 417, 528, 639, 741, 852, 963 Hz) yra ton\u0173 rinkinys, kur\u012F daugelis garso terapijos tradicij\u0173 sieja su konkre\u010Diomis fizin\u0117mis ir emocin\u0117mis savyb\u0117mis. Nors moksliniai j\u0173 specifini\u0173 gydom\u0173j\u0173 savybi\u0173 \u012Frodymai vis dar formuojasi, jie suteikia prasming\u0105 ir ty\u010Din\u012F pagrind\u0105 garsovaizd\u017Eio derinimui pagal esam\u0105 kosmin\u0119 energij\u0105.',
       },
       {
+        q: 'Ar rodomi atstumai yra tikri?',
+        a: 'Taip. Atstumas nuo \u017Dem\u0117s iki kiekvienos planetos apskai\u010Diuojamas realiu laiku, naudojant t\u0105 pa\u010Di\u0105 astronomin\u0119 bibliotek\u0105, kuri valdo rat\u0105. \u0160ie atstumai nuolat kinta planetoms skriejant orbitomis \u2014 vien M\u0117nulis per m\u0117nes\u012F svyruoja maždaug 50 000 km tarp artimiausio ir tolimiausio ta\u0161ko. \u0160viesos kelion\u0117s laikas parodo, kiek u\u017Etrukt\u0173 \u0161viesos spindulys, kad \u012Fveikt\u0173 t\u0105 atstum\u0105, suteikdamas intytyv\u0173 m\u016Bs\u0173 Saul\u0117s sistemos masto poj\u016Bt\u012F.',
+      },
+      {
         q: 'I\u0161 kur gaunami \u017Dem\u0117s duomenys?',
         a: 'Tiesiogiai i\u0161 NOAA Kosminio Oro Prognozi\u0173 Centro \u2014 tuos pa\u010Dius duomenis naudoja energetikos bendrov\u0117s ir aviakompanijos ruo\u0161damosi geomagnetin\u0117ms audroms. Jie atnaujinami kas kelias minutes i\u0161 palydov\u0173, stebin\u010Di\u0173 Saul\u0119 ir \u017Dem\u0117s magnetin\u012F lauk\u0105.',
       },
