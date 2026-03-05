@@ -700,7 +700,7 @@ function parseSolarActivity(fluxValue: number, flareClass: string): SolarActivit
 }
 
 // ─── Sun Corona ─────────────────────────────────────────────────────
-function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
+function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity; sceneReady: boolean }) {
   const innerRef = useRef<THREE.Mesh>(null!)
   const outerRef = useRef<THREE.Mesh>(null!)
   const targetColour = useRef(new THREE.Color(solarActivity.coronaColour))
@@ -710,6 +710,17 @@ function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
   const targetOpacity = useRef(0.3 + solarActivity.brightnessBoost)
   const currentOpacity = useRef(0.3 + solarActivity.brightnessBoost)
 
+  // Entrance fade: wait 3000ms after sceneReady, then fade in over ~800ms
+  const [entranceActive, setEntranceActive] = useState(false)
+  const entranceFade = useRef(0)
+
+  useEffect(() => {
+    if (sceneReady) {
+      const timer = setTimeout(() => setEntranceActive(true), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [sceneReady])
+
   useEffect(() => {
     targetColour.current.set(solarActivity.coronaColour)
     targetScale.current = solarActivity.glowMultiplier
@@ -718,6 +729,11 @@ function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
 
   useFrame(({ clock }, delta) => {
     if (!innerRef.current || !outerRef.current) return
+
+    // Smooth entrance fade (0 → 1 over ~800ms)
+    const fadeTarget = entranceActive ? 1 : 0
+    entranceFade.current += (fadeTarget - entranceFade.current) * Math.min(delta * 2.5, 0.12)
+    const fade = entranceFade.current
 
     currentColour.current.lerp(targetColour.current, Math.min(delta * 1.5, 0.1))
     currentScale.current += (targetScale.current - currentScale.current) * Math.min(delta * 2, 0.1)
@@ -737,8 +753,8 @@ function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
       outerRef.current.scale.setScalar(currentScale.current * 1.6)
     }
 
-    innerMat.opacity = currentOpacity.current * pulseMultiplier
-    outerMat.opacity = (currentOpacity.current * 0.5) * pulseMultiplier
+    innerMat.opacity = currentOpacity.current * pulseMultiplier * fade
+    outerMat.opacity = (currentOpacity.current * 0.5) * pulseMultiplier * fade
     innerRef.current.scale.setScalar(currentScale.current)
   })
 
@@ -747,11 +763,11 @@ function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
     <group>
       <mesh ref={innerRef} scale={solarActivity.glowMultiplier}>
         <sphereGeometry args={[0.28, 32, 32]} />
-        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={0.3 + solarActivity.brightnessBoost} side={THREE.BackSide} depthWrite={false} />
+        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={0} side={THREE.BackSide} depthWrite={false} />
       </mesh>
       <mesh ref={outerRef} scale={solarActivity.glowMultiplier * 1.6}>
         <sphereGeometry args={[0.28, 32, 32]} />
-        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={(0.3 + solarActivity.brightnessBoost) * 0.5} side={THREE.BackSide} depthWrite={false} />
+        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={0} side={THREE.BackSide} depthWrite={false} />
       </mesh>
     </group>
   )
@@ -1091,7 +1107,7 @@ function WheelScene({
           )
         })}
 
-        {/* Sun Corona — live solar activity glow */}
+        {/* Sun Corona — live solar activity glow (last to appear) */}
         {(() => {
           const sun = planets.find(p => p.id === 'sun')
           if (!sun) return null
@@ -1099,7 +1115,7 @@ function WheelScene({
           const sunPos = longitudeToPosition(sun.eclipticLongitude, R_PLANET)
           return (
             <group position={sunPos}>
-              <SunCorona solarActivity={activity} />
+              <SunCorona solarActivity={activity} sceneReady={sceneReady} />
             </group>
           )
         })()}
