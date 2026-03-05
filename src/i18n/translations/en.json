@@ -138,5 +138,8 @@
   "sun.desc.low": "The Sun is calm with minor background activity.",
   "sun.desc.moderate": "The Sun is moderately active. C-class flare detected — elevated solar radiation.",
   "sun.desc.strong": "The Sun is highly active. An M-class flare is in progress — significant solar radiation. Some practitioners report heightened sensitivity during M-class events.",
-  "sun.desc.extreme": "Major X-class solar flare in progress. This is a powerful solar event — the strongest category. Geomagnetic effects may follow in 1–3 days."
+  "sun.desc.extreme": "Major X-class solar flare in progress. This is a powerful solar event — the strongest category. Geomagnetic effects may follow in 1–3 days.",
+  "helio.solarSystemView": "Solar System View",
+  "helio.astroWheelView": "Astro Wheel View",
+  "helio.sunLabel": "Sun"
 }

@@ -44,6 +44,16 @@ export const aboutContent: AboutContent = {
       ],
     },
     {
+      icon: '\u2726',
+      heading: 'Solar System View',
+      paragraphs: [
+        'Tap the toggle button below the wheel to transform the astro wheel into a live solar system map. The Sun moves to the centre and every planet takes its real angular position in orbit around it.',
+        'The angles are astronomically accurate \u2014 each planet is placed at its true heliocentric longitude, calculated using the same astronomical library that powers the wheel. The orbital ring spacing is simplified for your screen, but the angular relationships between planets are real.',
+        'The Moon is shown orbiting Earth at an exaggerated distance so you can see it clearly. In reality, the Moon\u2019s orbit is far too small to see at solar system scale.',
+        'Tap the button again to return to the astro wheel view, where Earth returns to the centre and the zodiac signs reappear.',
+      ],
+    },
+    {
       icon: '\u263D',
       heading: 'Planetary Insights',
       paragraphs: [

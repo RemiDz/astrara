@@ -19,6 +19,16 @@ export const aboutContent: AboutContent = {
       ],
     },
     {
+      icon: '\u2726',
+      heading: 'Saul\u0117s Sistemos Vaizdas',
+      paragraphs: [
+        'Paspauskite perjungimo mygtuk\u0105 po ratu, kad astro ratas virst\u0173 gyvu Saul\u0117s sistemos \u017Eem\u0117lapiu. Saul\u0117 persikelia \u012F centr\u0105, o kiekviena planeta u\u017Eima savo tikr\u0105j\u0105 kampin\u0119 pad\u0117t\u012F orbitoje aplink j\u0105.',
+        'Kampai yra astronomi\u0161kai tiksl\u016Bs \u2014 kiekviena planeta yra savo tikroje heliocentrin\u0117je ilgumoje, apskai\u010Diuotoje naudojant t\u0105 pa\u010Di\u0105 astronomin\u0119 bibliotek\u0105, kuri valdo rat\u0105. Orbitin\u0117s \u017Eied\u0173 i\u0161d\u0117stymas supaprastintas j\u016Bs\u0173 ekranui, ta\u010Diau kampiniai santykiai tarp planet\u0173 yra tikri.',
+        'M\u0117nulis rodomas orbituojantis aplink \u017Dem\u0119 padidintame atstumu, kad j\u012F ai\u0161kiai matytum\u0117te. I\u0161 ties\u0173 M\u0117nulio orbita yra per ma\u017Ea, kad b\u016Bt\u0173 matoma Saul\u0117s sistemos mastelyje.',
+        'Paspauskite mygtuk\u0105 dar kart\u0105, kad gr\u012F\u017Etum\u0117te \u012F astro rato vaizd\u0105, kur \u017Dem\u0117 gr\u012F\u017Eta \u012F centr\u0105 ir v\u0117l pasirodo zodiako \u017Eenklai.',
+      ],
+    },
+    {
       icon: '\u263D',
       heading: 'Planetin\u0117s \u012E\u017Evalgos',
       paragraphs: [

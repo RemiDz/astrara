@@ -6,7 +6,7 @@ import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
-import type { HelioData } from '@/lib/heliocentric'
+import { HELIO_RING_RADII, type HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 
@@ -1283,8 +1283,104 @@ function SunCoronaAnimated({
   )
 }
 
+// ─── Orbital Path Rings (helio view only) ───────────────────────────
+function getOrbitalRingOpacity(planetName: string): number {
+  switch (planetName) {
+    case 'Mercury': return 0.08
+    case 'Venus':   return 0.08
+    case 'Earth':   return 0.10
+    case 'Mars':    return 0.08
+    case 'Jupiter': return 0.06
+    case 'Saturn':  return 0.06
+    case 'Uranus':  return 0.05
+    case 'Neptune': return 0.05
+    case 'Pluto':   return 0.04
+    default:        return 0.05
+  }
+}
+
+function OrbitalRings({ phaseValuesRef }: { phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const rings = useMemo(() =>
+    Object.entries(HELIO_RING_RADII).filter(([name]) => name !== 'Sun'),
+  [])
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    const helioOpacity = phaseValuesRef.current.helioOpacity
+    groupRef.current.visible = helioOpacity > 0.01
+    groupRef.current.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mat = (obj as THREE.Mesh).material as THREE.MeshBasicMaterial
+        const name = obj.userData.planetName as string
+        if (name) mat.opacity = getOrbitalRingOpacity(name) * helioOpacity
+      }
+    })
+  })
+
+  return (
+    <group ref={groupRef} visible={false}>
+      {rings.map(([name, radius]) => (
+        <mesh key={name} rotation={[-Math.PI / 2, 0, 0]} userData={{ planetName: name }}>
+          <ringGeometry args={[radius - 0.02, radius + 0.02, 128]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ─── Moon Orbit Ring (helio view only, around Earth) ────────────────
+function MoonOrbitRing({
+  phaseValuesRef,
+  helioData,
+}: {
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+  helioData?: Record<string, HelioData>
+}) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const matRef = useRef<THREE.MeshBasicMaterial>(null!)
+
+  useFrame(() => {
+    if (!groupRef.current || !helioData?.Earth) return
+    const t = phaseValuesRef.current.smoothMoveT
+    const helioOpacity = phaseValuesRef.current.helioOpacity
+
+    // Follow Earth's interpolated position
+    groupRef.current.position.set(
+      helioData.Earth.sceneX * t,
+      0,
+      helioData.Earth.sceneY * t,
+    )
+    groupRef.current.visible = helioOpacity > 0.01
+    if (matRef.current) matRef.current.opacity = 0.12 * helioOpacity
+  })
+
+  return (
+    <group ref={groupRef} visible={false}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.0 - 0.015, 1.0 + 0.015, 64]} />
+        <meshBasicMaterial
+          ref={matRef}
+          color="#C8C4DC"
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 // ─── Sun Centre Label (visible in helio view) ───────────────────────
-function SunCentreLabel({ phaseValuesRef }: { phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
+function SunCentreLabel({ phaseValuesRef, label }: { phaseValuesRef: React.MutableRefObject<PhaseValues>; label?: string }) {
   const spanRef = useRef<HTMLSpanElement>(null)
   const [show, setShow] = useState(false)
 
@@ -1301,7 +1397,7 @@ function SunCentreLabel({ phaseValuesRef }: { phaseValuesRef: React.MutableRefOb
   return (
     <Html center position={[0, -0.35, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
       <span ref={spanRef} className="text-white/70 text-xs whitespace-nowrap select-none" style={{ opacity: 0 }}>
-        &#9737; Sun
+        &#9737; {label ?? 'Sun'}
       </span>
     </Html>
   )
@@ -1312,7 +1408,8 @@ function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
-}: AstroWheel3DProps & { sceneReady: boolean }) {
+  sunLabel,
+}: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
   const [tiltDone, setTiltDone] = useState(false)
@@ -1387,6 +1484,10 @@ function WheelScene({
           </AnimatedScaleGroup>
         </GeoFadeGroup>
 
+        {/* Orbital path rings — helio view only */}
+        <OrbitalRings phaseValuesRef={phaseValuesRef} />
+        <MoonOrbitRing phaseValuesRef={phaseValuesRef} helioData={helioData} />
+
         {/* Phase 4: Planets appear (1400ms+, staggered) */}
         {planets.map((planet) => {
           const orderIndex = PLANET_ORDER.indexOf(planet.id)
@@ -1430,7 +1531,7 @@ function WheelScene({
         </GeoFadeGroup>
 
         {/* Sun centre label — appears in helio view */}
-        <SunCentreLabel phaseValuesRef={phaseValuesRef} />
+        <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} />
       </group>
 
       {/* Phase 7: Cinematic tilt after entrance */}
@@ -1503,7 +1604,7 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
             })
           }}
         >
-          <WheelScene {...props} sceneReady={sceneReady} />
+          <WheelScene {...props} sceneReady={sceneReady} sunLabel={t('helio.sunLabel')} />
         </Canvas>
       </div>
     </div>
