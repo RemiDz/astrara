@@ -21,6 +21,7 @@ interface Props {
   kpIndex?: number | null
   solarFlareClass?: string | null
   solarFluxValue?: number | null
+  targetDate: Date
 }
 
 interface ErrorBoundaryState {

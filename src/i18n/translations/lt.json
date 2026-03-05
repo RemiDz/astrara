@@ -138,5 +138,7 @@
   "sun.desc.low": "Saulė rami, nedidelis foninis aktyvumas.",
   "sun.desc.moderate": "Saulė vidutiniškai aktyvi. Aptiktas C klasės žybsnis — padidėjusi saulės radiacija.",
   "sun.desc.strong": "Saulė labai aktyvi. Vyksta M klasės žybsnis — reikšminga saulės radiacija. Kai kurie praktikai praneša apie padidėjusį jautrumą M klasės įvykių metu.",
-  "sun.desc.extreme": "Vyksta didelis X klasės saulės žybsnis. Tai galingas saulės įvykis — stipriausios kategorijos. Geomagnetiniai efektai gali pasireikšti per 1–3 dienas."
+  "sun.desc.extreme": "Vyksta didelis X klasės saulės žybsnis. Tai galingas saulės įvykis — stipriausios kategorijos. Geomagnetiniai efektai gali pasireikšti per 1–3 dienas.",
+  "view.solarSystem": "Saulės Sistemos Vaizdas",
+  "view.astroWheel": "Astro Rato Vaizdas"
 }
