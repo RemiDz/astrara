@@ -1238,6 +1238,44 @@ function CameraDistanceAnimator({
   return null
 }
 
+// ─── Helio Tilt Animator (flat top-down in helio, 3D tilt in geo) ─────
+function HelioTiltAnimator({
+  controlsRef,
+  transitionProgress,
+}: {
+  controlsRef: React.MutableRefObject<any>
+  transitionProgress: React.MutableRefObject<number>
+}) {
+  const GEO_POLAR = Math.PI / 3   // entrance tilt target — 3D perspective
+  const HELIO_POLAR = 0.01        // near top-down (avoid gimbal lock at 0)
+
+  useFrame(() => {
+    if (!controlsRef.current) return
+    const controls = controlsRef.current
+    const p = transitionProgress.current
+    const tiltT = clamp01((p - 0.85) / 0.15)
+    const smoothT = smoothstep(tiltT)
+
+    if (tiltT > 0.001 && tiltT < 0.999) {
+      // Mid-tilt animation: lock polar angle
+      const targetPolar = GEO_POLAR + (HELIO_POLAR - GEO_POLAR) * smoothT
+      controls.minPolarAngle = targetPolar
+      controls.maxPolarAngle = targetPolar
+      controls.update()
+    } else if (tiltT >= 0.999) {
+      // Fully helio: allow free rotation including top-down
+      controls.minPolarAngle = HELIO_POLAR
+      controls.maxPolarAngle = 2.8
+    } else {
+      // Geo or early transition: normal rotation range
+      controls.minPolarAngle = 0.3
+      controls.maxPolarAngle = 2.8
+    }
+  })
+
+  return null
+}
+
 // ─── Earth Position Animator (moves Earth from centre to helio orbit) ─
 function EarthPositionAnimator({
   phaseValuesRef,
@@ -1479,6 +1517,7 @@ function WheelScene({
         transitionProgress={transitionProgress}
       />
       <CameraDistanceAnimator transitionProgress={transitionProgress} />
+      <HelioTiltAnimator controlsRef={controlsRef} transitionProgress={transitionProgress} />
 
       <group>
         {/* Phase 1: Earth ignites (0ms) — moves in helio view */}
