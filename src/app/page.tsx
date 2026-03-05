@@ -100,12 +100,28 @@ function HomePage() {
     return daysPerSec * 86400000 / 1000
   }
 
+  function formatDateForInput(date: Date): string {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const handleDateJump = useCallback((newDate: Date) => {
+    animationSpeedRef.current = 0
+    setAutoplayDirection('stopped')
+    animationTimeRef.current = newDate.getTime()
+    setCustomDate(newDate)
+    setDayOffset(0)
+  }, [])
+
   // Helio data for static rendering (initial positions / when autoplay stopped)
   const helioData = useMemo(() => calculateAllHelioData(targetDate), [targetDate])
 
   // Header date display ref — updated by rAF during autoplay, avoids re-renders
   const headerDateRef = useRef<HTMLSpanElement>(null)
   const headerRafRef = useRef<number | null>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   // rAF loop to update header date during autoplay
   useEffect(() => {
@@ -119,11 +135,17 @@ function HomePage() {
     const tick = (time: number) => {
       if (time - lastUpdate > 200) {
         lastUpdate = time
+        const d = new Date(animationTimeRef.current)
         if (headerDateRef.current) {
-          const d = new Date(animationTimeRef.current)
           headerDateRef.current.textContent = d.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
           })
+        }
+        if (dateInputRef.current) {
+          const formatted = formatDateForInput(d)
+          if (dateInputRef.current.value !== formatted) {
+            dateInputRef.current.value = formatted
+          }
         }
       }
       headerRafRef.current = requestAnimationFrame(tick)
@@ -459,7 +481,30 @@ function HomePage() {
                     <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="13 17 18 12 13 7" /><polyline points="6 17 11 12 6 7" /></svg>
                   </button>
                 </div>
-              ) : (() => {
+              ) : null}
+
+              {/* Date input — helio view only, between autoplay and view toggle */}
+              {viewMode === 'heliocentric' && (
+                <div className="flex items-center justify-center py-1">
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    defaultValue={formatDateForInput(targetDate)}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value + 'T12:00:00')
+                      if (!isNaN(newDate.getTime())) {
+                        handleDateJump(newDate)
+                      }
+                    }}
+                    min="1900-01-01"
+                    max="2100-12-31"
+                    className="helio-date-input bg-white/5 border border-white/10 rounded-full px-5 py-2 text-sm text-white/70 text-center backdrop-blur-md cursor-pointer hover:bg-white/8 hover:text-white/90 focus:outline-none focus:border-white/20 transition-all duration-200"
+                    style={{ colorScheme: 'dark', WebkitAppearance: 'none', minWidth: 0 }}
+                  />
+                </div>
+              )}
+
+              {viewMode !== 'heliocentric' && (() => {
                 const formatShortDate = (date: Date) => {
                   const day = date.getDate()
                   const monthNames = lang === 'lt'
