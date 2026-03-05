@@ -961,7 +961,7 @@ function PlanetOrb({
       <Html position={[0, labelYOffset, 0]} center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', userSelect: 'none', overflow: 'visible' }}>
         <div className="whitespace-nowrap select-none pointer-events-none"
           style={{
-            fontSize: '12px', color: 'white', opacity: visible ? 0.85 : 0,
+            fontSize: '12px', color: 'white', opacity: (visible && !(showHelioLabel && planet.id === 'sun')) ? 0.85 : 0,
             textShadow: `0 0 8px ${planet.colour}80, 0 1px 3px rgba(0,0,0,0.8)`,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
             padding: '2px 6px', borderRadius: '6px',
@@ -969,7 +969,7 @@ function PlanetOrb({
             transition: 'opacity 0.4s ease-out',
           }}>
           {showHelioLabel
-            ? `${planet.glyph} ${planet.name}`
+            ? (planet.id === 'moon' ? planet.glyph : `${planet.glyph} ${planet.name}`)
             : `${planet.glyph} ${planet.degreeInSign}°`}
         </div>
       </Html>
@@ -1308,16 +1308,16 @@ function SunCoronaAnimated({
 // ─── Orbital Path Rings (helio view only) ───────────────────────────
 function getOrbitalRingOpacity(planetName: string): number {
   switch (planetName) {
-    case 'Mercury': return 0.08
-    case 'Venus':   return 0.08
-    case 'Earth':   return 0.10
-    case 'Mars':    return 0.08
-    case 'Jupiter': return 0.06
-    case 'Saturn':  return 0.06
-    case 'Uranus':  return 0.05
-    case 'Neptune': return 0.05
-    case 'Pluto':   return 0.04
-    default:        return 0.05
+    case 'Mercury': return 0.16
+    case 'Venus':   return 0.16
+    case 'Earth':   return 0.20
+    case 'Mars':    return 0.16
+    case 'Jupiter': return 0.12
+    case 'Saturn':  return 0.12
+    case 'Uranus':  return 0.10
+    case 'Neptune': return 0.10
+    case 'Pluto':   return 0.08
+    default:        return 0.10
   }
 }
 
@@ -1381,7 +1381,7 @@ function MoonOrbitRing({
       helioData.Earth.sceneY * t,
     )
     groupRef.current.visible = helioOpacity > 0.01
-    if (matRef.current) matRef.current.opacity = 0.12 * helioOpacity
+    if (matRef.current) matRef.current.opacity = 0.24 * helioOpacity
   })
 
   return (
