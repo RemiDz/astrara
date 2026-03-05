@@ -271,57 +271,105 @@ function OuterZodiacRing({
   )
 }
 
-// ─── Middle Degree Ring (Ring 2) ────────────────────────────────────
-const MiddleRing = memo(function MiddleRing() {
-  const segments = useMemo(() => {
-    return ZODIAC_SIGNS.map((sign, i) => {
-      const startAngle = (i * 30 - 90) * (Math.PI / 180)
-      const endAngle = ((i + 1) * 30 - 90) * (Math.PI / 180)
-      const shape = new THREE.Shape()
-      const segs = 8
-      for (let j = 0; j <= segs; j++) {
-        const a = startAngle + (endAngle - startAngle) * (j / segs)
-        const x = Math.cos(a) * R_MID_OUTER
-        const z = Math.sin(a) * R_MID_OUTER
-        if (j === 0) shape.moveTo(x, z)
-        else shape.lineTo(x, z)
-      }
-      for (let j = segs; j >= 0; j--) {
-        const a = startAngle + (endAngle - startAngle) * (j / segs)
-        const x = Math.cos(a) * R_MID_INNER
-        const z = Math.sin(a) * R_MID_INNER
-        shape.lineTo(x, z)
-      }
-      shape.closePath()
-      return { sign, shape }
-    })
-  }, [])
+// ─── Magnetosphere Ring (Kp-driven inner ring) ─────────────────────
+function getMagnetosphereStyle(kp: number) {
+  if (kp <= 1) return { colour: '#22c55e', opacity: 0.04, pulseSpeed: 0, glowStrength: 0.02 }
+  if (kp <= 2) return { colour: '#4ade80', opacity: 0.05, pulseSpeed: 0, glowStrength: 0.03 }
+  if (kp <= 3) return { colour: '#a3e635', opacity: 0.06, pulseSpeed: 0, glowStrength: 0.04 }
+  if (kp <= 4) return { colour: '#facc15', opacity: 0.08, pulseSpeed: 6, glowStrength: 0.06 }
+  if (kp <= 5) return { colour: '#f59e0b', opacity: 0.10, pulseSpeed: 4, glowStrength: 0.08 }
+  if (kp <= 6) return { colour: '#ef4444', opacity: 0.13, pulseSpeed: 3, glowStrength: 0.10 }
+  if (kp <= 7) return { colour: '#dc2626', opacity: 0.16, pulseSpeed: 2, glowStrength: 0.12 }
+  if (kp <= 8) return { colour: '#a855f7', opacity: 0.20, pulseSpeed: 1.5, glowStrength: 0.15 }
+  return { colour: '#c026d3', opacity: 0.25, pulseSpeed: 1, glowStrength: 0.18 }
+}
+
+function MagnetosphereRing({ kpIndex, phaseValuesRef }: { kpIndex: number | null; phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
+  const innerEdgeRef = useRef<THREE.Mesh>(null!)
+  const mainBodyRef = useRef<THREE.Mesh>(null!)
+  const outerEdgeRef = useRef<THREE.Mesh>(null!)
+
+  const targetColour = useRef(new THREE.Color('#667799'))
+  const currentColour = useRef(new THREE.Color('#667799'))
+  const targetOpacity = useRef(0.03)
+  const currentOpacity = useRef(0.03)
+  const auroraColour = useRef(new THREE.Color('#6366f1'))
+
+  const thickness = R_MID_OUTER - R_MID_INNER
+
+  useEffect(() => {
+    if (kpIndex !== null) {
+      const style = getMagnetosphereStyle(kpIndex)
+      targetColour.current.set(style.colour)
+      targetOpacity.current = style.opacity
+    } else {
+      targetColour.current.set('#667799')
+      targetOpacity.current = 0.03
+    }
+  }, [kpIndex])
+
+  useFrame(({ clock }, delta) => {
+    if (!innerEdgeRef.current || !mainBodyRef.current || !outerEdgeRef.current) return
+
+    const zodiacOpacity = phaseValuesRef.current.zodiacOpacity
+    const clampedDelta = Math.min(delta, 0.1)
+
+    // Smooth colour/opacity transitions
+    currentColour.current.lerp(targetColour.current, clampedDelta * 1.5)
+    currentOpacity.current += (targetOpacity.current - currentOpacity.current) * clampedDelta * 2
+
+    let finalOpacity = currentOpacity.current
+    const style = kpIndex !== null ? getMagnetosphereStyle(kpIndex) : null
+
+    // Pulse when pulseSpeed > 0 (Kp 4+)
+    if (style && style.pulseSpeed > 0) {
+      const pulse = Math.sin(clock.elapsedTime * (Math.PI * 2) / style.pulseSpeed) * 0.5 + 0.5
+      finalOpacity = currentOpacity.current * (0.7 + pulse * 0.3)
+    }
+
+    // Determine final colour
+    let finalColour = currentColour.current
+
+    // Aurora shimmer for Kp 6+
+    if (kpIndex !== null && kpIndex >= 6) {
+      const shimmer = Math.sin(clock.elapsedTime * 0.5) * 0.5 + 0.5
+      finalColour = currentColour.current.clone().lerp(auroraColour.current, shimmer * 0.3)
+    }
+
+    // Apply to all three layers, scaled by zodiacOpacity for helio fade
+    const innerMat = innerEdgeRef.current.material as THREE.MeshBasicMaterial
+    innerMat.color.copy(finalColour)
+    innerMat.opacity = finalOpacity * 1.5 * zodiacOpacity
+
+    const mainMat = mainBodyRef.current.material as THREE.MeshBasicMaterial
+    mainMat.color.copy(finalColour)
+    mainMat.opacity = finalOpacity * 0.6 * zodiacOpacity
+
+    const outerMat = outerEdgeRef.current.material as THREE.MeshBasicMaterial
+    outerMat.color.copy(finalColour)
+    outerMat.opacity = finalOpacity * 0.3 * zodiacOpacity
+  })
 
   return (
     <group>
-      {segments.map(({ sign, shape }) => (
-        <mesh key={sign.id} rotation={[-Math.PI / 2, 0, 0]}>
-          <shapeGeometry args={[shape]} />
-          <meshPhysicalMaterial
-            color="#c0c8e0" transparent opacity={0.1} roughness={0.05} metalness={0.6}
-            clearcoat={1.0} clearcoatRoughness={0.05} side={THREE.DoubleSide}
-            emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])} emissiveIntensity={0.05}
-          />
-        </mesh>
-      ))}
-      {Array.from({ length: 12 }).map((_, i) => {
-        const angle = (i * 30 - 90) * (Math.PI / 180)
-        const x1 = Math.cos(angle) * R_MID_INNER
-        const z1 = Math.sin(angle) * R_MID_INNER
-        const x2 = Math.cos(angle) * R_MID_OUTER
-        const z2 = Math.sin(angle) * R_MID_OUTER
-        return <Line key={`tick-${i}`} points={[[x1, 0, z1], [x2, 0, z2]]} color="#ffffff" lineWidth={0.5} transparent opacity={0.12} />
-      })}
-      <RingEdge radius={R_MID_OUTER} opacity={0.25} />
-      <RingEdge radius={R_MID_INNER} opacity={0.2} />
+      {/* Layer 1: Inner edge glow (closest to Earth) */}
+      <mesh ref={innerEdgeRef} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[R_MID_INNER, R_MID_INNER + thickness * 0.15, 128]} />
+        <meshBasicMaterial color="#667799" transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      {/* Layer 2: Main body (wide middle) */}
+      <mesh ref={mainBodyRef} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[R_MID_INNER + thickness * 0.1, R_MID_INNER + thickness * 0.85, 128]} />
+        <meshBasicMaterial color="#667799" transparent opacity={0.02} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      {/* Layer 3: Outer edge fade (closest to zodiac ring) */}
+      <mesh ref={outerEdgeRef} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[R_MID_INNER + thickness * 0.8, R_MID_INNER + thickness, 128]} />
+        <meshBasicMaterial color="#667799" transparent opacity={0.01} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
     </group>
   )
-})
+}
 
 // ─── Inner Track Ring (Ring 3) ──────────────────────────────────────
 const InnerTrackRing = memo(function InnerTrackRing() {
@@ -1647,11 +1695,15 @@ function WheelScene({
           </AnimatedScaleGroup>
         </EarthPositionAnimator>
 
+        {/* Magnetosphere ring — outside GeoFadeGroup for per-frame Kp opacity control */}
+        <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
+          <MagnetosphereRing kpIndex={kpIndex ?? null} phaseValuesRef={phaseValuesRef} />
+        </AnimatedScaleGroup>
+
         {/* Geo-only elements: fade out during transition */}
         <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
           {/* Phase 2: Inner rings expand (400ms) */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
-            <MiddleRing />
             <InnerTrackRing />
             <InnerDust />
           </AnimatedScaleGroup>
