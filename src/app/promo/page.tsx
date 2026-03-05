@@ -313,7 +313,7 @@ function PromoPage() {
   }
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }}>
+    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)', WebkitUserSelect: 'text', userSelect: 'text' }}>
       <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
 
         {/* Header */}
