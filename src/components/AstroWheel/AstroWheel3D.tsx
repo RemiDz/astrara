@@ -1104,6 +1104,22 @@ function CounterRotatingRing({ children }: { children: React.ReactNode }) {
   return <group ref={ref}>{children}</group>
 }
 
+// ─── Inner ring rotation (opposite direction, half speed, geo only) ─
+function InnerRingRotation({ children, phaseValuesRef }: { children: React.ReactNode; phaseValuesRef: React.MutableRefObject<PhaseValues> }) {
+  const ref = useRef<THREE.Group>(null!)
+  const frozenAngle = useRef(0)
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+    if (phaseValuesRef.current.zodiacOpacity > 0.01) {
+      frozenAngle.current = clock.getElapsedTime() * 0.005
+    }
+    ref.current.rotation.y = frozenAngle.current
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
 // ─── Mobile bloom detector ──────────────────────────────────────────
 function ConditionalBloom() {
   const { size } = useThree()
@@ -1655,15 +1671,19 @@ function WheelScene({
             <InnerDust />
           </AnimatedScaleGroup>
 
-          {/* Rings with 30° divisions — counter-rotate together to stay aligned */}
-          <CounterRotatingRing>
+          {/* Inner ring — rotates opposite direction at half speed for visual depth */}
+          <InnerRingRotation phaseValuesRef={phaseValuesRef}>
             <AnimatedScaleGroup sceneReady={sceneReady} delay={400}>
               <MiddleRing />
             </AnimatedScaleGroup>
-            <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
+          </InnerRingRotation>
+
+          {/* Outer zodiac ring — counter-rotates to appear stationary */}
+          <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
+            <CounterRotatingRing>
               <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
-            </AnimatedScaleGroup>
-          </CounterRotatingRing>
+            </CounterRotatingRing>
+          </AnimatedScaleGroup>
         </GeoFadeGroup>
 
         {/* Orbital path rings — helio view only */}
