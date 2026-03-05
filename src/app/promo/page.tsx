@@ -44,6 +44,8 @@ export default function PromoPage() {
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [weeklyHoroscope, setWeeklyHoroscope] = useState('')
   const [isGeneratingWeekly, setIsGeneratingWeekly] = useState(false)
+  const [dailyReading, setDailyReading] = useState('')
+  const [isGeneratingDaily, setIsGeneratingDaily] = useState(false)
   const lastGenerationTime = useRef(0)
   const MIN_GENERATION_INTERVAL = 5000
 
@@ -164,6 +166,46 @@ export default function PromoPage() {
     }
   }, [weekData])
 
+  // Daily cosmic reading generation
+  const generateDailyReading = useCallback(async () => {
+    setIsGeneratingDaily(true)
+    setDailyReading('')
+
+    try {
+      const response = await fetch('/api/horoscope-daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          positions: positions.map(p => ({
+            glyph: p.glyph,
+            name: p.name,
+            sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
+            degree: p.degreeInSign,
+            isRetrograde: p.isRetrograde,
+          })),
+          moonPhase: {
+            name: moonData.phase,
+            illumination: Math.round(moonData.illumination * 100),
+          },
+          kpIndex: earthData?.kpIndex ?? 0,
+          solarClass: earthData?.solarFlareClass ?? 'A0.0',
+          overallImpact,
+          date: selectedDate.toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          }),
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to generate daily reading')
+      const data = await response.json()
+      setDailyReading(data.reading)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsGeneratingDaily(false)
+    }
+  }, [positions, moonData, earthData, overallImpact, selectedDate])
+
   // Auto-generate when sign changes
   const signRef = useRef(selectedSign)
   useEffect(() => {
@@ -193,6 +235,54 @@ export default function PromoPage() {
     if (!weeklyHoroscope) return null
     return generateWeeklyCaption(selectedSign, impacts, weekData, weeklyHoroscope)
   }, [weeklyHoroscope, selectedSign, impacts, weekData])
+
+  // Daily captions
+  const dailyTikTokCaption = useMemo(() => {
+    if (!dailyReading) return null
+    const dateStr = selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    const sunPos = positions.find(p => p.name === 'Sun')
+    const moonPos = positions.find(p => p.name === 'Moon')
+    const sunSignName = sunPos ? (ZODIAC_SIGNS.find(z => z.id === sunPos.zodiacSign)?.name ?? '') : ''
+    const moonSignName = moonPos ? (ZODIAC_SIGNS.find(z => z.id === moonPos.zodiacSign)?.name ?? '') : ''
+
+    const oneWordMatch = dailyReading.match(/TODAY IN ONE WORD[\s\S]*?\n\n?(.+)/i)
+    const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
+    const inviteMatch = dailyReading.match(/TODAY'S INVITATION[\s\S]*?\n\n?(.+)/i)
+    const invitation = inviteMatch ? inviteMatch[1].trim() : ''
+
+    return `\u2600\uFE0F Cosmic Weather \u00B7 ${dateStr}\n\n` +
+      (oneWord ? `Today in one word: ${oneWord}\n\n` : '') +
+      `${sunPos?.glyph ?? ''} Sun in ${sunSignName} \u00B7 ${moonPos?.glyph ?? ''} Moon in ${moonSignName}\n` +
+      `${moonData.phase} \u00B7 ${Math.round(moonData.illumination * 100)}%\n\n` +
+      (invitation ? `${invitation}\n\n` : '') +
+      `Cosmic impact: ${overallImpact.score}/10\n\n` +
+      `Real planetary data. Real frequencies.\nastrara.app\n\n` +
+      `#cosmicweather #todaysenergy #astrology #dailyhoroscope ` +
+      `#soundhealing #frequencies #astrara #planetaryalignment`
+  }, [dailyReading, selectedDate, positions, moonData, overallImpact])
+
+  const dailyInstagramCaption = useMemo(() => {
+    if (!dailyReading) return null
+    const dateStr = selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+    return `\u2600\uFE0F COSMIC WEATHER \u00B7 ${dateStr}\n` +
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
+      `Cosmic Impact: ${'\u25CF'.repeat(overallImpact.score)}${'\u25CB'.repeat(10 - overallImpact.score)} ${overallImpact.score}/10\n\n` +
+      `Today's sky:\n` +
+      positions.map(p => {
+        const pSignName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
+        return `${p.glyph} ${p.name} in ${pSignName} ${p.degreeInSign}\u00B0`
+      }).join('\n') +
+      `\n\n` +
+      `${moonData.phase} \u00B7 ${Math.round(moonData.illumination * 100)}% illumination\n\n` +
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n` +
+      `Real planetary positions from NASA JPL data.\n` +
+      `Sound frequencies based on Hans Cousto's Cosmic Octave.\n` +
+      `Explore your own cosmic portrait at astrara.app\n\n` +
+      `#cosmicweather #todaysenergy #astrology #dailyhoroscope ` +
+      `#planetaryalignment #moonphase #${moonData.phase.toLowerCase().replace(/\s+/g, '')} ` +
+      `#soundhealing #frequencies #astrara #harmonicwaves`
+  }, [dailyReading, selectedDate, positions, moonData, overallImpact])
 
   function formatDateForInput(date: Date): string {
     const y = date.getFullYear()
@@ -287,6 +377,70 @@ export default function PromoPage() {
               <span className="text-white/20">Space weather data unavailable</span>
             )}
           </div>
+        </section>
+
+        {/* Daily Cosmic Reading */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
+              Daily Cosmic Reading
+            </h2>
+            <button
+              onClick={generateDailyReading}
+              disabled={isGeneratingDaily}
+              className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isGeneratingDaily ? 'Generating...' : dailyReading ? '\u21BB Regenerate' : '\u2728 Generate Daily Reading'}
+            </button>
+          </div>
+
+          <div className="p-6 rounded-xl border border-white/5 min-h-[150px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            {isGeneratingDaily && (
+              <div className="flex items-center gap-3 text-white/40">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                <span className="text-sm">Reading today&apos;s cosmic weather...</span>
+              </div>
+            )}
+
+            {dailyReading && !isGeneratingDaily && (
+              <div>
+                <ReactMarkdown components={markdownComponents}>
+                  {dailyReading}
+                </ReactMarkdown>
+                <div className="pt-4">
+                  <button
+                    onClick={() => handleCopy('dailyReading', dailyReading)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    {copiedField === 'dailyReading' ? 'Copied' : 'Copy Reading'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!dailyReading && !isGeneratingDaily && (
+              <p className="text-white/30 text-sm italic">
+                Click &ldquo;Generate Daily Reading&rdquo; for today&apos;s universal cosmic briefing.
+              </p>
+            )}
+          </div>
+
+          {dailyTikTokCaption && dailyInstagramCaption && (
+            <div className="mt-4 space-y-3">
+              <CaptionBlock
+                label="Daily TikTok Caption"
+                content={dailyTikTokCaption}
+                copied={copiedField === 'dailyTiktok'}
+                onCopy={() => handleCopy('dailyTiktok', dailyTikTokCaption)}
+              />
+              <CaptionBlock
+                label="Daily Instagram Caption"
+                content={dailyInstagramCaption}
+                copied={copiedField === 'dailyInstagram'}
+                onCopy={() => handleCopy('dailyInstagram', dailyInstagramCaption)}
+              />
+            </div>
+          )}
         </section>
 
         <Divider />
