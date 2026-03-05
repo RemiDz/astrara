@@ -207,7 +207,7 @@ export default function SettingsPanel({
             <span
               className={`text-white/30 text-xs transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}
             >
-              \u25BE
+              {'\u25BE'}
             </span>
           </button>
 
@@ -229,7 +229,7 @@ export default function SettingsPanel({
                   <span>{l.name}</span>
                   {l.code === lang && (
                     <span className="ml-auto text-purple-400/60 text-xs">
-                      \u2713
+                      {'\u2713'}
                     </span>
                   )}
                 </button>
