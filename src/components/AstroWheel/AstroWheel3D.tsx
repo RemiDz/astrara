@@ -1015,9 +1015,7 @@ function PlanetPolygon({
   phaseValuesRef: React.MutableRefObject<PhaseValues>
 }) {
   const lineRef = useRef<THREE.Line | null>(null)
-  const meshRef = useRef<THREE.Mesh>(null!)
   const radialGroupRef = useRef<THREE.Group>(null!)
-  const lastHash = useRef('')
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -1060,25 +1058,6 @@ function PlanetPolygon({
     }
   }, [outlineLine])
 
-  // Update fill shape when positions change
-  useEffect(() => {
-    if (!meshRef.current || sorted.length < 3) return
-    const hash = sorted.map(p => p.eclipticLongitude.toFixed(1)).join('|')
-    if (hash === lastHash.current) return
-    lastHash.current = hash
-
-    const shape = new THREE.Shape()
-    const [x0,, z0] = longitudeToPosition(sorted[0].eclipticLongitude, R_PLANET)
-    shape.moveTo(x0, z0)
-    for (let i = 1; i < sorted.length; i++) {
-      const [xi,, zi] = longitudeToPosition(sorted[i].eclipticLongitude, R_PLANET)
-      shape.lineTo(xi, zi)
-    }
-    shape.closePath()
-    meshRef.current.geometry.dispose()
-    meshRef.current.geometry = new THREE.ShapeGeometry(shape)
-  }, [sorted])
-
   // Fade radial lines with zodiacOpacity
   useFrame(() => {
     if (!radialGroupRef.current) return
@@ -1089,11 +1068,6 @@ function PlanetPolygon({
         mat.opacity = 0.06 * opacity
       }
     })
-    // Fade fill
-    if (meshRef.current) {
-      const mat = meshRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = 0.03 * opacity
-    }
   })
 
   if (!visible || sorted.length < 3 || !outlineLine) return null
@@ -1102,11 +1076,6 @@ function PlanetPolygon({
     <group>
       <primitive object={outlineLine} />
       <PlanetPolygonPulse lineRef={lineRef} phaseValuesRef={phaseValuesRef} />
-
-      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <shapeGeometry />
-        <meshBasicMaterial color="#8B5CF6" transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
 
       <group ref={radialGroupRef}>
         {sorted.map((planet) => {
