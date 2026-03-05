@@ -16,7 +16,7 @@ export const HELIO_RING_RADII: Record<string, number> = {
   Pluto:   17.0,
 }
 
-export const MOON_ORBIT_OFFSET = 1.0
+export const MOON_ORBIT_OFFSET = 1.8
 
 export interface HelioData {
   angleDeg: number       // true heliocentric longitude (degrees)

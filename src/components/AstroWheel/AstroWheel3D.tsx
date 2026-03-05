@@ -6,7 +6,7 @@ import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
-import { HELIO_RING_RADII, calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
+import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 
@@ -1514,7 +1514,7 @@ function MoonOrbitRing({
   return (
     <group ref={groupRef} visible={false}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.0 - 0.015, 1.0 + 0.015, 64]} />
+        <ringGeometry args={[MOON_ORBIT_OFFSET - 0.015, MOON_ORBIT_OFFSET + 0.015, 64]} />
         <meshBasicMaterial
           ref={matRef}
           color="#C8C4DC"
