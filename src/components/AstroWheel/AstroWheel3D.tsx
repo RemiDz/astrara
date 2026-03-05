@@ -990,6 +990,144 @@ function PlanetOrb({
   )
 }
 
+// ─── Planet Polygon (sacred geometry — connects planets by ecliptic longitude) ──
+function PlanetPolygonPulse({ lineRef, phaseValuesRef }: {
+  lineRef: React.MutableRefObject<THREE.Line | null>
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+}) {
+  useFrame(({ clock }) => {
+    if (!lineRef.current) return
+    const pulse = Math.sin(clock.elapsedTime * 0.3 * Math.PI * 2) * 0.5 + 0.5
+    const zodiacOpacity = phaseValuesRef.current.zodiacOpacity
+    const mat = lineRef.current.material as THREE.LineBasicMaterial
+    mat.opacity = (0.12 + pulse * 0.06) * zodiacOpacity
+  })
+  return null
+}
+
+function PlanetPolygon({
+  planets,
+  sceneReady,
+  phaseValuesRef,
+}: {
+  planets: PlanetPosition[]
+  sceneReady: boolean
+  phaseValuesRef: React.MutableRefObject<PhaseValues>
+}) {
+  const lineRef = useRef<THREE.Line | null>(null)
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const radialGroupRef = useRef<THREE.Group>(null!)
+  const lastHash = useRef('')
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (sceneReady) {
+      const timer = setTimeout(() => setVisible(true), 2200)
+      return () => clearTimeout(timer)
+    }
+  }, [sceneReady])
+
+  const sorted = useMemo(() =>
+    [...planets].sort((a, b) => a.eclipticLongitude - b.eclipticLongitude),
+  [planets])
+
+  // Compute polygon points (closed loop)
+  const outlinePoints = useMemo(() => {
+    if (sorted.length < 3) return []
+    const pts = sorted.map(p => {
+      const [x, y, z] = longitudeToPosition(p.eclipticLongitude, R_PLANET)
+      return new THREE.Vector3(x, y, z)
+    })
+    pts.push(pts[0].clone())
+    return pts
+  }, [sorted])
+
+  // Create the outline THREE.Line imperatively
+  const outlineLine = useMemo(() => {
+    if (outlinePoints.length < 4) return null
+    const geom = new THREE.BufferGeometry().setFromPoints(outlinePoints)
+    const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false })
+    return new THREE.Line(geom, mat)
+  }, [outlinePoints])
+
+  useEffect(() => {
+    lineRef.current = outlineLine
+    return () => {
+      if (outlineLine) {
+        outlineLine.geometry.dispose()
+        ;(outlineLine.material as THREE.Material).dispose()
+      }
+    }
+  }, [outlineLine])
+
+  // Update fill shape when positions change
+  useEffect(() => {
+    if (!meshRef.current || sorted.length < 3) return
+    const hash = sorted.map(p => p.eclipticLongitude.toFixed(1)).join('|')
+    if (hash === lastHash.current) return
+    lastHash.current = hash
+
+    const shape = new THREE.Shape()
+    const [x0,, z0] = longitudeToPosition(sorted[0].eclipticLongitude, R_PLANET)
+    shape.moveTo(x0, z0)
+    for (let i = 1; i < sorted.length; i++) {
+      const [xi,, zi] = longitudeToPosition(sorted[i].eclipticLongitude, R_PLANET)
+      shape.lineTo(xi, zi)
+    }
+    shape.closePath()
+    meshRef.current.geometry.dispose()
+    meshRef.current.geometry = new THREE.ShapeGeometry(shape)
+  }, [sorted])
+
+  // Fade radial lines with zodiacOpacity
+  useFrame(() => {
+    if (!radialGroupRef.current) return
+    const opacity = phaseValuesRef.current.zodiacOpacity
+    radialGroupRef.current.traverse((child) => {
+      if (child instanceof THREE.Line) {
+        const mat = child.material as THREE.LineBasicMaterial
+        mat.opacity = 0.06 * opacity
+      }
+    })
+    // Fade fill
+    if (meshRef.current) {
+      const mat = meshRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = 0.03 * opacity
+    }
+  })
+
+  if (!visible || sorted.length < 3 || !outlineLine) return null
+
+  return (
+    <group>
+      <primitive object={outlineLine} />
+      <PlanetPolygonPulse lineRef={lineRef} phaseValuesRef={phaseValuesRef} />
+
+      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <shapeGeometry />
+        <meshBasicMaterial color="#8B5CF6" transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+
+      <group ref={radialGroupRef}>
+        {sorted.map((planet) => {
+          const pos = longitudeToPosition(planet.eclipticLongitude, R_PLANET)
+          const geom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(pos[0], pos[1], pos[2]),
+          ])
+          const mat = new THREE.LineBasicMaterial({
+            color: planet.colour,
+            transparent: true,
+            opacity: 0.06,
+            depthWrite: false,
+          })
+          return <primitive key={`radial-${planet.id}`} object={new THREE.Line(geom, mat)} />
+        })}
+      </group>
+    </group>
+  )
+}
+
 // ─── Counter-rotating wrapper ───────────────────────────────────────
 function CounterRotatingRing({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null!)
@@ -1598,6 +1736,9 @@ function WheelScene({
             />
           )
         })()}
+
+        {/* Planet polygon — sacred geometry connecting planets by longitude */}
+        <PlanetPolygon planets={planets} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
 
         {/* Sun centre label — appears in helio view */}
         <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} labelOpacityRef={labelOpacityRef} />
