@@ -97,7 +97,7 @@ function PlanetDetail({ planet, t, content }: { planet: PlanetPosition; t: (k: s
             <span style={{ color: 'var(--text-muted)' }}>mi</span>
           </p>
           <p className="text-sm flex items-baseline gap-x-1">
-            <span className="opacity-50">💡</span>
+            <span className="opacity-50">✦</span>
             <span className="font-medium" style={{ color: planet.colour }}>{dist.formattedLightTravel}</span>
             <span style={{ color: 'var(--text-muted)' }}>{t('planet.atSpeedOfLight')}</span>
           </p>
