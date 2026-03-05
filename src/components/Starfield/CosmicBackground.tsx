@@ -90,10 +90,12 @@ function createNebulaTexture(hue: number, saturation: number, complexity: number
   canvas.height = size
   const ctx = canvas.getContext('2d')!
 
-  ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, size, size)
+  // Transparent background — additive blending makes rgba(0,0,0,0) invisible
+  ctx.clearRect(0, 0, size, size)
 
   const colour = new THREE.Color()
+
+  // Large base clouds
   for (let i = 0; i < complexity * 8; i++) {
     const x = size * 0.2 + Math.random() * size * 0.6
     const y = size * 0.2 + Math.random() * size * 0.6
@@ -110,14 +112,51 @@ function createNebulaTexture(hue: number, saturation: number, complexity: number
     const b = (colour.b * 255) | 0
 
     const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
-    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`)
-    grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.05)`)
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.18)`)
+    grad.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, 0.10)`)
+    grad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, 0.04)`)
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
 
-    ctx.globalCompositeOperation = 'screen'
+    ctx.globalCompositeOperation = 'lighter'
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, size, size)
   }
+
+  // Small detail wisps for realism
+  for (let i = 0; i < complexity * 5; i++) {
+    const x = size * 0.15 + Math.random() * size * 0.7
+    const y = size * 0.15 + Math.random() * size * 0.7
+    const radius = size * (0.05 + Math.random() * 0.15)
+
+    colour.setHSL(
+      hue + (Math.random() - 0.5) * 0.15,
+      saturation * (0.6 + Math.random() * 0.4),
+      0.35 + Math.random() * 0.25
+    )
+
+    const r = (colour.r * 255) | 0
+    const g = (colour.g * 255) | 0
+    const b = (colour.b * 255) | 0
+
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.22)`)
+    grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.08)`)
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, size, size)
+  }
+
+  // Radial vignette — fade to transparent at edges so sprite boundary is invisible
+  ctx.globalCompositeOperation = 'destination-in'
+  const vignette = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.5)
+  vignette.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  vignette.addColorStop(0.55, 'rgba(255, 255, 255, 1)')
+  vignette.addColorStop(0.85, 'rgba(255, 255, 255, 0.4)')
+  vignette.addColorStop(1, 'rgba(255, 255, 255, 0)')
+  ctx.fillStyle = vignette
+  ctx.fillRect(0, 0, size, size)
 
   return new THREE.CanvasTexture(canvas)
 }
