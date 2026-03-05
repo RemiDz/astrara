@@ -1678,11 +1678,9 @@ function WheelScene({
             </AnimatedScaleGroup>
           </InnerRingRotation>
 
-          {/* Outer zodiac ring — counter-rotates to appear stationary */}
+          {/* Outer zodiac ring — stays fixed, never rotates */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
-            <CounterRotatingRing>
-              <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
-            </CounterRotatingRing>
+            <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
           </AnimatedScaleGroup>
         </GeoFadeGroup>
 
