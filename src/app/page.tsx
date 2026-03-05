@@ -48,7 +48,6 @@ function HomePage() {
   type ViewMode = 'geocentric' | 'heliocentric'
   const [viewMode, setViewMode] = useState<ViewMode>('geocentric')
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [helioData, setHelioData] = useState<Record<string, HelioData>>({})
 
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('12:00')
@@ -74,16 +73,34 @@ function HomePage() {
   const astroData = useAstroData(targetDate, lat, lng)
   const { earthData, loading: earthLoading } = useEarthData()
 
-  // Calculate heliocentric data alongside geocentric
-  useEffect(() => {
-    const helio = calculateAllHelioData(targetDate)
-    setHelioData(helio)
-  }, [targetDate])
-
   // Autoplay time controls (helio view only)
   type AutoplayDir = 'backward-fast' | 'backward' | 'stopped' | 'forward' | 'forward-fast'
   const [autoplayDirection, setAutoplayDirection] = useState<AutoplayDir>('stopped')
   const autoplayInterval = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [animationDate, setAnimationDate] = useState(() => new Date())
+  const animationDateRef = useRef(new Date())
+
+  // Lightweight planet date: animationDate during autoplay, targetDate otherwise
+  const isAutoplayActive = autoplayDirection !== 'stopped'
+  const planetDate = isAutoplayActive ? animationDate : targetDate
+  const helioData = useMemo(() => calculateAllHelioData(planetDate), [planetDate])
+
+  // Autoplay toggle helper — handles date sync on start/stop
+  const handleAutoplayToggle = useCallback((dir: AutoplayDir) => {
+    const wasStopped = autoplayDirection === 'stopped'
+    const willStop = autoplayDirection === dir
+    if (wasStopped && !willStop) {
+      // Starting autoplay — init animation from display date
+      const d = new Date(targetDate)
+      setAnimationDate(d)
+      animationDateRef.current = d
+    } else if (!wasStopped && willStop) {
+      // Stopping autoplay — sync display date to animation
+      setCustomDate(new Date(animationDateRef.current))
+      setDayOffset(0)
+    }
+    setAutoplayDirection(prev => prev === dir ? 'stopped' : dir)
+  }, [autoplayDirection, targetDate])
 
   useEffect(() => {
     if (autoplayInterval.current) {
@@ -95,17 +112,26 @@ function HomePage() {
     const direction = autoplayDirection.includes('backward') ? -1 : 1
     const intervalMs = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 300 : 500
     autoplayInterval.current = setInterval(() => {
-      setDayOffset(prev => prev + daysPerTick * direction)
+      setAnimationDate(prev => {
+        const next = new Date(prev)
+        next.setDate(next.getDate() + (daysPerTick * direction))
+        animationDateRef.current = next
+        return next
+      })
     }, intervalMs)
     return () => {
       if (autoplayInterval.current) clearInterval(autoplayInterval.current)
     }
   }, [autoplayDirection])
 
-  // Stop autoplay when switching back to geocentric
+  // Stop autoplay when switching back to geocentric — sync display date
   useEffect(() => {
-    if (viewMode === 'geocentric') setAutoplayDirection('stopped')
-  }, [viewMode])
+    if (viewMode === 'geocentric' && autoplayDirection !== 'stopped') {
+      setCustomDate(new Date(animationDateRef.current))
+      setDayOffset(0)
+      setAutoplayDirection('stopped')
+    }
+  }, [viewMode, autoplayDirection])
 
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
   const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
@@ -228,8 +254,8 @@ function HomePage() {
           location={location}
           locationLoading={locationLoading}
           now={now}
-          displayDate={targetDate}
-          isToday={isToday}
+          displayDate={isAutoplayActive ? animationDate : targetDate}
+          isToday={isToday && !isAutoplayActive}
           audioPlaying={audioPlaying}
           audioWantsOn={wantsAudio}
           onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
@@ -303,7 +329,7 @@ function HomePage() {
                   <button
                     type="button"
                     disabled={isTransitioning}
-                    onClick={() => setAutoplayDirection(prev => prev === 'backward-fast' ? 'stopped' : 'backward-fast')}
+                    onClick={() => handleAutoplayToggle('backward-fast')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'backward-fast'
                         ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
@@ -316,7 +342,7 @@ function HomePage() {
                   <button
                     type="button"
                     disabled={isTransitioning}
-                    onClick={() => setAutoplayDirection(prev => prev === 'backward' ? 'stopped' : 'backward')}
+                    onClick={() => handleAutoplayToggle('backward')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'backward'
                         ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
@@ -328,7 +354,7 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
+                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0); setAnimationDate(new Date()); animationDateRef.current = new Date() }}
                     className="px-5 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/5 border border-white/8 text-white/60 text-sm font-medium hover:bg-white/10 hover:text-white/80 active:scale-95 transition-all duration-200"
                   >
                     {t('nav.today')}
@@ -336,7 +362,7 @@ function HomePage() {
                   <button
                     type="button"
                     disabled={isTransitioning}
-                    onClick={() => setAutoplayDirection(prev => prev === 'forward' ? 'stopped' : 'forward')}
+                    onClick={() => handleAutoplayToggle('forward')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'forward'
                         ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
@@ -349,7 +375,7 @@ function HomePage() {
                   <button
                     type="button"
                     disabled={isTransitioning}
-                    onClick={() => setAutoplayDirection(prev => prev === 'forward-fast' ? 'stopped' : 'forward-fast')}
+                    onClick={() => handleAutoplayToggle('forward-fast')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'forward-fast'
                         ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
