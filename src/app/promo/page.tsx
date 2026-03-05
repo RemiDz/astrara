@@ -1,10 +1,37 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
+import * as Astronomy from 'astronomy-engine'
 import { getPlanetPositions, getMoonData, type PlanetPosition, type MoonData } from '@/lib/astronomy'
 import { fetchEarthData, type EarthData } from '@/lib/earth-data'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { PLANETS } from '@/lib/planets'
+
+const markdownComponents = {
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="text-white/80 text-base font-medium mt-6 mb-2 uppercase tracking-wide">
+      {children}
+    </h2>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="text-white/70 text-sm leading-relaxed mb-3">
+      {children}
+    </p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="text-white/90 font-medium">{children}</strong>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="space-y-2 my-3">{children}</ul>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="text-white/70 text-sm leading-relaxed flex gap-2">
+      <span className="text-white/30 mt-0.5">{'\u2192'}</span>
+      <span>{children}</span>
+    </li>
+  ),
+}
 
 export default function PromoPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date())
@@ -15,6 +42,8 @@ export default function PromoPage() {
   const [horoscope, setHoroscope] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
+  const [weeklyHoroscope, setWeeklyHoroscope] = useState('')
+  const [isGeneratingWeekly, setIsGeneratingWeekly] = useState(false)
   const lastGenerationTime = useRef(0)
   const MIN_GENERATION_INTERVAL = 5000
 
@@ -55,6 +84,10 @@ export default function PromoPage() {
   }, [impacts])
 
   const selectedImpact = impacts.find(i => i.sign === selectedSign) ?? impacts[0]
+
+  // Weekly data
+  const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
+  const weekData = useMemo(() => calculateWeekData(weekStart), [weekStart])
 
   // Horoscope generation
   const generateHoroscope = useCallback(async (sign: string) => {
@@ -104,6 +137,33 @@ export default function PromoPage() {
     }
   }, [impacts, positions, moonData, earthData, selectedDate])
 
+  // Weekly horoscope generation
+  const generateWeeklyHoroscope = useCallback(async (sign: string) => {
+    setIsGeneratingWeekly(true)
+    setWeeklyHoroscope('')
+
+    try {
+      const response = await fetch('/api/horoscope-weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sign,
+          weekPositions: weekData,
+          weekStart: weekData.weekStart,
+          weekEnd: weekData.weekEnd,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to generate weekly horoscope')
+      const data = await response.json()
+      setWeeklyHoroscope(data.horoscope)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsGeneratingWeekly(false)
+    }
+  }, [weekData])
+
   // Auto-generate when sign changes
   const signRef = useRef(selectedSign)
   useEffect(() => {
@@ -127,6 +187,12 @@ export default function PromoPage() {
       horoscope || undefined
     )
   }, [selectedSign, selectedImpact, positions, moonData, selectedDate, horoscope])
+
+  // Weekly caption
+  const weeklyCaption = useMemo(() => {
+    if (!weeklyHoroscope) return null
+    return generateWeeklyCaption(selectedSign, impacts, weekData, weeklyHoroscope)
+  }, [weeklyHoroscope, selectedSign, impacts, weekData])
 
   function formatDateForInput(date: Date): string {
     const y = date.getFullYear()
@@ -336,9 +402,9 @@ export default function PromoPage() {
 
             {horoscope && !isGenerating && (
               <div>
-                <div className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">
+                <ReactMarkdown components={markdownComponents}>
                   {horoscope}
-                </div>
+                </ReactMarkdown>
                 <div className="pt-4">
                   <button
                     onClick={() => handleCopy('horoscope', horoscope)}
@@ -355,6 +421,58 @@ export default function PromoPage() {
                 Click &ldquo;Regenerate&rdquo; to generate a reading for {selectedSign}.
               </p>
             )}
+          </div>
+
+          {/* Weekly Reading */}
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
+                Weekly Reading
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="text-white/40 text-sm">
+                  Week of {weekData.weekStart}
+                </span>
+                <button
+                  onClick={() => generateWeeklyHoroscope(selectedSign)}
+                  disabled={isGeneratingWeekly}
+                  className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {isGeneratingWeekly ? 'Generating...' : '\u21BB Generate Weekly'}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl border border-white/5 min-h-[200px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              {isGeneratingWeekly && (
+                <div className="flex items-center gap-3 text-white/40">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  <span className="text-sm">Reading the stars for {selectedSign}&apos;s week ahead...</span>
+                </div>
+              )}
+
+              {weeklyHoroscope && !isGeneratingWeekly && (
+                <div>
+                  <ReactMarkdown components={markdownComponents}>
+                    {weeklyHoroscope}
+                  </ReactMarkdown>
+                  <div className="pt-4">
+                    <button
+                      onClick={() => handleCopy('weekly', weeklyHoroscope)}
+                      className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+                    >
+                      {copiedField === 'weekly' ? 'Copied' : 'Copy Weekly Reading'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!weeklyHoroscope && !isGeneratingWeekly && (
+                <p className="text-white/30 text-sm italic">
+                  Click &ldquo;Generate Weekly&rdquo; to create a weekly reading for {selectedSign}.
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
@@ -385,6 +503,14 @@ export default function PromoPage() {
                 copied={copiedField === 'hashtags'}
                 onCopy={() => handleCopy('hashtags', captions.hashtags)}
               />
+              {weeklyCaption && (
+                <CaptionBlock
+                  label="Instagram Weekly"
+                  content={weeklyCaption}
+                  copied={copiedField === 'weeklyCaption'}
+                  onCopy={() => handleCopy('weeklyCaption', weeklyCaption)}
+                />
+              )}
             </div>
           )}
         </section>
@@ -423,6 +549,71 @@ function CaptionBlock({ label, content, copied, onCopy }: {
       </pre>
     </div>
   )
+}
+
+// --- Weekly Helpers ---
+
+function getWeekStart(fromDate: Date): Date {
+  const d = new Date(fromDate)
+  const day = d.getDay()
+  const daysUntilMonday = day === 0 ? 1 : (8 - day)
+  d.setDate(d.getDate() + daysUntilMonday)
+  return d
+}
+
+function calculateWeekData(startDate: Date) {
+  const endDate = new Date(startDate)
+  endDate.setDate(endDate.getDate() + 6)
+
+  const startPositions = getPlanetPositions(startDate, 0, 0)
+  const endPositions = getPlanetPositions(endDate, 0, 0)
+
+  const movements: string[] = []
+  for (let i = 0; i < startPositions.length; i++) {
+    const start = startPositions[i]
+    const end = endPositions[i]
+    const startSignName = ZODIAC_SIGNS.find(z => z.id === start.zodiacSign)?.name ?? start.zodiacSign
+    const endSignName = ZODIAC_SIGNS.find(z => z.id === end.zodiacSign)?.name ?? end.zodiacSign
+    if (startSignName !== endSignName) {
+      movements.push(`${start.glyph} ${start.name} moves from ${startSignName} into ${endSignName}`)
+    }
+  }
+
+  for (let d = 0; d <= 6; d++) {
+    const checkDate = new Date(startDate)
+    checkDate.setDate(checkDate.getDate() + d)
+    const phase = Astronomy.MoonPhase(checkDate)
+    if (phase < 5 || phase > 355) {
+      const dayName = checkDate.toLocaleDateString('en-GB', { weekday: 'long' })
+      movements.push(`New Moon on ${dayName}`)
+    }
+    if (phase > 175 && phase < 185) {
+      const dayName = checkDate.toLocaleDateString('en-GB', { weekday: 'long' })
+      movements.push(`Full Moon on ${dayName}`)
+    }
+  }
+
+  if (movements.length === 0) {
+    movements.push('A relatively stable week \u2014 planets hold their positions')
+  }
+
+  return {
+    start: startPositions.map(p => ({
+      glyph: p.glyph,
+      name: p.name,
+      sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
+      degree: p.degreeInSign,
+    })),
+    end: endPositions.map(p => ({
+      glyph: p.glyph,
+      name: p.name,
+      sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
+      degree: p.degreeInSign,
+    })),
+    movements,
+    weekStart: startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    weekEnd: endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+  }
 }
 
 // --- Scoring Logic ---
@@ -558,10 +749,6 @@ function generateCaptions(
   const moonPos = positions.find(p => p.name === 'Moon')
   const sunSignName = ZODIAC_SIGNS.find(z => z.id === sunPos?.zodiacSign)?.name ?? ''
   const moonSignName = ZODIAC_SIGNS.find(z => z.id === moonPos?.zodiacSign)?.name ?? ''
-  const planetsInSign = positions.filter(p => {
-    const pSignName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name
-    return pSignName === sign
-  })
 
   const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -604,4 +791,28 @@ function generateCaptions(
     `#${sunSignName.toLowerCase()}season`
 
   return { tiktokShort, instagramLong, hashtags }
+}
+
+function generateWeeklyCaption(
+  sign: string,
+  impacts: ZodiacImpact[],
+  weekData: ReturnType<typeof calculateWeekData>,
+  horoscope: string
+): string {
+  const glyph = impacts.find(i => i.sign === sign)?.glyph || ''
+
+  const oneWordMatch = horoscope.match(/WEEK IN ONE WORD[\s\S]*?\n\n?(.+)/i)
+  const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
+
+  return `${glyph} ${sign.toUpperCase()} \u00B7 WEEKLY FORECAST\n` +
+    `${weekData.weekStart} \u2014 ${weekData.weekEnd}\n` +
+    `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
+    (oneWord ? `Week in one word: ${oneWord}\n\n` : '') +
+    (weekData.movements.length > 0
+      ? `Key cosmic shifts:\n${weekData.movements.map((m: string) => `\u2192 ${m}`).join('\n')}\n\n`
+      : '') +
+    `Real planetary data from NASA JPL algorithms.\n` +
+    `Your cosmic portrait at astrara.app\n\n` +
+    `#${sign.toLowerCase()} #weeklyhoroscope #astrology #cosmicweather ` +
+    `#zodiac #weekahead #soundhealing #astrara`
 }

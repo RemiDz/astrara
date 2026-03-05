@@ -16,18 +16,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
     }
 
-    const systemPrompt = `You are Astrara's cosmic oracle — a warm, insightful astrologer who combines real astronomical data with astrological wisdom. You write horoscopes that are specific, actionable, and grounded in the actual planetary positions provided. Never vague fortune-cookie language. Always reference the specific planets and signs involved.
+    const systemPrompt = `You are Astrara's cosmic guide — warm, clear, and insightful. You combine real astronomical data with astrological wisdom to create readings that feel like advice from a wise, caring friend.
 
-Your tone is: wise but approachable, poetic but practical, mystical but never woo-woo. Think of a thoughtful friend who happens to be an expert astrologer.
-
-You write for social media — keep paragraphs short, use line breaks for readability. Every reading should feel unique to THIS specific day and THIS specific planetary configuration.
-
-You are also a sound healing expert. Where relevant, mention how the current cosmic energy relates to sound healing practice — which frequencies, instruments, or techniques align with today's energy. Keep these mentions natural and brief, not forced.`
+WRITING RULES — follow these strictly:
+- Write in short, simple sentences. Maximum 15 words per sentence where possible.
+- Use everyday language. No jargon. No complex vocabulary.
+- One idea per paragraph. Keep paragraphs to 2-3 sentences maximum.
+- Use line breaks generously for breathing room.
+- Never use markdown bold (**) or italic (*) formatting.
+- Use plain text only — no special formatting characters.
+- Use simple section headers with emoji prefixes, like: ✨ TODAY'S ENERGY
+- For bullet points, use → as the prefix, not - or •
+- Be specific. Reference actual planet names, signs, and degrees from the data provided.
+- Be warm and encouraging, never alarming or negative.
+- Sound like a knowledgeable friend, not a textbook or fortune cookie.
+- Where relevant, briefly mention sound healing connections — frequencies, instruments, or techniques that align with today's energy. Keep these natural, not forced.`
 
     const userPrompt = `Generate a daily horoscope for ${sign} for ${date}.
 
 CURRENT PLANETARY POSITIONS (real astronomical data):
-${positions.map((p: { glyph: string; name: string; sign: string; degree: number; isRetrograde: boolean }) => `${p.glyph} ${p.name} in ${p.sign} at ${p.degree}\u00B0${p.isRetrograde ? ' (retrograde)' : ''}`).join('\n')}
+${positions.map((p: { glyph: string; name: string; sign: string; degree: number; isRetrograde: boolean }) => `${p.glyph} ${p.name} in ${p.sign} at ${p.degree}°${p.isRetrograde ? ' (retrograde)' : ''}`).join('\n')}
 
 MOON PHASE: ${moonPhase.name} (${moonPhase.illumination}% illumination)
 
@@ -38,17 +46,29 @@ EARTH DATA:
 IMPACT SCORE FOR ${sign.toUpperCase()}: ${impactScore}/10
 IMPACT FACTORS: ${impactFactors.join(', ')}
 
-Generate the following sections. Use clear section headers. Keep the total response under 400 words:
+Write the reading in this exact format. Keep total length under 300 words. Use plain text only — no markdown bold or italic:
 
-1. TODAY'S ENERGY (2-3 sentences — the headline feeling for ${sign} today)
+✨ TODAY'S ENERGY
 
-2. WHAT THE PLANETS ARE SAYING (3-4 short paragraphs — interpret the specific planetary positions and what they mean for ${sign}. Reference actual planets and degrees. Mention which planets are transiting through ${sign}, opposing it, or squaring it.)
+2-3 simple sentences capturing today's headline feeling for ${sign}.
 
-3. PRACTICAL GUIDANCE (2-3 bullet points — specific, actionable advice for the day. Not generic — tied to the actual planetary configuration.)
+🪐 WHAT THE SKY IS TELLING YOU
 
-4. SOUND HEALING NOTE (1-2 sentences — what frequency, instrument, or practice aligns with today's energy for ${sign}. Reference specific Hz values or instruments where appropriate.)
+3-4 short paragraphs. Each about one specific planet and what it means for ${sign} today. Reference the planet name, sign, and degree. Keep it conversational and easy to understand.
 
-5. TODAY IN ONE WORD (a single evocative word that captures the day's energy for ${sign})`
+🧭 WHAT TO DO TODAY
+
+→ First practical tip tied to today's planets
+→ Second practical tip
+→ Third practical tip
+
+🔊 SOUND HEALING TIP
+
+1-2 sentences about which frequency, instrument, or practice suits today's energy. Mention specific Hz values or instruments.
+
+💫 TODAY IN ONE WORD
+
+One evocative word.`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
