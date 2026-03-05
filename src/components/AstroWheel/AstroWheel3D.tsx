@@ -1025,63 +1025,115 @@ function PlanetOrb({
   )
 }
 
-// ─── Aspect Line (delayed fade-in) ──────────────────────────────────
-function AspectLine({
-  pos1, pos2, colour, opacity, sceneReady, delay,
+// ─── Planet Polygon (sacred geometry — connects planets by ecliptic longitude) ──
+function PlanetPolygonOutlinePulse({ lineRef }: { lineRef: React.MutableRefObject<THREE.Line | null> }) {
+  useFrame(({ clock }) => {
+    if (!lineRef.current) return
+    const pulse = Math.sin(clock.elapsedTime * 0.2 * Math.PI * 2) * 0.5 + 0.5
+    const mat = lineRef.current.material as THREE.LineBasicMaterial
+    mat.opacity = 0.12 + pulse * 0.06
+  })
+  return null
+}
+
+function PlanetPolygon({
+  planets,
+  sceneReady,
 }: {
-  pos1: [number, number, number]; pos2: [number, number, number]
-  colour: string; opacity: number; sceneReady: boolean; delay: number
+  planets: PlanetPosition[]
+  sceneReady: boolean
 }) {
+  const lineRef = useRef<THREE.Line | null>(null)
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const lastHash = useRef('')
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     if (sceneReady) {
-      const timer = setTimeout(() => setVisible(true), delay)
+      const timer = setTimeout(() => setVisible(true), 2200)
       return () => clearTimeout(timer)
     }
-  }, [sceneReady, delay])
+  }, [sceneReady])
 
-  if (!visible) return null
+  const sorted = useMemo(() =>
+    [...planets].sort((a, b) => a.eclipticLongitude - b.eclipticLongitude),
+  [planets])
 
-  return (
-    <Line
-      points={[pos1, pos2]}
-      color={colour}
-      lineWidth={1}
-      transparent
-      opacity={opacity}
-    />
-  )
-}
+  // Compute polygon points (closed loop)
+  const outlinePoints = useMemo(() => {
+    if (sorted.length < 3) return []
+    const pts = sorted.map(p => {
+      const [x, y, z] = longitudeToPosition(p.eclipticLongitude, R_PLANET)
+      return new THREE.Vector3(x, y, z)
+    })
+    pts.push(pts[0].clone()) // close the loop
+    return pts
+  }, [sorted])
 
-// ─── Aspect Lines ───────────────────────────────────────────────────
-function AspectLines3D({
-  aspects, planets, selectedPlanet, sceneReady,
-}: {
-  aspects: AspectData[]; planets: PlanetPosition[]; selectedPlanet: string | null; sceneReady: boolean
-}) {
-  const visibleAspects = selectedPlanet
-    ? aspects.filter(a => a.planet1 === selectedPlanet || a.planet2 === selectedPlanet)
-    : aspects
+  // Create the outline THREE.Line imperatively
+  const outlineLine = useMemo(() => {
+    if (outlinePoints.length < 4) return null
+    const geom = new THREE.BufferGeometry().setFromPoints(outlinePoints)
+    const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false })
+    const line = new THREE.Line(geom, mat)
+    return line
+  }, [outlinePoints])
+
+  // Update ref when line changes
+  useEffect(() => {
+    lineRef.current = outlineLine
+    return () => {
+      if (outlineLine) {
+        outlineLine.geometry.dispose()
+        ;(outlineLine.material as THREE.Material).dispose()
+      }
+    }
+  }, [outlineLine])
+
+  // Update fill shape when positions change
+  useEffect(() => {
+    if (!meshRef.current || sorted.length < 3) return
+    const hash = sorted.map(p => p.eclipticLongitude.toFixed(1)).join('|')
+    if (hash === lastHash.current) return
+    lastHash.current = hash
+
+    const shape = new THREE.Shape()
+    const [x0,, z0] = longitudeToPosition(sorted[0].eclipticLongitude, R_PLANET)
+    shape.moveTo(x0, z0)
+    for (let i = 1; i < sorted.length; i++) {
+      const [xi,, zi] = longitudeToPosition(sorted[i].eclipticLongitude, R_PLANET)
+      shape.lineTo(xi, zi)
+    }
+    shape.closePath()
+    meshRef.current.geometry.dispose()
+    meshRef.current.geometry = new THREE.ShapeGeometry(shape)
+  }, [sorted])
+
+  if (!visible || sorted.length < 3 || !outlineLine) return null
 
   return (
     <group>
-      {visibleAspects.map((aspect, i) => {
-        const p1 = planets.find(p => p.id === aspect.planet1)
-        const p2 = planets.find(p => p.id === aspect.planet2)
-        if (!p1 || !p2) return null
-        const pos1 = longitudeToPosition(p1.eclipticLongitude, R_PLANET)
-        const pos2 = longitudeToPosition(p2.eclipticLongitude, R_PLANET)
-        const isHighlighted = selectedPlanet ? aspect.planet1 === selectedPlanet || aspect.planet2 === selectedPlanet : false
-        const baseOpacity = selectedPlanet ? (isHighlighted ? 0.6 : 0.08) : 0.25
+      {/* Outline with breathing pulse */}
+      <primitive object={outlineLine} />
+      <PlanetPolygonOutlinePulse lineRef={lineRef} />
+
+      {/* Filled interior */}
+      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <shapeGeometry />
+        <meshBasicMaterial color="#8B5CF6" transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+
+      {/* Radial lines from each planet to Earth centre */}
+      {sorted.map((planet) => {
+        const pos = longitudeToPosition(planet.eclipticLongitude, R_PLANET)
         return (
-          <AspectLine
-            key={`aspect-${i}`}
-            pos1={pos1} pos2={pos2}
-            colour={aspect.colour}
-            opacity={baseOpacity}
-            sceneReady={sceneReady}
-            delay={2200 + i * 80}
+          <Line
+            key={`radial-${planet.id}`}
+            points={[[0, 0, 0], pos]}
+            color={planet.colour}
+            lineWidth={1}
+            transparent
+            opacity={0.06}
           />
         )
       })}
@@ -1699,9 +1751,9 @@ function WheelScene({
           )
         })()}
 
-        {/* Phase 5: Aspect lines draw (2200ms+) — fade with geo elements */}
+        {/* Phase 5: Planet polygon (2200ms+) — fade with geo elements */}
         <GeoFadeGroup phaseValuesRef={phaseValuesRef}>
-          <AspectLines3D aspects={aspects} planets={planets} selectedPlanet={selectedPlanet} sceneReady={sceneReady} />
+          <PlanetPolygon planets={planets} sceneReady={sceneReady} />
         </GeoFadeGroup>
 
         {/* Sun centre label — appears in helio view */}
