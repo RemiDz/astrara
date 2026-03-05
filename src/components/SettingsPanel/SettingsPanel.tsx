@@ -7,12 +7,14 @@ export interface AstraraSettings {
   planetScale: number
   rotationSpeed: number
   rotationSoundEnabled: boolean
+  immersiveUniverse: boolean
 }
 
 export const DEFAULT_SETTINGS: AstraraSettings = {
   planetScale: 0.8,
   rotationSpeed: 2.5,
   rotationSoundEnabled: true,
+  immersiveUniverse: false,
 }
 
 interface SettingsPanelProps {
@@ -115,6 +117,30 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSettingsCha
           <div className={`w-5 h-5 rounded-full bg-white shadow-md
                           transition-transform duration-300
                           ${settings.rotationSoundEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+          />
+        </button>
+      </div>
+
+      {/* Immersive Universe Toggle */}
+      <div className="flex items-center justify-between py-3 border-t border-white/5 mt-2">
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-white/40 block">
+            {t('settings.immersiveUniverse')}
+          </label>
+          <span className="text-[9px] text-white/20">
+            {t('settings.immersiveUniverseHint')}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSettingsChange({ ...settings, immersiveUniverse: !settings.immersiveUniverse })}
+          className={`w-11 h-6 rounded-full transition-colors duration-300
+                     flex items-center px-0.5 cursor-pointer select-none
+                     ${settings.immersiveUniverse ? 'bg-purple-500/60' : 'bg-white/10'}`}
+        >
+          <div className={`w-5 h-5 rounded-full bg-white shadow-md
+                          transition-transform duration-300
+                          ${settings.immersiveUniverse ? 'translate-x-5' : 'translate-x-0'}`}
           />
         </button>
       </div>

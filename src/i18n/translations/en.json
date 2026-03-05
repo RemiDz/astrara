@@ -113,6 +113,8 @@
   "settings.large": "Large",
   "settings.paused": "Paused",
   "settings.fast": "Fast",
+  "settings.immersiveUniverse": "Immersive Universe",
+  "settings.immersiveUniverseHint": "Adds nebula clouds and distant galaxies",
   "settings.reset": "Reset to Defaults",
   "nav.backToToday": "Back to Today",
   "planet.distanceFromEarth": "Distance from Earth",

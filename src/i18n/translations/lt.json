@@ -113,6 +113,8 @@
   "settings.large": "Didelis",
   "settings.paused": "Sustabdyta",
   "settings.fast": "Greitas",
+  "settings.immersiveUniverse": "\u012etraukianti Visata",
+  "settings.immersiveUniverseHint": "Prideda \u016bko debesis ir tolimas galaktikas",
   "settings.reset": "Atkurti Numatytuosius",
   "nav.backToToday": "Grįžti į Šiandien",
   "planet.distanceFromEarth": "Atstumas nuo Žemės",

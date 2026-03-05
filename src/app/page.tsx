@@ -11,7 +11,7 @@ import { useEarthData } from '@/hooks/useEarthData'
 import { searchCity, type UserLocation } from '@/lib/location'
 import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
 import { calculateAspects } from '@/lib/aspects'
-import Starfield from '@/components/Starfield/Starfield'
+import CosmicBackground from '@/components/Starfield/CosmicBackground'
 import Header from '@/components/Header/Header'
 import AstroWheel from '@/components/AstroWheel/AstroWheel'
 import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
@@ -182,7 +182,7 @@ function HomePage() {
 
   return (
     <div className="min-h-screen relative">
-      <Starfield />
+      <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
       <div className="relative z-10">
         <Header
