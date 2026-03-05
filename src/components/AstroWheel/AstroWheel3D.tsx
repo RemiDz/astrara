@@ -21,6 +21,8 @@ interface AstroWheel3DProps {
   rotationSpeed?: number
   onRotationVelocity?: (velocity: number) => void
   kpIndex?: number | null
+  solarFlareClass?: string | null
+  solarFluxValue?: number | null
 }
 
 const ELEMENT_COLOURS: Record<string, string> = {
@@ -670,6 +672,91 @@ function EarthCentre({ onEarthTap, kpIndex }: { onEarthTap: () => void; kpIndex:
   )
 }
 
+// ─── Solar Activity Parsing ──────────────────────────────────────────
+interface SolarActivity {
+  flareClass: string
+  fluxValue: number
+  level: 'quiet' | 'low' | 'moderate' | 'strong' | 'extreme'
+  glowMultiplier: number
+  brightnessBoost: number
+  pulseSpeed: number
+  coronaColour: string
+}
+
+function parseSolarActivity(fluxValue: number, flareClass: string): SolarActivity {
+  if (fluxValue < 1e-7) {
+    return { flareClass, fluxValue, level: 'quiet', glowMultiplier: 1.0, brightnessBoost: 0, pulseSpeed: 0, coronaColour: '#FDB813' }
+  }
+  if (fluxValue < 1e-6) {
+    return { flareClass, fluxValue, level: 'low', glowMultiplier: 1.1, brightnessBoost: 0.05, pulseSpeed: 0, coronaColour: '#FDB813' }
+  }
+  if (fluxValue < 1e-5) {
+    return { flareClass, fluxValue, level: 'moderate', glowMultiplier: 1.25, brightnessBoost: 0.15, pulseSpeed: 5, coronaColour: '#FDCE13' }
+  }
+  if (fluxValue < 1e-4) {
+    return { flareClass, fluxValue, level: 'strong', glowMultiplier: 1.5, brightnessBoost: 0.3, pulseSpeed: 3, coronaColour: '#FFE066' }
+  }
+  return { flareClass, fluxValue, level: 'extreme', glowMultiplier: 1.8, brightnessBoost: 0.5, pulseSpeed: 1.5, coronaColour: '#FFEEAA' }
+}
+
+// ─── Sun Corona ─────────────────────────────────────────────────────
+function SunCorona({ solarActivity }: { solarActivity: SolarActivity }) {
+  const innerRef = useRef<THREE.Mesh>(null!)
+  const outerRef = useRef<THREE.Mesh>(null!)
+  const targetColour = useRef(new THREE.Color(solarActivity.coronaColour))
+  const currentColour = useRef(new THREE.Color(solarActivity.coronaColour))
+  const targetScale = useRef(solarActivity.glowMultiplier)
+  const currentScale = useRef(solarActivity.glowMultiplier)
+  const targetOpacity = useRef(0.3 + solarActivity.brightnessBoost)
+  const currentOpacity = useRef(0.3 + solarActivity.brightnessBoost)
+
+  useEffect(() => {
+    targetColour.current.set(solarActivity.coronaColour)
+    targetScale.current = solarActivity.glowMultiplier
+    targetOpacity.current = 0.3 + solarActivity.brightnessBoost
+  }, [solarActivity.coronaColour, solarActivity.glowMultiplier, solarActivity.brightnessBoost])
+
+  useFrame(({ clock }, delta) => {
+    if (!innerRef.current || !outerRef.current) return
+
+    currentColour.current.lerp(targetColour.current, Math.min(delta * 1.5, 0.1))
+    currentScale.current += (targetScale.current - currentScale.current) * Math.min(delta * 2, 0.1)
+    currentOpacity.current += (targetOpacity.current - currentOpacity.current) * Math.min(delta * 2, 0.1)
+
+    const innerMat = innerRef.current.material as THREE.MeshBasicMaterial
+    const outerMat = outerRef.current.material as THREE.MeshBasicMaterial
+    innerMat.color.copy(currentColour.current)
+    outerMat.color.copy(currentColour.current)
+
+    let pulseMultiplier = 1
+    if (solarActivity.pulseSpeed > 0) {
+      const pulse = Math.sin(clock.elapsedTime * (Math.PI * 2) / solarActivity.pulseSpeed) * 0.5 + 0.5
+      pulseMultiplier = 0.8 + pulse * 0.2
+      outerRef.current.scale.setScalar(currentScale.current * 1.6 + pulse * 0.2)
+    } else {
+      outerRef.current.scale.setScalar(currentScale.current * 1.6)
+    }
+
+    innerMat.opacity = currentOpacity.current * pulseMultiplier
+    outerMat.opacity = (currentOpacity.current * 0.5) * pulseMultiplier
+    innerRef.current.scale.setScalar(currentScale.current)
+  })
+
+  // Sun radius is 0.28
+  return (
+    <group>
+      <mesh ref={innerRef} scale={solarActivity.glowMultiplier}>
+        <sphereGeometry args={[0.28, 32, 32]} />
+        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={0.3 + solarActivity.brightnessBoost} side={THREE.BackSide} depthWrite={false} />
+      </mesh>
+      <mesh ref={outerRef} scale={solarActivity.glowMultiplier * 1.6}>
+        <sphereGeometry args={[0.28, 32, 32]} />
+        <meshBasicMaterial color={solarActivity.coronaColour} transparent opacity={(0.3 + solarActivity.brightnessBoost) * 0.5} side={THREE.BackSide} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 // ─── Planet Orb (with entrance animation) ───────────────────────────
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
@@ -929,7 +1016,7 @@ function TiltAnimator({
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
-  planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex,
+  planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1003,6 +1090,19 @@ function WheelScene({
             />
           )
         })}
+
+        {/* Sun Corona — live solar activity glow */}
+        {(() => {
+          const sun = planets.find(p => p.id === 'sun')
+          if (!sun) return null
+          const activity = parseSolarActivity(solarFluxValue ?? 0, '')
+          const sunPos = longitudeToPosition(sun.eclipticLongitude, R_PLANET)
+          return (
+            <group position={sunPos}>
+              <SunCorona solarActivity={activity} />
+            </group>
+          )
+        })()}
 
         {/* Phase 5: Aspect lines draw (2200ms+) */}
         <AspectLines3D aspects={aspects} planets={planets} selectedPlanet={selectedPlanet} sceneReady={sceneReady} />

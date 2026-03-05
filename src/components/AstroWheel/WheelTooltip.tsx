@@ -17,9 +17,11 @@ interface WheelTooltipProps {
   tooltip: TooltipData
   planets: PlanetPosition[]
   onClose: () => void
+  solarFlareClass?: string | null
+  solarFluxValue?: number | null
 }
 
-export default function WheelTooltip({ tooltip, planets, onClose }: WheelTooltipProps) {
+export default function WheelTooltip({ tooltip, planets, onClose, solarFlareClass, solarFluxValue }: WheelTooltipProps) {
   const { t } = useTranslation()
   const content = useContent()
 
@@ -28,7 +30,7 @@ export default function WheelTooltip({ tooltip, planets, onClose }: WheelTooltip
   return (
     <Modal isOpen={!!tooltip} onClose={onClose}>
       {tooltip.type === 'planet' && (
-        <PlanetDetail planet={tooltip.data} t={t} content={content} />
+        <PlanetDetail planet={tooltip.data} t={t} content={content} solarFlareClass={solarFlareClass} solarFluxValue={solarFluxValue} />
       )}
       {tooltip.type === 'sign' && (
         <SignDetail signId={tooltip.data} planets={planets} t={t} content={content} />
@@ -58,10 +60,32 @@ function MoonProximityLabel({ km, t }: { km: number; t: (k: string) => string })
   return null
 }
 
-function PlanetDetail({ planet, t, content }: { planet: PlanetPosition; t: (k: string) => string; content: ReturnType<typeof useContent> }) {
+function getSolarLevelColour(level: string): string {
+  switch (level) {
+    case 'quiet': return '#22c55e'
+    case 'low': return '#4ade80'
+    case 'moderate': return '#FDCE13'
+    case 'strong': return '#FFE066'
+    case 'extreme': return '#FFEEAA'
+    default: return '#22c55e'
+  }
+}
+
+function PlanetDetail({ planet, t, content, solarFlareClass, solarFluxValue }: {
+  planet: PlanetPosition; t: (k: string) => string; content: ReturnType<typeof useContent>
+  solarFlareClass?: string | null; solarFluxValue?: number | null
+}) {
   const sign = ZODIAC_SIGNS.find(s => s.id === planet.zodiacSign)
   const insight = content?.planetMeanings?.[planet.id]?.[planet.zodiacSign]
   const dist = calculateDistance(planet.distanceAU)
+
+  // Parse solar activity for Sun detail panel
+  const solarLevel = planet.id === 'sun' && solarFluxValue != null ? (
+    solarFluxValue < 1e-7 ? 'quiet' :
+    solarFluxValue < 1e-6 ? 'low' :
+    solarFluxValue < 1e-5 ? 'moderate' :
+    solarFluxValue < 1e-4 ? 'strong' : 'extreme'
+  ) : null
 
   return (
     <div>
@@ -104,6 +128,32 @@ function PlanetDetail({ planet, t, content }: { planet: PlanetPosition; t: (k: s
           {planet.id === 'moon' && <MoonProximityLabel km={dist.km} t={t} />}
         </div>
       </div>
+
+      {/* Solar Activity — Sun only */}
+      {solarLevel && (
+        <div className="mb-4">
+          <h3 className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
+            {t('sun.solarActivity')}
+          </h3>
+          <div className="glass-card p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ background: getSolarLevelColour(solarLevel), boxShadow: `0 0 6px ${getSolarLevelColour(solarLevel)}80` }}
+              />
+              <span className="text-sm font-medium text-white">
+                {solarFlareClass}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                — {t(`sun.level.${solarLevel}`)}
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {t(`sun.desc.${solarLevel}`)}
+            </p>
+          </div>
+        </div>
+      )}
 
       {insight && (
         <>

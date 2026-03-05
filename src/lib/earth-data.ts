@@ -7,6 +7,8 @@ export interface EarthData {
   solarWindSpeedLabel: string
   bzComponent: number
   bzLabel: string
+  solarFlareClass: string
+  solarFluxValue: number
   schumannBase: number
   schumannHarmonics: number[]
   lastUpdated: Date
@@ -23,6 +25,8 @@ export async function fetchEarthData(): Promise<EarthData> {
     solarWindSpeedLabel: 'Unknown',
     bzComponent: 0,
     bzLabel: 'Unknown',
+    solarFlareClass: 'A0.0',
+    solarFluxValue: 0,
     schumannBase: 7.83,
     schumannHarmonics: [14.07, 20.25, 26.41, 32.45],
     lastUpdated: new Date(),
@@ -30,10 +34,11 @@ export async function fetchEarthData(): Promise<EarthData> {
   }
 
   try {
-    const [kpRes, plasmaRes, magRes] = await Promise.allSettled([
+    const [kpRes, plasmaRes, magRes, xrayRes] = await Promise.allSettled([
       fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'),
       fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json'),
       fetch('https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json'),
+      fetch('https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json'),
     ])
 
     if (kpRes.status === 'fulfilled' && kpRes.value.ok) {
@@ -63,6 +68,19 @@ export async function fetchEarthData(): Promise<EarthData> {
         const latest = magData[magData.length - 1]
         defaults.bzComponent = parseFloat(latest[3]) || 0
         defaults.bzLabel = getBzLabel(defaults.bzComponent)
+      }
+    }
+
+    if (xrayRes.status === 'fulfilled' && xrayRes.value.ok) {
+      const xrayData = await xrayRes.value.json()
+      // Find most recent entry for the 0.1-0.8nm channel
+      for (let i = xrayData.length - 1; i >= 0; i--) {
+        const entry = xrayData[i]
+        if (entry.energy === '0.1-0.8nm') {
+          defaults.solarFlareClass = entry.current_class || 'A0.0'
+          defaults.solarFluxValue = parseFloat(entry.current_int_xrray_flux) || 0
+          break
+        }
       }
     }
   } catch (error) {

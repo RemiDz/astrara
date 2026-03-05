@@ -19,6 +19,8 @@ interface Props {
   rotationSpeed?: number
   onRotationVelocity?: (velocity: number) => void
   kpIndex?: number | null
+  solarFlareClass?: string | null
+  solarFluxValue?: number | null
 }
 
 interface ErrorBoundaryState {

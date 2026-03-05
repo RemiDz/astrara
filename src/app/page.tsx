@@ -225,6 +225,8 @@ function HomePage() {
                   rotationSpeed={settings.rotationSpeed}
                   onRotationVelocity={handleRotationVelocity}
                   kpIndex={earthData?.kpIndex ?? null}
+                  solarFlareClass={earthData?.solarFlareClass ?? null}
+                  solarFluxValue={earthData?.solarFluxValue ?? null}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -340,6 +342,8 @@ function HomePage() {
         tooltip={tooltip}
         planets={astroData?.planets ?? []}
         onClose={handleCloseTooltip}
+        solarFlareClass={earthData?.solarFlareClass ?? null}
+        solarFluxValue={earthData?.solarFluxValue ?? null}
       />
 
       {/* Earth Panel */}
