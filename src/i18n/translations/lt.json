@@ -1,5 +1,5 @@
 {
-  "app.tagline": "Gyva Kosminė Išmintis",
+  "app.tagline": "Šiandienos Kosminis Žemėlapis",
   "header.language": "LT",
   "weather.title": "Šiandienos Kosminis Oras",
   "weather.notableAspects": "Svarbiausi Šiandienos Aspektai",
@@ -21,7 +21,7 @@
   "nav.yesterday": "Vakar",
   "nav.today": "Šiandien",
   "nav.tomorrow": "Rytoj",
-  "cta.birthChart": "Kaip atrodo TAVO žvaigždėlapis?",
+  "cta.birthChart": "Atraskite Savo Kosminį Portretą",
   "cta.birthChartTitle": "Tavo Kosminis Portretas",
   "cta.birthChartSubtitle": "Įvesk gimimo duomenis ir pamatyk savo dangų",
   "cta.birthChartButton": "Atskleisti Mano Kosminį Portretą",

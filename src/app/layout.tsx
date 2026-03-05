@@ -25,7 +25,7 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Astrara — Live Cosmic Intelligence',
+  title: "Astrara — Today's Cosmic Map",
   description: 'See the sky right now. Understand how planetary positions affect your day. A live astrological guide by Harmonic Waves.',
   keywords: 'astrology, planetary positions, cosmic weather, daily horoscope, birth chart, zodiac',
   openGraph: {

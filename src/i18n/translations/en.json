@@ -1,5 +1,5 @@
 {
-  "app.tagline": "Live Cosmic Intelligence",
+  "app.tagline": "Today's Cosmic Map",
   "header.language": "EN",
   "weather.title": "Today's Cosmic Weather",
   "weather.notableAspects": "Notable Aspects Today",
@@ -21,7 +21,7 @@
   "nav.yesterday": "Yesterday",
   "nav.today": "Today",
   "nav.tomorrow": "Tomorrow",
-  "cta.birthChart": "What does YOUR chart look like?",
+  "cta.birthChart": "Discover Your Cosmic Portrait",
   "cta.birthChartTitle": "Your Cosmic Portrait",
   "cta.birthChartSubtitle": "Enter your birth details to personalise your sky",
   "cta.birthChartButton": "Reveal My Cosmic Portrait",

@@ -653,7 +653,7 @@ function EarthCentre({ onEarthTap, kpIndex }: { onEarthTap: () => void; kpIndex:
       <Html center position={[0, -0.25, 0]} zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'none', overflow: 'visible' }}>
         <div className="text-center whitespace-nowrap select-none tracking-widest uppercase"
           style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.3)', textShadow: '0 0 8px rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-body), sans-serif' }}>
-          you are here
+          home
         </div>
       </Html>
 
