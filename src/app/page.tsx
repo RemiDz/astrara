@@ -193,6 +193,9 @@ function HomePage() {
   useEffect(() => {
     if (autoplayDirection === 'stopped') {
       animationTimeRef.current = targetDate.getTime()
+      if (dateInputRef.current) {
+        dateInputRef.current.value = formatDateForInput(targetDate)
+      }
     }
   }, [targetDate, autoplayDirection])
 
@@ -325,6 +328,10 @@ function HomePage() {
           onAudioToggle={() => { handleAudioToggle(); trackEvent('audio-toggle') }}
           onAboutOpen={() => { setShowAbout(true); trackEvent('about-open') }}
           onSettingsOpen={() => { setShowSettings(true); trackEvent('settings-open') }}
+          viewMode={viewMode}
+          dateInputRef={dateInputRef}
+          onDateJump={handleDateJump}
+          formatDateForInput={formatDateForInput}
         />
 
         <main className="max-w-5xl mx-auto px-4 pb-12">
@@ -449,7 +456,7 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { animationSpeedRef.current = 0; animationTimeRef.current = Date.now(); setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
+                    onClick={() => { animationSpeedRef.current = 0; const now = Date.now(); animationTimeRef.current = now; setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0); if (dateInputRef.current) dateInputRef.current.value = formatDateForInput(new Date(now)) }}
                     className="px-5 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/5 border border-white/8 text-white/60 text-sm font-medium hover:bg-white/10 hover:text-white/80 active:scale-95 transition-all duration-200"
                   >
                     {t('nav.today')}
@@ -482,27 +489,6 @@ function HomePage() {
                   </button>
                 </div>
               ) : null}
-
-              {/* Date input — helio view only, between autoplay and view toggle */}
-              {viewMode === 'heliocentric' && (
-                <div className="flex items-center justify-center py-1">
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    defaultValue={formatDateForInput(targetDate)}
-                    onChange={(e) => {
-                      const newDate = new Date(e.target.value + 'T12:00:00')
-                      if (!isNaN(newDate.getTime())) {
-                        handleDateJump(newDate)
-                      }
-                    }}
-                    min="1900-01-01"
-                    max="2100-12-31"
-                    className="helio-date-input bg-white/5 border border-white/10 rounded-full px-5 py-2 text-sm text-white/70 text-center backdrop-blur-md cursor-pointer hover:bg-white/8 hover:text-white/90 focus:outline-none focus:border-white/20 transition-all duration-200"
-                    style={{ colorScheme: 'dark', WebkitAppearance: 'none', minWidth: 0 }}
-                  />
-                </div>
-              )}
 
               {viewMode !== 'heliocentric' && (() => {
                 const formatShortDate = (date: Date) => {

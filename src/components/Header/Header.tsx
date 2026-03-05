@@ -17,6 +17,10 @@ interface HeaderProps {
   onAboutOpen: () => void
   onSettingsOpen: () => void
   headerDateRef?: React.RefObject<HTMLSpanElement | null>
+  viewMode?: 'geocentric' | 'heliocentric'
+  dateInputRef?: React.RefObject<HTMLInputElement | null>
+  onDateJump?: (date: Date) => void
+  formatDateForInput?: (date: Date) => string
 }
 
 const iconBtn =
@@ -34,6 +38,10 @@ export default function Header({
   onAboutOpen,
   onSettingsOpen,
   headerDateRef,
+  viewMode = 'geocentric',
+  dateInputRef,
+  onDateJump,
+  formatDateForInput,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang } = useLanguage()
@@ -72,7 +80,40 @@ export default function Header({
             className="text-sm mt-1 truncate"
             style={{ color: 'var(--text-muted)' }}
           >
-            <span ref={headerDateRef}>{dateStr}</span>
+            <span className="relative inline-block">
+              <span
+                ref={headerDateRef}
+                className={`transition-colors duration-200 ${
+                  viewMode === 'heliocentric'
+                    ? 'text-white/80 underline decoration-white/20 decoration-dotted underline-offset-4 cursor-pointer'
+                    : ''
+                }`}
+              >
+                {dateStr}
+              </span>
+              {viewMode === 'heliocentric' && formatDateForInput && onDateJump && (
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  defaultValue={formatDateForInput(displayDate)}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value + 'T12:00:00')
+                    if (!isNaN(newDate.getTime())) {
+                      onDateJump(newDate)
+                    }
+                  }}
+                  min="1900-01-01"
+                  max="2100-12-31"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{
+                    WebkitAppearance: 'none',
+                    appearance: 'none',
+                    minWidth: 0,
+                    fontSize: '16px',
+                  }}
+                />
+              )}
+            </span>
             {timeStr ? ` \u00B7 ${timeStr}` : ''}
             {cityName ? ` \u00B7 ${cityName}` : ''}
           </span>
