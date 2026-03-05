@@ -1,6 +1,7 @@
 'use client'
 
 import type { PlanetPosition } from '@/lib/astronomy'
+import { calculateDistance } from '@/lib/distance'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import GlassCard from '@/components/ui/GlassCard'
@@ -15,6 +16,7 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
   const { t } = useTranslation()
   const content = useContent()
   const insight = content?.planetMeanings?.[planet.id]?.[planet.zodiacSign]
+  const dist = calculateDistance(planet.distanceAU)
 
   return (
     <GlassCard onClick={onClick}>
@@ -33,8 +35,11 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
               </span>
             )}
           </div>
-          <p className="text-xs text-white/25 mb-2">
+          <p className="text-xs text-white/25 mb-1">
             {planet.signGlyph} {planet.degreeInSign}°
+          </p>
+          <p className="text-[11px] text-white/30 mb-2">
+            <span style={{ color: planet.colour }}>{dist.formattedKm}</span> km · <span style={{ color: planet.colour }}>{dist.formattedMiles}</span> mi · 💡 {dist.formattedLightTravel}
           </p>
           {insight && (
             <p className="text-[13px] text-white/40 leading-relaxed">
