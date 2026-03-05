@@ -61,6 +61,12 @@ function PromoPage() {
   const lastGenerationTime = useRef(0)
   const MIN_GENERATION_INTERVAL = 5000
 
+  // Enable text selection on this page
+  useEffect(() => {
+    document.body.classList.add('allow-select')
+    return () => { document.body.classList.remove('allow-select') }
+  }, [])
+
   // Fetch NOAA data
   useEffect(() => {
     setEarthLoading(true)
@@ -313,7 +319,7 @@ function PromoPage() {
   }
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)', WebkitUserSelect: 'text', userSelect: 'text' }}>
+    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }}>
       <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
 
         {/* Header */}

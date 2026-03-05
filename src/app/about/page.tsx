@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
 import LanguageToggle from '@/components/LanguageToggle'
 import {
@@ -20,6 +21,11 @@ export default function Page() {
 }
 
 function AboutPage() {
+  useEffect(() => {
+    document.body.classList.add('allow-select')
+    return () => { document.body.classList.remove('allow-select') }
+  }, [])
+
   const { lang } = useLanguage()
   const l = labels[lang as Language] ?? labels.en
   const secs = sections[lang as Language] ?? sections.en
