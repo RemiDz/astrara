@@ -20,6 +20,7 @@ interface AstroWheel3DProps {
   planetScale?: number
   rotationSpeed?: number
   onRotationVelocity?: (velocity: number) => void
+  kpIndex?: number | null
 }
 
 const ELEMENT_COLOURS: Record<string, string> = {
@@ -543,19 +544,107 @@ function EarthSphereFallback() {
   )
 }
 
+// ─── Kp Colour Scale ────────────────────────────────────────────────
+function getKpColour(kp: number): { colour: string; glowIntensity: number; pulseSpeed: number } {
+  if (kp <= 1) return { colour: '#22c55e', glowIntensity: 0.15, pulseSpeed: 0 }
+  if (kp <= 2) return { colour: '#4ade80', glowIntensity: 0.2, pulseSpeed: 0 }
+  if (kp <= 3) return { colour: '#a3e635', glowIntensity: 0.25, pulseSpeed: 0 }
+  if (kp <= 4) return { colour: '#facc15', glowIntensity: 0.35, pulseSpeed: 4 }
+  if (kp <= 5) return { colour: '#f59e0b', glowIntensity: 0.45, pulseSpeed: 3 }
+  if (kp <= 6) return { colour: '#ef4444', glowIntensity: 0.55, pulseSpeed: 2.5 }
+  if (kp <= 7) return { colour: '#dc2626', glowIntensity: 0.65, pulseSpeed: 2 }
+  if (kp <= 8) return { colour: '#a855f7', glowIntensity: 0.75, pulseSpeed: 1.5 }
+  return { colour: '#c026d3', glowIntensity: 0.85, pulseSpeed: 1 }
+}
+
+// ─── Earth Kp Aura ──────────────────────────────────────────────────
+function EarthKpAura({ kpIndex }: { kpIndex: number | null }) {
+  const innerRef = useRef<THREE.Mesh>(null!)
+  const outerRef = useRef<THREE.Mesh>(null!)
+  const targetColour = useRef(new THREE.Color('#93c5fd'))
+  const currentColour = useRef(new THREE.Color('#93c5fd'))
+  const targetIntensity = useRef(0.1)
+  const currentIntensity = useRef(0.1)
+
+  const kpData = kpIndex !== null ? getKpColour(kpIndex) : null
+
+  useEffect(() => {
+    if (kpData) {
+      targetColour.current.set(kpData.colour)
+      targetIntensity.current = kpData.glowIntensity
+    } else {
+      targetColour.current.set('#93c5fd')
+      targetIntensity.current = 0.1
+    }
+  }, [kpData])
+
+  useFrame(({ clock }, delta) => {
+    if (!innerRef.current || !outerRef.current) return
+
+    // Smooth colour lerp
+    currentColour.current.lerp(targetColour.current, Math.min(delta * 2, 0.1))
+    // Smooth intensity lerp
+    currentIntensity.current += (targetIntensity.current - currentIntensity.current) * Math.min(delta * 2, 0.1)
+
+    const innerMat = innerRef.current.material as THREE.MeshBasicMaterial
+    const outerMat = outerRef.current.material as THREE.MeshBasicMaterial
+
+    innerMat.color.copy(currentColour.current)
+    outerMat.color.copy(currentColour.current)
+
+    const pulseSpeed = kpData?.pulseSpeed ?? 0
+
+    if (pulseSpeed > 0) {
+      const pulse = Math.sin(clock.elapsedTime * (Math.PI * 2) / pulseSpeed) * 0.5 + 0.5
+      innerMat.opacity = currentIntensity.current * 0.6 * (0.7 + pulse * 0.3)
+      outerMat.opacity = currentIntensity.current * 0.3 * (0.6 + pulse * 0.4)
+      const scaleBreath = 1.8 + pulse * 0.15
+      outerRef.current.scale.setScalar(scaleBreath)
+    } else {
+      innerMat.opacity = currentIntensity.current * 0.6
+      outerMat.opacity = currentIntensity.current * 0.3
+      outerRef.current.scale.setScalar(1.8)
+    }
+  })
+
+  return (
+    <group>
+      {/* Inner aura */}
+      <mesh ref={innerRef} scale={1.3}>
+        <sphereGeometry args={[0.16, 32, 32]} />
+        <meshBasicMaterial
+          color="#93c5fd"
+          transparent
+          opacity={0.06}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Outer soft aura */}
+      <mesh ref={outerRef} scale={1.8}>
+        <sphereGeometry args={[0.16, 32, 32]} />
+        <meshBasicMaterial
+          color="#93c5fd"
+          transparent
+          opacity={0.03}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 // ─── Earth Centre ───────────────────────────────────────────────────
-function EarthCentre({ onEarthTap }: { onEarthTap: () => void }) {
+function EarthCentre({ onEarthTap, kpIndex }: { onEarthTap: () => void; kpIndex: number | null }) {
   return (
     <group>
       <Suspense fallback={<EarthSphereFallback />}>
         <EarthSphereTextured />
       </Suspense>
 
-      {/* Atmosphere glow */}
-      <mesh>
-        <sphereGeometry args={[0.2, 32, 32]} />
-        <meshBasicMaterial color="#93c5fd" transparent opacity={0.12} side={THREE.BackSide} />
-      </mesh>
+      {/* Kp Aura (replaces static atmosphere glow when data loads) */}
+      <EarthKpAura kpIndex={kpIndex} />
 
       <pointLight color="#60a5fa" intensity={0.4} distance={1.5} decay={2} />
 
@@ -840,7 +929,7 @@ function TiltAnimator({
 // ─── Main Scene ─────────────────────────────────────────────────────
 function WheelScene({
   planets, aspects, onPlanetTap, onSignTap, onEarthTap, selectedPlanet, sceneReady,
-  planetScale = 1, rotationSpeed = 1, onRotationVelocity,
+  planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex,
 }: AstroWheel3DProps & { sceneReady: boolean }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -879,7 +968,7 @@ function WheelScene({
       <group>
         {/* Phase 1: Earth ignites (0ms) */}
         <AnimatedScaleGroup sceneReady={sceneReady} delay={0}>
-          <EarthCentre onEarthTap={onEarthTap} />
+          <EarthCentre onEarthTap={onEarthTap} kpIndex={kpIndex ?? null} />
         </AnimatedScaleGroup>
 
         {/* Phase 2: Inner rings expand (400ms) */}

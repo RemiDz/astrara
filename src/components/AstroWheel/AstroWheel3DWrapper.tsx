@@ -18,6 +18,7 @@ interface Props {
   planetScale?: number
   rotationSpeed?: number
   onRotationVelocity?: (velocity: number) => void
+  kpIndex?: number | null
 }
 
 interface ErrorBoundaryState {

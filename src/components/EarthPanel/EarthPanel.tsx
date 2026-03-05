@@ -1,10 +1,33 @@
 'use client'
 
-import { useEarthData } from '@/hooks/useEarthData'
+import type { EarthData } from '@/lib/earth-data'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useLanguage } from '@/i18n/LanguageContext'
 import { getEarthInsight, getBodyMindPractice } from '@/lib/earth-insights'
 import Modal from '@/components/ui/Modal'
+
+function getKpAuraColour(kp: number): string {
+  if (kp <= 1) return '#22c55e'
+  if (kp <= 2) return '#4ade80'
+  if (kp <= 3) return '#a3e635'
+  if (kp <= 4) return '#facc15'
+  if (kp <= 5) return '#f59e0b'
+  if (kp <= 6) return '#ef4444'
+  if (kp <= 7) return '#dc2626'
+  if (kp <= 8) return '#a855f7'
+  return '#c026d3'
+}
+
+function getKpStormLabel(kp: number): string {
+  if (kp <= 1) return 'Quiet'
+  if (kp <= 3) return 'Unsettled'
+  if (kp <= 4) return 'Active'
+  if (kp <= 5) return 'Minor storm'
+  if (kp <= 6) return 'Moderate storm'
+  if (kp <= 7) return 'Strong storm'
+  if (kp <= 8) return 'Severe storm'
+  return 'Extreme storm'
+}
 
 function KpBar({ kp }: { kp: number }) {
   const segments = Array.from({ length: 9 }, (_, i) => i + 1)
@@ -35,12 +58,13 @@ function KpBar({ kp }: { kp: number }) {
 interface EarthPanelProps {
   isOpen: boolean
   onClose: () => void
+  earthData: EarthData | null
+  loading: boolean
 }
 
-export default function EarthPanel({ isOpen, onClose }: EarthPanelProps) {
+export default function EarthPanel({ isOpen, onClose, earthData, loading }: EarthPanelProps) {
   const { t } = useTranslation()
   const { lang } = useLanguage()
-  const { earthData, loading } = useEarthData()
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -90,18 +114,18 @@ export default function EarthPanel({ isOpen, onClose }: EarthPanelProps) {
           </h3>
           <div className="glass-card p-4 mb-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <span className="text-sm flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ background: getKpAuraColour(earthData.kpIndex), boxShadow: `0 0 6px ${getKpAuraColour(earthData.kpIndex)}80` }}
+                />
                 {t('earth.kpIndex')}: <span className="text-white font-medium">{earthData.kpIndex}</span>
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full" style={{
-                background: earthData.kpIndex <= 1 ? 'rgba(74, 222, 128, 0.15)' :
-                  earthData.kpIndex <= 3 ? 'rgba(250, 204, 21, 0.15)' :
-                  earthData.kpIndex <= 4 ? 'rgba(251, 146, 60, 0.15)' : 'rgba(248, 113, 113, 0.15)',
-                color: earthData.kpIndex <= 1 ? '#4ADE80' :
-                  earthData.kpIndex <= 3 ? '#FACC15' :
-                  earthData.kpIndex <= 4 ? '#FB923C' : '#F87171',
+                background: `${getKpAuraColour(earthData.kpIndex)}25`,
+                color: getKpAuraColour(earthData.kpIndex),
               }}>
-                {earthData.kpLabel}
+                {getKpStormLabel(earthData.kpIndex)}
               </span>
             </div>
             <KpBar kp={earthData.kpIndex} />

@@ -7,6 +7,7 @@ import { useRealTime } from '@/hooks/useRealTime'
 import { useLocation } from '@/hooks/useLocation'
 import { useAstroData } from '@/hooks/useAstroData'
 import { useCosmicAudio } from '@/audio/useCosmicAudio'
+import { useEarthData } from '@/hooks/useEarthData'
 import { searchCity, type UserLocation } from '@/lib/location'
 import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
 import { calculateAspects } from '@/lib/aspects'
@@ -65,6 +66,7 @@ function HomePage() {
   const lng = location?.lng ?? -0.1278
 
   const astroData = useAstroData(targetDate, lat, lng)
+  const { earthData, loading: earthLoading } = useEarthData()
 
   const moonSign = astroData?.moon?.zodiacSign ?? 'aries'
   const { isPlaying: audioPlaying, wantsAudio, toggle: toggleAudio, onPlanetTap: audioOnPlanetTap, onSignTap: audioOnSignTap, startRotationSound, stopRotationSound, updateRotationVelocity } = useCosmicAudio(astroData?.planets ?? [], moonSign)
@@ -222,6 +224,7 @@ function HomePage() {
                   planetScale={settings.planetScale}
                   rotationSpeed={settings.rotationSpeed}
                   onRotationVelocity={handleRotationVelocity}
+                  kpIndex={earthData?.kpIndex ?? null}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -340,7 +343,7 @@ function HomePage() {
       />
 
       {/* Earth Panel */}
-      <EarthPanel isOpen={showEarthPanel} onClose={() => setShowEarthPanel(false)} />
+      <EarthPanel isOpen={showEarthPanel} onClose={() => setShowEarthPanel(false)} earthData={earthData} loading={earthLoading} />
 
       {/* About Modal */}
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
