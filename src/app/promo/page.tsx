@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { getPlanetPositions, getMoonData, type PlanetPosition, type MoonData } from '@/lib/astronomy'
 import { fetchEarthData, type EarthData } from '@/lib/earth-data'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
@@ -12,6 +12,11 @@ export default function PromoPage() {
   const [earthData, setEarthData] = useState<EarthData | null>(null)
   const [earthLoading, setEarthLoading] = useState(true)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [horoscope, setHoroscope] = useState<string>('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const lastGenerationTime = useRef(0)
+  const MIN_GENERATION_INTERVAL = 5000
 
   // Fetch NOAA data
   useEffect(() => {
@@ -51,6 +56,63 @@ export default function PromoPage() {
 
   const selectedImpact = impacts.find(i => i.sign === selectedSign) ?? impacts[0]
 
+  // Horoscope generation
+  const generateHoroscope = useCallback(async (sign: string) => {
+    const now = Date.now()
+    if (now - lastGenerationTime.current < MIN_GENERATION_INTERVAL) return
+    lastGenerationTime.current = now
+
+    setIsGenerating(true)
+    setGenerationError(null)
+    setHoroscope('')
+
+    try {
+      const impact = impacts.find(i => i.sign === sign)
+      const response = await fetch('/api/horoscope', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sign,
+          positions: positions.map(p => ({
+            glyph: p.glyph,
+            name: p.name,
+            sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
+            degree: p.degreeInSign,
+            isRetrograde: p.isRetrograde,
+          })),
+          moonPhase: {
+            name: moonData.phase,
+            illumination: Math.round(moonData.illumination * 100),
+          },
+          kpIndex: earthData?.kpIndex ?? 0,
+          solarClass: earthData?.solarFlareClass ?? 'A0.0',
+          impactScore: impact?.score ?? 5,
+          impactFactors: impact?.factors ?? [],
+          date: selectedDate.toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          }),
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to generate horoscope')
+      const data = await response.json()
+      setHoroscope(data.horoscope)
+    } catch {
+      setGenerationError('Failed to generate horoscope. Check your API key.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [impacts, positions, moonData, earthData, selectedDate])
+
+  // Auto-generate when sign changes
+  const signRef = useRef(selectedSign)
+  useEffect(() => {
+    if (selectedSign !== signRef.current) {
+      signRef.current = selectedSign
+      generateHoroscope(selectedSign)
+    }
+  }, [selectedSign, generateHoroscope])
+
   // Generate captions
   const captions = useMemo(() => {
     if (!selectedImpact) return null
@@ -61,9 +123,10 @@ export default function PromoPage() {
       positions,
       moonData,
       selectedImpact,
-      selectedDate
+      selectedDate,
+      horoscope || undefined
     )
-  }, [selectedSign, selectedImpact, positions, moonData, selectedDate])
+  }, [selectedSign, selectedImpact, positions, moonData, selectedDate, horoscope])
 
   function formatDateForInput(date: Date): string {
     const y = date.getFullYear()
@@ -242,9 +305,56 @@ export default function PromoPage() {
           )}
 
           <div className="mt-6 p-6 rounded-xl border border-white/5 min-h-[200px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <p className="text-white/30 text-sm italic">
-              Horoscope generation will be added in the next update.
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white/80 text-lg font-medium font-[family-name:var(--font-display)]">
+                {selectedImpact?.glyph} {selectedSign} &middot; Daily Reading
+              </h3>
+              <button
+                onClick={() => generateHoroscope(selectedSign)}
+                disabled={isGenerating}
+                className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {isGenerating ? 'Generating...' : '\u21BB Regenerate'}
+              </button>
+            </div>
+
+            {isGenerating && (
+              <div className="flex items-center gap-3 text-white/40">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                <span className="text-sm">Reading the stars for {selectedSign}...</span>
+              </div>
+            )}
+
+            {generationError && (
+              <div className="text-sm space-y-2">
+                <p className="text-amber-400/80">{generationError}</p>
+                <p className="text-white/30">
+                  Add ANTHROPIC_API_KEY to your .env.local file or Vercel environment variables.
+                </p>
+              </div>
+            )}
+
+            {horoscope && !isGenerating && (
+              <div>
+                <div className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">
+                  {horoscope}
+                </div>
+                <div className="pt-4">
+                  <button
+                    onClick={() => handleCopy('horoscope', horoscope)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    {copiedField === 'horoscope' ? 'Copied' : 'Copy Reading'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!horoscope && !isGenerating && !generationError && (
+              <p className="text-white/30 text-sm italic">
+                Click &ldquo;Regenerate&rdquo; to generate a reading for {selectedSign}.
+              </p>
+            )}
           </div>
         </section>
 
@@ -441,7 +551,8 @@ function generateCaptions(
   positions: PlanetPosition[],
   moonData: MoonData,
   impact: ZodiacImpact,
-  date: Date
+  date: Date,
+  horoscope?: string
 ): { tiktokShort: string; instagramLong: string; hashtags: string } {
   const sunPos = positions.find(p => p.name === 'Sun')
   const moonPos = positions.find(p => p.name === 'Moon')
@@ -454,16 +565,21 @@ function generateCaptions(
 
   const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
+  // Extract horoscope sections if available
+  const oneWordMatch = horoscope?.match(/TODAY IN ONE WORD[:\s]*(.+)/i)
+  const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
+  const energyMatch = horoscope?.match(/TODAY'S ENERGY[:\s]*\n?([\s\S]*?)(?=\n\n[A-Z]|\n\nWHAT)/i)
+  const energySummary = energyMatch ? energyMatch[1].trim() : ''
+
   const levelEmoji = impact.level === 'intense' ? '\uD83D\uDD25' : impact.level === 'active' ? '\u2728' : '\uD83C\uDF3F'
 
   const tiktokShort = `${glyph} ${sign} \u2014 ${dateStr}\n\n` +
-    `Today's impact: ${impact.score}/10 ${levelEmoji}\n\n` +
+    (oneWord ? `Today in one word: ${oneWord}\n\n` : '') +
+    (energySummary ? `${energySummary}\n\n` : '') +
+    `Cosmic impact: ${impact.score}/10 ${levelEmoji}\n\n` +
     `${sunPos?.glyph ?? ''} Sun in ${sunSignName} ${sunPos?.degreeInSign ?? 0}\u00B0\n` +
     `${moonPos?.glyph ?? ''} Moon in ${moonSignName} ${moonPos?.degreeInSign ?? 0}\u00B0 \u2014 ${moonData.phase}\n\n` +
-    (planetsInSign.length > 0
-      ? `${planetsInSign.map(p => p.name).join(' & ')} visiting ${sign} today.`
-      : `No planets visiting ${sign} right now \u2014 a day of inner reflection.`) +
-    `\n\n#${sign.toLowerCase()} #astrology #cosmicweather`
+    `Real planetary data. Real frequencies.\nastrara.app`
 
   const instagramLong = `${glyph} ${sign.toUpperCase()} \u00B7 ${dateStr}\n` +
     `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
