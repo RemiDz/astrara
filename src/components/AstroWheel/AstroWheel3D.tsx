@@ -36,6 +36,20 @@ interface AstroWheel3DProps {
   onTransitionComplete?: () => void
 }
 
+const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
+  sun:     3.0,
+  jupiter: 5.5,
+  saturn:  5.0,
+  uranus:  4.0,
+  neptune: 3.8,
+  earth:   3.0,
+  venus:   2.8,
+  mars:    2.5,
+  mercury: 2.0,
+  pluto:   1.8,
+  moon:    1.8,
+}
+
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v))
 }
@@ -887,9 +901,9 @@ function PlanetOrb({
     const targetScale = visible ? 1 : 0
     currentScale.current += (targetScale - currentScale.current) * Math.min(delta * 3, 0.15)
 
-    // Helio scale: planets grow 1.8× in heliocentric view (Sun only 1.3×)
+    // Per-planet helio scale for realistic proportions
     const moveT = phaseValuesRef?.current.smoothMoveT ?? 0
-    const helioScaleFactor = planet.id === 'sun' ? 2.5 : 3.5
+    const helioScaleFactor = HELIO_SCALE_MULTIPLIERS[planet.id] ?? 3.0
     const viewScale = 1.0 + (helioScaleFactor - 1.0) * moveT
     if (groupRef.current) groupRef.current.scale.setScalar(currentScale.current * viewScale)
 
@@ -1211,7 +1225,7 @@ function CameraDistanceAnimator({
 
     const p = transitionProgress.current
     const geoDistance = initialDistance.current
-    const helioDistance = geoDistance * 6.0 // pull back enough for Pluto at r=17 with padding on 375px
+    const helioDistance = geoDistance * 8.0 // pull back enough for Pluto at r=17 with larger planets + padding
     const targetDistance = geoDistance + (helioDistance - geoDistance) * p
 
     const currentDistance = camera.position.length()
@@ -1248,8 +1262,8 @@ function EarthPositionAnimator({
     } else {
       groupRef.current.position.set(0, 0, 0)
     }
-    // Scale Earth 3.5× in helio view
-    const earthScale = 1.0 + (3.5 - 1.0) * t
+    // Scale Earth per HELIO_SCALE_MULTIPLIERS
+    const earthScale = 1.0 + (HELIO_SCALE_MULTIPLIERS.earth - 1.0) * t
     groupRef.current.scale.setScalar(earthScale)
   })
 
