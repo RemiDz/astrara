@@ -919,7 +919,7 @@ function PlanetOrb({
         const targetZ = geoZ + (hZ - geoZ) * t
         if (t > 0.99) {
           // Smooth glide for date changes in helio view
-          const lr = Math.min(delta * 5, 0.2)
+          const lr = Math.min(delta * 8, 0.3)
           groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
           groupRef.current.position.y += (targetY - groupRef.current.position.y) * lr
           groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr
@@ -1301,7 +1301,7 @@ function EarthPositionAnimator({
       const targetX = helioData.Earth.sceneX * t
       const targetZ = helioData.Earth.sceneY * t
       if (t > 0.99) {
-        const lr = Math.min(delta * 5, 0.2)
+        const lr = Math.min(delta * 8, 0.3)
         groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
         groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
         groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr
@@ -1427,7 +1427,7 @@ function MoonOrbitRing({
     const targetX = helioData.Earth.sceneX * t
     const targetZ = helioData.Earth.sceneY * t
     if (t > 0.99) {
-      const lr = Math.min(delta * 5, 0.2)
+      const lr = Math.min(delta * 8, 0.3)
       groupRef.current.position.x += (targetX - groupRef.current.position.x) * lr
       groupRef.current.position.y += (0 - groupRef.current.position.y) * lr
       groupRef.current.position.z += (targetZ - groupRef.current.position.z) * lr

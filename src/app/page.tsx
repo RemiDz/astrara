@@ -93,9 +93,10 @@ function HomePage() {
     if (autoplayDirection === 'stopped') return
     const daysPerTick = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 7 : 1
     const direction = autoplayDirection.includes('backward') ? -1 : 1
+    const intervalMs = (autoplayDirection === 'forward-fast' || autoplayDirection === 'backward-fast') ? 300 : 500
     autoplayInterval.current = setInterval(() => {
       setDayOffset(prev => prev + daysPerTick * direction)
-    }, 800)
+    }, intervalMs)
     return () => {
       if (autoplayInterval.current) clearInterval(autoplayInterval.current)
     }
@@ -298,78 +299,65 @@ function HomePage() {
 
               {/* Day Navigation — directly below wheel */}
               {viewMode === 'heliocentric' ? (
-                <div className="flex items-center justify-center gap-2 py-4">
+                <div className="flex items-center justify-center gap-2.5 py-4">
                   <button
                     type="button"
                     disabled={isTransitioning}
                     onClick={() => setAutoplayDirection(prev => prev === 'backward-fast' ? 'stopped' : 'backward-fast')}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs ${
+                    className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'backward-fast'
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                        ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+                        : 'bg-white/5 border border-white/8 text-white/45 hover:text-white/70 hover:bg-white/8'
                     }`}
-                    aria-label="Fast rewind"
+                    aria-label="Fast rewind — 7 days per step"
                   >
-                    ◀◀
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="11 17 6 12 11 7" /><polyline points="18 17 13 12 18 7" /></svg>
                   </button>
                   <button
                     type="button"
                     disabled={isTransitioning}
                     onClick={() => setAutoplayDirection(prev => prev === 'backward' ? 'stopped' : 'backward')}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'backward'
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                        ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+                        : 'bg-white/5 border border-white/8 text-white/45 hover:text-white/70 hover:bg-white/8'
                     }`}
-                    aria-label="Rewind"
+                    aria-label="Rewind — 1 day per step"
                   >
-                    ◀
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                   </button>
                   <button
                     type="button"
-                    disabled={isTransitioning}
-                    onClick={() => setAutoplayDirection(prev => prev === 'stopped' ? 'forward' : 'stopped')}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
-                      autoplayDirection !== 'stopped'
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
-                    }`}
-                    aria-label={autoplayDirection !== 'stopped' ? 'Pause' : 'Play'}
+                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
+                    className="px-5 h-11 rounded-full flex items-center justify-center backdrop-blur-md bg-white/5 border border-white/8 text-white/60 text-sm font-medium hover:bg-white/10 hover:text-white/80 active:scale-95 transition-all duration-200"
                   >
-                    {autoplayDirection !== 'stopped' ? '⏸' : '▶'}
+                    {t('nav.today')}
                   </button>
                   <button
                     type="button"
                     disabled={isTransitioning}
                     onClick={() => setAutoplayDirection(prev => prev === 'forward' ? 'stopped' : 'forward')}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'forward'
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                        ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+                        : 'bg-white/5 border border-white/8 text-white/45 hover:text-white/70 hover:bg-white/8'
                     }`}
-                    aria-label="Forward"
+                    aria-label="Forward — 1 day per step"
                   >
-                    ▶
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                   <button
                     type="button"
                     disabled={isTransitioning}
                     onClick={() => setAutoplayDirection(prev => prev === 'forward-fast' ? 'stopped' : 'forward-fast')}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs ${
+                    className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed ${
                       autoplayDirection === 'forward-fast'
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:text-white/80'
+                        ? 'bg-white/15 border border-white/25 text-white shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+                        : 'bg-white/5 border border-white/8 text-white/45 hover:text-white/70 hover:bg-white/8'
                     }`}
-                    aria-label="Fast forward"
+                    aria-label="Fast forward — 7 days per step"
                   >
-                    ▶▶
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAutoplayDirection('stopped'); setCustomDate(null); setDayOffset(0) }}
-                    className="px-4 h-10 rounded-full flex items-center justify-center border border-white/10 bg-white/5 text-white/60 hover:text-white/80 transition-all duration-200 active:scale-95 text-sm"
-                  >
-                    {t('nav.today')}
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="13 17 18 12 13 7" /><polyline points="6 17 11 12 6 7" /></svg>
                   </button>
                 </div>
               ) : (() => {
