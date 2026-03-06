@@ -17,7 +17,7 @@ export default function CosmicReadingButton({ disabled }: CosmicReadingButtonPro
         type="button"
         onClick={startReading}
         disabled={disabled}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-white/70 text-sm transition-all duration-200 hover:bg-white/10 hover:text-white/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-white/70 text-xs whitespace-nowrap transition-all duration-200 hover:bg-white/10 hover:text-white/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className="reading-shimmer">✦</span>
         <span>{t('reading.cosmicReading')}</span>

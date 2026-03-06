@@ -354,7 +354,7 @@ function HomePage() {
           {/* Stacked layout: wheel on top, weather below */}
           <div>
             {/* Astro Wheel */}
-            <div className="py-4 relative">
+            <ReadingWheelPadding>
               {astroData ? (
                 <ReadingAwareWheel
                   planets={astroData.planets}
@@ -431,7 +431,7 @@ function HomePage() {
                     }
                   }}
                   disabled={isTransitioning}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-white/70 text-sm transition-all duration-200 hover:bg-white/10 hover:text-white/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-white/70 text-xs whitespace-nowrap transition-all duration-200 hover:bg-white/10 hover:text-white/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {viewMode === 'geocentric' ? (
                     <>
@@ -575,7 +575,7 @@ function HomePage() {
                 <span>{t('cta.birthChart')}</span>
                 <span>→</span>
               </button>
-            </div>
+            </ReadingWheelPadding>
 
             {/* Cosmic Weather Panel */}
             <div className="mt-6">
@@ -857,9 +857,19 @@ function ReadingDim({ children, className = '' }: { children: React.ReactNode; c
   )
 }
 
+// Reduce padding above wheel during reading
+function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
+  const { isReadingActive } = useReadingContext()
+  return (
+    <div className={`relative ${isReadingActive ? 'py-1' : 'py-4'}`} style={{ transition: 'padding 0.4s ease-out' }}>
+      {children}
+    </div>
+  )
+}
+
 // Bridge: reads reading context + animation state, serialises into props for the R3F Canvas
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
-  const { onAnimationComplete } = useReadingContext()
+  const { onAnimationComplete, isReadingActive } = useReadingContext()
   const animState = useReadingAnimation()
   const readingAnimation = useMemo(() => {
     if (!animState.isActive) return undefined
@@ -868,7 +878,7 @@ function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrappe
       onAnimationComplete,
     }
   }, [animState, onAnimationComplete])
-  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
+  return <AstroWheel3DWrapper {...props} compact={isReadingActive} readingAnimation={readingAnimation} />
 }
 
 export default function Page() {
