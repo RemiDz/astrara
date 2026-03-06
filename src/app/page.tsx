@@ -872,18 +872,9 @@ function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Bridge: reads reading context + animation state, serialises into props for the R3F Canvas
+// Bridge: passes wheel props through (reading animation will be re-added in Step 2)
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
-  const { onAnimationComplete } = useReadingContext()
-  const animState = useReadingAnimation()
-  const readingAnimation = useMemo(() => {
-    if (!animState.isActive) return undefined
-    return {
-      ...serializeAnimationState(animState),
-      onAnimationComplete,
-    }
-  }, [animState, onAnimationComplete])
-  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
+  return <AstroWheel3DWrapper {...props} />
 }
 
 export default function Page() {
