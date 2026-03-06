@@ -328,11 +328,11 @@ function HomePage() {
 
   return (
     <ReadingProvider astroData={readingAstroData} lang={lang}>
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative overflow-x-hidden">
       <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
       <div className="relative z-10">
-        <Header
+        <ReadingAwareHeader
           location={location}
           locationLoading={locationLoading}
           now={now}
@@ -563,9 +563,8 @@ function HomePage() {
                 )
               })()}
 
-              </ReadingDim>
 
-              {/* Birth chart CTA — subtle, always visible */}
+              {/* Birth chart CTA */}
               <button
                 type="button"
                 onClick={() => { setShowBirthInput(true); trackEvent('birth-chart-cta') }}
@@ -575,6 +574,7 @@ function HomePage() {
                 <span>{t('cta.birthChart')}</span>
                 <span>→</span>
               </button>
+              </ReadingDim>
             </ReadingWheelPadding>
 
             {/* Cosmic Weather Panel */}
@@ -847,21 +847,24 @@ function HomePage() {
   )
 }
 
-// Small wrapper to dim UI sections during an active reading
-function ReadingDim({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+// Hide controls completely during an active reading (reclaims layout space)
+function ReadingDim({ children }: { children: React.ReactNode }) {
   const { isReadingActive } = useReadingContext()
-  return (
-    <div className={`transition-opacity duration-300 ${isReadingActive ? 'opacity-30 pointer-events-none' : ''} ${className}`}>
-      {children}
-    </div>
-  )
+  if (isReadingActive) return null
+  return <>{children}</>
+}
+
+// Compact header during reading — hides subtitle and date line
+function ReadingAwareHeader(props: React.ComponentProps<typeof Header>) {
+  const { isReadingActive } = useReadingContext()
+  return <Header {...props} compact={isReadingActive} />
 }
 
 // Reduce padding above wheel during reading
 function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
   const { isReadingActive } = useReadingContext()
   return (
-    <div className={`relative ${isReadingActive ? 'py-1' : 'py-4'}`} style={{ transition: 'padding 0.4s ease-out' }}>
+    <div className={`relative ${isReadingActive ? 'pt-0 pb-0' : 'pt-1 pb-4'}`} style={{ transition: 'padding 0.4s ease-out' }}>
       {children}
     </div>
   )
@@ -869,7 +872,7 @@ function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
 
 // Bridge: reads reading context + animation state, serialises into props for the R3F Canvas
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
-  const { onAnimationComplete, isReadingActive } = useReadingContext()
+  const { onAnimationComplete } = useReadingContext()
   const animState = useReadingAnimation()
   const readingAnimation = useMemo(() => {
     if (!animState.isActive) return undefined
@@ -878,7 +881,7 @@ function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrappe
       onAnimationComplete,
     }
   }, [animState, onAnimationComplete])
-  return <AstroWheel3DWrapper {...props} compact={isReadingActive} readingAnimation={readingAnimation} />
+  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
 }
 
 export default function Page() {

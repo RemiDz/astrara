@@ -31,7 +31,6 @@ interface Props {
   animationSpeedRef?: React.MutableRefObject<number>
   showHelioLabels?: boolean
   readingAnimation?: SerializedReadingAnimation
-  compact?: boolean
 }
 
 interface ErrorBoundaryState {
@@ -79,7 +78,7 @@ export default function AstroWheel3DWrapper(props: Props) {
     <Wheel3DErrorBoundary fallback={fallback2D}>
       <Suspense
         fallback={
-          <div className="relative w-full flex items-center justify-center" style={{ height: props.compact ? 'min(55vw, 300px)' : '95vw', maxHeight: props.compact ? '300px' : '550px', transition: 'height 0.6s ease-out, max-height 0.6s ease-out' }}>
+          <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
             <div className="text-white/20 text-xs tracking-widest uppercase animate-pulse">
               Reading the stars...
             </div>

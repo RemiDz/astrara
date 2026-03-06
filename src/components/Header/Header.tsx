@@ -21,6 +21,7 @@ interface HeaderProps {
   dateInputRef?: React.RefObject<HTMLInputElement | null>
   onDateJump?: (date: Date) => void
   formatDateForInput?: (date: Date) => string
+  compact?: boolean
 }
 
 const iconBtn =
@@ -42,6 +43,7 @@ export default function Header({
   dateInputRef,
   onDateJump,
   formatDateForInput,
+  compact,
 }: HeaderProps) {
   const { t } = useTranslation()
   const { lang } = useLanguage()
@@ -73,9 +75,12 @@ export default function Header({
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-wider text-white">
             ASTRARA
           </h1>
-          <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {t('app.tagline')}
-          </span>
+          {!compact && (
+            <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {t('app.tagline')}
+            </span>
+          )}
+          {!compact && (
           <span
             className="text-sm mt-1 truncate"
             style={{ color: 'var(--text-muted)' }}
@@ -117,6 +122,7 @@ export default function Header({
             {timeStr ? ` \u00B7 ${timeStr}` : ''}
             {cityName ? ` \u00B7 ${cityName}` : ''}
           </span>
+          )}
         </div>
 
         {/* Right — icon row */}

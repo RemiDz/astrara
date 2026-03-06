@@ -43,7 +43,6 @@ interface AstroWheel3DProps {
   animationSpeedRef?: React.MutableRefObject<number>
   showHelioLabels?: boolean
   readingAnimation?: SerializedReadingAnimation
-  compact?: boolean
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -1786,12 +1785,11 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
     <div
       className="relative w-full select-none"
       style={{
-        height: props.compact ? 'min(55vw, 300px)' : '95vw',
-        maxHeight: props.compact ? '300px' : '550px',
+        height: '95vw',
+        maxHeight: '550px',
         overflow: 'visible',
         touchAction: 'none',
         background: 'transparent',
-        transition: 'height 0.6s ease-out, max-height 0.6s ease-out',
         WebkitTapHighlightColor: 'transparent',
         WebkitUserSelect: 'none',
         userSelect: 'none',
