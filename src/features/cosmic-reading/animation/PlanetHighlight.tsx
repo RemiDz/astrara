@@ -41,7 +41,7 @@ function GlowOrb({
 
   const pos = longitudeToPos(planet.eclipticLongitude, R_PLANET)
   const glowColor = color ?? planet.colour
-  const glowRadius = PLANET_RADIUS * 1.8
+  const glowRadius = PLANET_RADIUS * 1.4
 
   useFrame((_, delta) => {
     fadeRef.current = Math.min(fadeRef.current + delta * 1.25, 1)
@@ -50,17 +50,17 @@ function GlowOrb({
     if (!meshRef.current || !matRef.current) return
 
     const fade = fadeRef.current
-    let scale = 1.5
-    let opacity = 0.25 * intensity * fade
+    let scale = 1.3
+    let opacity = 0.12 * intensity * fade
 
     if (effect === 'pulse') {
-      scale = 1.5 + Math.sin(timeRef.current * 1.5) * 0.2
-      opacity = (0.2 + Math.sin(timeRef.current * 1.5) * 0.06) * intensity * fade
+      scale = 1.3 + Math.sin(timeRef.current * 1.5) * 0.1
+      opacity = 0.12 * intensity * fade
     } else if (effect === 'glow') {
-      scale = 1.4 + Math.sin(timeRef.current * 1.2) * 0.15
-      opacity = (0.25 + Math.sin(timeRef.current * 1.2) * 0.05) * intensity * fade
+      scale = 1.3 + Math.sin(timeRef.current * 1.2) * 0.1
+      opacity = 0.12 * intensity * fade
     } else if (effect === 'enlarge') {
-      scale = 1.5 + 0.15 * fade
+      scale = 1.3 + 0.1 * fade
     }
 
     meshRef.current.scale.setScalar(scale)
@@ -74,10 +74,9 @@ function GlowOrb({
         ref={matRef}
         color={glowColor}
         transparent
-        opacity={0}
+        opacity={0.12}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
-        side={THREE.FrontSide}
       />
     </mesh>
   )

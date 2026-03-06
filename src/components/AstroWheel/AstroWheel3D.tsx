@@ -1816,8 +1816,10 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
         maxHeight: '550px',
         position: 'absolute',
         left: 0,
+        right: 0,
         top: '50%',
         transform: 'translateY(-50%)',
+        overflow: 'hidden',
       }}>
         <Canvas
           tabIndex={-1}
