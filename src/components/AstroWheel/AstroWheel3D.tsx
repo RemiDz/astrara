@@ -1611,7 +1611,7 @@ function WheelScene({
 
   // Reading mode camera reframing — manipulate through OrbitControls' own object
   const readingCamActive = readingAnimation?.isActive ?? false
-  const readingCamRef = useRef({ wasActive: false, savedY: 1.5, savedZ: 7 })
+  const readingCamRef = useRef({ wasActive: false, savedY: 1.5, savedZ: 7, savedTargetY: 0 })
 
   useFrame(() => {
     if (!controlsRef.current) return
@@ -1621,11 +1621,14 @@ function WheelScene({
       readingCamRef.current.wasActive = true
       readingCamRef.current.savedY = cam.position.y
       readingCamRef.current.savedZ = cam.position.z
+      readingCamRef.current.savedTargetY = controlsRef.current.target.y
     }
 
     if (readingCamActive) {
       cam.position.y += (1.0 - cam.position.y) * 0.05
       cam.position.z += (6.5 - cam.position.z) * 0.05
+      // Tilt view down — target Y goes negative so camera looks downward at wheel
+      controlsRef.current.target.y += (-0.4 - controlsRef.current.target.y) * 0.05
       controlsRef.current.update()
     }
 
@@ -1634,10 +1637,12 @@ function WheelScene({
       const dz = Math.abs(cam.position.z - readingCamRef.current.savedZ)
       cam.position.y += (readingCamRef.current.savedY - cam.position.y) * 0.05
       cam.position.z += (readingCamRef.current.savedZ - cam.position.z) * 0.05
+      controlsRef.current.target.y += (readingCamRef.current.savedTargetY - controlsRef.current.target.y) * 0.05
       controlsRef.current.update()
       if (dy < 0.05 && dz < 0.05) {
         cam.position.y = readingCamRef.current.savedY
         cam.position.z = readingCamRef.current.savedZ
+        controlsRef.current.target.y = readingCamRef.current.savedTargetY
         readingCamRef.current.wasActive = false
         controlsRef.current.update()
       }
