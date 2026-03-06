@@ -1582,7 +1582,7 @@ function WheelScene({
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
-  sunLabel, showHelioLabels = true, readingAnimation,
+  sunLabel, showHelioLabels = true, readingAnimation: rawReadingAnimation,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1596,6 +1596,11 @@ function WheelScene({
 
   // Label visibility (helio view toggle)
   const labelOpacityRef = useRef(showHelioLabels ? 1 : 0)
+
+  // Safe reading animation: don't apply during entrance or in helio view
+  const readingAnimation = (entranceComplete && viewMode === 'geocentric' && rawReadingAnimation?.isActive)
+    ? rawReadingAnimation
+    : undefined
 
   // Phase 6: Entrance finishes at 3000ms
   useEffect(() => {
@@ -1755,7 +1760,7 @@ function WheelScene({
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning}
+        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning && !readingAnimation?.isActive}
         autoRotateSpeed={viewMode === 'heliocentric' ? 0.08 : 0.3 * rotationSpeed}
         enableDamping
         dampingFactor={0.05}

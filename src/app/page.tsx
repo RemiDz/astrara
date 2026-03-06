@@ -861,10 +861,13 @@ function ReadingDim({ children, className = '' }: { children: React.ReactNode; c
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
   const { onAnimationComplete } = useReadingContext()
   const animState = useReadingAnimation()
-  const readingAnimation = useMemo(() => ({
-    ...serializeAnimationState(animState),
-    onAnimationComplete,
-  }), [animState, onAnimationComplete])
+  const readingAnimation = useMemo(() => {
+    if (!animState.isActive) return undefined
+    return {
+      ...serializeAnimationState(animState),
+      onAnimationComplete,
+    }
+  }, [animState, onAnimationComplete])
   return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
 }
 

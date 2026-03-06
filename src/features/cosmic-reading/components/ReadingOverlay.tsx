@@ -46,24 +46,32 @@ export default function ReadingOverlay() {
 
   return (
     <div
-      className={`fixed inset-0 z-40 reading-overlay-transition ${
+      className={`fixed inset-0 z-40 pointer-events-none reading-overlay-transition ${
         state.status === 'EXITING' ? 'reading-overlay-exit' : 'reading-overlay-enter'
       }`}
     >
-      {/* Backdrop — gradient lets wheel show through dimmed */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80 pointer-events-none" />
+      {/* Subtle vignette — does NOT block wheel interaction */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)',
+        }}
+      />
 
-      {/* Close button */}
+      {/* Close button — this IS interactive */}
       <button
         onClick={exitReading}
-        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/10 transition-all active:scale-90"
+        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/50 hover:text-white/80 hover:bg-black/60 transition-all active:scale-90 pointer-events-auto"
         aria-label="Close reading"
       >
         ✕
       </button>
 
-      {/* Content area — positioned at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 max-h-[65vh] px-4 pb-6">
+      {/* Content area — BOTTOM SHEET that slides up */}
+      <div
+        className="absolute bottom-0 left-0 right-0 pointer-events-auto px-4 pb-6"
+        style={{ maxHeight: '45vh' }}
+      >
         {showSummary && currentReading ? (
           <ReadingSummaryCard
             summary={currentReading.summary}
@@ -81,7 +89,7 @@ export default function ReadingOverlay() {
 
         {/* Navigation — only show when card is visible or summary is showing */}
         {(isCardVisible || isSummaryVisible) && (
-          <div className="mt-4 max-w-lg mx-auto">
+          <div className="mt-3 max-w-lg mx-auto">
             <PhaseNavigation
               onNext={nextPhase}
               onExit={exitReading}
@@ -101,7 +109,6 @@ export default function ReadingOverlay() {
         }
         .reading-overlay-exit {
           opacity: 0;
-          pointer-events: none;
         }
       `}</style>
     </div>

@@ -23,7 +23,7 @@ export default function ReadingSummaryCard({ summary, frequencyPhase, isVisible 
       className={`phase-card-transition ${isVisible ? 'phase-card-visible' : 'phase-card-hidden'}`}
     >
       <div
-        className="rounded-2xl p-6 max-h-[60vh] overflow-y-auto"
+        className="rounded-2xl p-6 max-h-[40vh] overflow-y-auto"
         style={{
           background: 'linear-gradient(180deg, rgba(13, 13, 26, 0.92) 0%, rgba(13, 13, 26, 0.97) 100%)',
           border: '1px solid rgba(147, 197, 253, 0.06)',
