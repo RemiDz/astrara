@@ -10,7 +10,6 @@ import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioD
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
-import ReadingCameraFramer from '@/features/cosmic-reading/animation/ReadingCameraFramer'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -1610,6 +1609,41 @@ function WheelScene({
 
   const handleTiltDone = useCallback(() => setTiltDone(true), [])
 
+  // Reading mode camera reframing — manipulate through OrbitControls' own object
+  const readingCamActive = readingAnimation?.isActive ?? false
+  const readingCamRef = useRef({ wasActive: false, savedY: 1.5, savedZ: 7 })
+
+  useFrame(() => {
+    if (!controlsRef.current) return
+    const cam = controlsRef.current.object
+
+    if (readingCamActive && !readingCamRef.current.wasActive) {
+      readingCamRef.current.wasActive = true
+      readingCamRef.current.savedY = cam.position.y
+      readingCamRef.current.savedZ = cam.position.z
+    }
+
+    if (readingCamActive) {
+      cam.position.y += (1.0 - cam.position.y) * 0.05
+      cam.position.z += (6.5 - cam.position.z) * 0.05
+      controlsRef.current.update()
+    }
+
+    if (!readingCamActive && readingCamRef.current.wasActive) {
+      const dy = Math.abs(cam.position.y - readingCamRef.current.savedY)
+      const dz = Math.abs(cam.position.z - readingCamRef.current.savedZ)
+      cam.position.y += (readingCamRef.current.savedY - cam.position.y) * 0.05
+      cam.position.z += (readingCamRef.current.savedZ - cam.position.z) * 0.05
+      controlsRef.current.update()
+      if (dy < 0.05 && dz < 0.05) {
+        cam.position.y = readingCamRef.current.savedY
+        cam.position.z = readingCamRef.current.savedZ
+        readingCamRef.current.wasActive = false
+        controlsRef.current.update()
+      }
+    }
+  })
+
   return (
     <>
       <ambientLight intensity={0.3} color="#ffffff" />
@@ -1725,9 +1759,6 @@ function WheelScene({
           planets={planets}
         />
       )}
-
-      {/* Reading camera framing — shifts camera to eliminate empty space above wheel */}
-      <ReadingCameraFramer isActive={readingAnimation?.isActive ?? false} />
 
       {/* Phase 7: Cinematic tilt after entrance */}
       <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />
