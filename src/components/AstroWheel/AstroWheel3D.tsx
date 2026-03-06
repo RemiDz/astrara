@@ -1116,12 +1116,15 @@ function ConditionalBloom() {
 function RotationVelocityTracker({
   prevAzimuth,
   onRotationVelocity,
+  readingActive = false,
 }: {
   prevAzimuth: React.MutableRefObject<number>
   onRotationVelocity?: (velocity: number) => void
+  readingActive?: boolean
 }) {
   const { camera } = useThree()
   useFrame((_, delta) => {
+    if (readingActive) return
     if (!onRotationVelocity) return
     const azimuth = Math.atan2(camera.position.x, camera.position.z)
     const velocity = (azimuth - prevAzimuth.current) / Math.max(delta, 0.001)
@@ -1136,15 +1139,18 @@ function TiltAnimator({
   controlsRef,
   tiltStarted,
   onTiltDone,
+  readingActive = false,
 }: {
   controlsRef: React.MutableRefObject<any>
   tiltStarted: boolean
   onTiltDone: () => void
+  readingActive?: boolean
 }) {
   const isDone = useRef(false)
   const TARGET_POLAR = Math.PI / 3 // ~60° from top — dramatic 3D view
 
   useFrame(() => {
+    if (readingActive) return
     if (!tiltStarted || isDone.current || !controlsRef.current) return
 
     const controls = controlsRef.current
@@ -1291,13 +1297,16 @@ function TransitionController({
 // ─── Camera Distance Animator ───────────────────────────────────────
 function CameraDistanceAnimator({
   transitionProgress,
+  readingActive = false,
 }: {
   transitionProgress: React.MutableRefObject<number>
+  readingActive?: boolean
 }) {
   const { camera } = useThree()
   const initialDistance = useRef<number | null>(null)
 
   useFrame(() => {
+    if (readingActive) return
     if (initialDistance.current === null) {
       initialDistance.current = camera.position.length()
     }
@@ -1321,14 +1330,17 @@ function CameraDistanceAnimator({
 function HelioTiltAnimator({
   controlsRef,
   transitionProgress,
+  readingActive = false,
 }: {
   controlsRef: React.MutableRefObject<any>
   transitionProgress: React.MutableRefObject<number>
+  readingActive?: boolean
 }) {
   const GEO_POLAR = Math.PI / 3   // entrance tilt target — 3D perspective
   const HELIO_POLAR = 0.01        // near top-down (avoid gimbal lock at 0)
 
   useFrame(() => {
+    if (readingActive) return
     if (!controlsRef.current) return
     const controls = controlsRef.current
     const p = transitionProgress.current
@@ -1670,8 +1682,8 @@ function WheelScene({
         phaseValuesRef={phaseValuesRef}
         transitionProgress={transitionProgress}
       />
-      <CameraDistanceAnimator transitionProgress={transitionProgress} />
-      <HelioTiltAnimator controlsRef={controlsRef} transitionProgress={transitionProgress} />
+      <CameraDistanceAnimator transitionProgress={transitionProgress} readingActive={readingAnimation?.isActive ?? false} />
+      <HelioTiltAnimator controlsRef={controlsRef} transitionProgress={transitionProgress} readingActive={readingAnimation?.isActive ?? false} />
       {animationTimeRef && animationSpeedRef && (
         <ContinuousTimeAnimator
           animationTimeRef={animationTimeRef}
@@ -1766,10 +1778,10 @@ function WheelScene({
       )}
 
       {/* Phase 7: Cinematic tilt after entrance */}
-      <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />
+      <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} readingActive={readingAnimation?.isActive ?? false} />
 
       {/* Phase 8: Auto-rotation begins after tilt completes */}
-      <RotationVelocityTracker prevAzimuth={prevAzimuth} onRotationVelocity={onRotationVelocity} />
+      <RotationVelocityTracker prevAzimuth={prevAzimuth} onRotationVelocity={onRotationVelocity} readingActive={readingAnimation?.isActive ?? false} />
       <OrbitControls
         ref={controlsRef}
         enableRotate
