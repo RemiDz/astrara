@@ -872,9 +872,25 @@ function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Bridge: passes wheel props through (reading animation will be re-added in Step 2)
+// Bridge: reads reading animation state and passes dim/glow info to the wheel
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
-  return <AstroWheel3DWrapper {...props} />
+  const animState = useReadingAnimation()
+
+  const readingAnimation = useMemo(() => {
+    if (!animState.isActive) return undefined
+    return {
+      isActive: true,
+      highlights: Array.from(animState.highlights.entries()).map(([bodyId, h]) => ({
+        bodyId,
+        effect: h.effect,
+        color: h.color,
+        intensity: h.intensity,
+      })),
+      dimOpacity: animState.dimOpacity,
+    }
+  }, [animState])
+
+  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
 }
 
 export default function Page() {

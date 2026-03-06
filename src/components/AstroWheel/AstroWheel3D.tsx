@@ -9,6 +9,7 @@ import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
+import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -38,6 +39,11 @@ interface AstroWheel3DProps {
   animationTimeRef?: React.MutableRefObject<number>
   animationSpeedRef?: React.MutableRefObject<number>
   showHelioLabels?: boolean
+  readingAnimation?: {
+    isActive: boolean
+    highlights: Array<{ bodyId: string; effect: string; color?: string; intensity: number }>
+    dimOpacity: number
+  }
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -807,6 +813,7 @@ function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
   phaseValuesRef, helioData, isTransitioning: isTransitioningProp, labelOpacityRef,
+  readingDimOpacity,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
   planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
@@ -814,6 +821,7 @@ function PlanetOrb({
   helioData?: Record<string, HelioData>
   isTransitioning?: boolean
   labelOpacityRef?: React.MutableRefObject<number>
+  readingDimOpacity?: number
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
@@ -953,7 +961,7 @@ function PlanetOrb({
     <group ref={groupRef} scale={0}>
       <mesh ref={meshRef}>
         <sphereGeometry args={[config.radius * planetScale, 20, 20]} />
-        <meshStandardMaterial color={colour} emissive={colour} emissiveIntensity={0.4} transparent opacity={0.9} roughness={0.3} metalness={0.2} />
+        <meshStandardMaterial color={colour} emissive={colour} emissiveIntensity={0.4} transparent opacity={readingDimOpacity !== undefined ? readingDimOpacity : 0.9} roughness={0.3} metalness={0.2} />
       </mesh>
       {planet.id === 'saturn' && (
         <mesh rotation={[Math.PI / 2.5, 0, 0]}>
@@ -1568,7 +1576,7 @@ function WheelScene({
   planetScale = 1, rotationSpeed = 1, onRotationVelocity, kpIndex, solarFluxValue,
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
-  sunLabel, showHelioLabels = true,
+  sunLabel, showHelioLabels = true, readingAnimation,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1662,6 +1670,10 @@ function WheelScene({
         {/* Phase 4: Planets appear (1400ms+, staggered) */}
         {planets.map((planet) => {
           const orderIndex = PLANET_ORDER.indexOf(planet.id)
+          const isHighlighted = readingAnimation?.isActive && readingAnimation.highlights.some(h => h.bodyId === planet.id)
+          const dimOpacity = readingAnimation?.isActive
+            ? (isHighlighted ? undefined : readingAnimation.dimOpacity)
+            : undefined
           return (
             <PlanetOrb
               key={planet.id}
@@ -1677,6 +1689,7 @@ function WheelScene({
               helioData={helioData}
               isTransitioning={isTransitioning}
               labelOpacityRef={labelOpacityRef}
+              readingDimOpacity={dimOpacity}
             />
           )
         })}
@@ -1703,6 +1716,14 @@ function WheelScene({
         {/* Sun centre label — appears in helio view */}
         <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} labelOpacityRef={labelOpacityRef} />
       </group>
+
+      {/* Subtle reading glow — only when reading is active */}
+      {readingAnimation?.isActive && readingAnimation.highlights.length > 0 && (
+        <PlanetGlow
+          highlights={readingAnimation.highlights}
+          planets={planets}
+        />
+      )}
 
       {/* Phase 7: Cinematic tilt after entrance */}
       <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />

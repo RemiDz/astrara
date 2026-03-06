@@ -29,6 +29,11 @@ interface Props {
   animationTimeRef?: React.MutableRefObject<number>
   animationSpeedRef?: React.MutableRefObject<number>
   showHelioLabels?: boolean
+  readingAnimation?: {
+    isActive: boolean
+    highlights: Array<{ bodyId: string; effect: string; color?: string; intensity: number }>
+    dimOpacity: number
+  }
 }
 
 interface ErrorBoundaryState {
