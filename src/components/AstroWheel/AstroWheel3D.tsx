@@ -1824,7 +1824,7 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
         <Canvas
           tabIndex={-1}
           camera={{ position: [0, 1.5, 7], fov: 38, near: 0.1, far: 100 }}
-          style={{ background: 'transparent', overflow: 'visible', outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+          style={{ background: 'transparent', overflow: 'hidden', outline: 'none', WebkitTapHighlightColor: 'transparent' }}
           gl={{ alpha: true, antialias: true }}
           onCreated={() => {
             requestAnimationFrame(() => {

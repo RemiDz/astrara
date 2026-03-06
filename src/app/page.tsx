@@ -577,7 +577,8 @@ function HomePage() {
               </ReadingDim>
             </ReadingWheelPadding>
 
-            {/* Cosmic Weather Panel */}
+            {/* Cosmic Weather Panel — hidden during reading to free vertical space */}
+            <ReadingDim>
             <div className="mt-6">
               {astroData ? (
                 <CosmicWeather
@@ -596,6 +597,7 @@ function HomePage() {
                 </div>
               )}
             </div>
+            </ReadingDim>
           </div>
 
           {/* Footer */}

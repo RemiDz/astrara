@@ -104,7 +104,7 @@ export default function ReadingOverlay() {
           {/* Scrollable content area — fades between phases, sheet stays open */}
           <div
             ref={contentRef}
-            className="reading-content-scroll relative max-h-[32vh] overflow-y-auto p-5 pb-3 transition-opacity duration-300"
+            className="reading-content-scroll relative max-h-[45vh] overflow-y-auto p-5 pb-3 transition-opacity duration-300"
             style={{ scrollbarWidth: 'none', opacity: contentOpacity }}
           >
             {/* Close button */}
