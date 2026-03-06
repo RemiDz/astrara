@@ -177,5 +177,20 @@
   "promo.active": "active",
   "promo.intense": "intense",
   "promo.kpIndex": "Kp Index",
-  "promo.solar": "Solar"
+  "promo.solar": "Solar",
+  "reading.cosmicReading": "Cosmic Reading",
+  "reading.selectSign": "What's your Sun sign?",
+  "reading.selectSignSubtitle": "Personalise your cosmic reading",
+  "reading.useBirthChart": "Or use your birth chart for deeper precision",
+  "reading.continue": "Continue ✦",
+  "reading.next": "Next ✦",
+  "reading.close": "Close ✦",
+  "reading.forYou": "For You",
+  "reading.summary": "Today's Cosmic Theme",
+  "reading.tapToBegin": "Tap to begin your reading",
+  "reading.summaryTitle": "Today's Cosmic Theme",
+  "reading.yourFrequency": "Your Frequency",
+  "reading.openInBinara": "Open in Binara",
+  "reading.forYouSign": "For You ({sign})",
+  "reading.phaseOf": "{current} of {total}"
 }

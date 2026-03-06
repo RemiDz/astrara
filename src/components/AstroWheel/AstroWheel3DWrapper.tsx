@@ -3,6 +3,7 @@
 import React, { Component, Suspense, lazy, type ReactNode } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import type { HelioData } from '@/lib/heliocentric'
+import type { SerializedReadingAnimation } from '@/features/cosmic-reading/animation/useReadingAnimation'
 import AstroWheel from './AstroWheel'
 import Shimmer from '@/components/ui/Shimmer'
 
@@ -29,6 +30,7 @@ interface Props {
   animationTimeRef?: React.MutableRefObject<number>
   animationSpeedRef?: React.MutableRefObject<number>
   showHelioLabels?: boolean
+  readingAnimation?: SerializedReadingAnimation
 }
 
 interface ErrorBoundaryState {

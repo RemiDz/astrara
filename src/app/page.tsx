@@ -12,6 +12,10 @@ import { searchCity, type UserLocation } from '@/lib/location'
 import { getPlanetPositions, type PlanetPosition, type AspectData } from '@/lib/astronomy'
 import { calculateAllHelioData } from '@/lib/heliocentric'
 import { calculateAspects } from '@/lib/aspects'
+import { ReadingProvider, useReadingContext } from '@/features/cosmic-reading/ReadingContext'
+import { useReadingAnimation, serializeAnimationState } from '@/features/cosmic-reading/animation/useReadingAnimation'
+import CosmicReadingButton from '@/features/cosmic-reading/components/CosmicReadingButton'
+import ReadingOverlay from '@/features/cosmic-reading/components/ReadingOverlay'
 import CosmicBackground from '@/components/Starfield/CosmicBackground'
 import Header from '@/components/Header/Header'
 import AstroWheel3DWrapper from '@/components/AstroWheel/AstroWheel3DWrapper'
@@ -312,7 +316,18 @@ function HomePage() {
     birthDateTimeRef.current = null
   }
 
+  // Prepare astroData for ReadingProvider
+  const readingAstroData = useMemo(() => {
+    if (!astroData) return null
+    return {
+      planets: astroData.planets,
+      moon: astroData.moon,
+      notableAspects: astroData.notableAspects,
+    }
+  }, [astroData])
+
   return (
+    <ReadingProvider astroData={readingAstroData}>
     <div className="min-h-screen relative">
       <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
@@ -341,7 +356,7 @@ function HomePage() {
             {/* Astro Wheel */}
             <div className="py-4 relative">
               {astroData ? (
-                <AstroWheel3DWrapper
+                <ReadingAwareWheel
                   planets={astroData.planets}
                   aspects={astroData.aspects}
                   onPlanetTap={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
@@ -400,7 +415,13 @@ function HomePage() {
               )}
 
               {/* View Toggle — below wheel, above day nav */}
-              <div className="flex justify-center py-2">
+              <ReadingDim>
+              <div className="flex justify-center items-center gap-3 py-2">
+                {viewMode === 'geocentric' && (
+                  <CosmicReadingButton
+                    disabled={isTransitioning || !astroData}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -542,6 +563,8 @@ function HomePage() {
                 )
               })()}
 
+              </ReadingDim>
+
               {/* Birth chart CTA — subtle, always visible */}
               <button
                 type="button"
@@ -628,6 +651,9 @@ function HomePage() {
           {t('audio.headphones')}
         </div>
       )}
+
+      {/* Cosmic Reading Overlay + Zodiac Selector */}
+      <ReadingOverlay />
 
       {/* Birth Details Modal */}
       {showBirthInput && (
@@ -817,7 +843,29 @@ function HomePage() {
         </div>
       )}
     </div>
+    </ReadingProvider>
   )
+}
+
+// Small wrapper to dim UI sections during an active reading
+function ReadingDim({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const { isReadingActive } = useReadingContext()
+  return (
+    <div className={`transition-opacity duration-300 ${isReadingActive ? 'opacity-30 pointer-events-none' : ''} ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+// Bridge: reads reading context + animation state, serialises into props for the R3F Canvas
+function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
+  const { onAnimationComplete } = useReadingContext()
+  const animState = useReadingAnimation()
+  const readingAnimation = useMemo(() => ({
+    ...serializeAnimationState(animState),
+    onAnimationComplete,
+  }), [animState, onAnimationComplete])
+  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
 }
 
 export default function Page() {

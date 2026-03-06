@@ -177,5 +177,20 @@
   "promo.active": "aktyvu",
   "promo.intense": "intensyvu",
   "promo.kpIndex": "Kp Indeksas",
-  "promo.solar": "Saulės aktyvumas"
+  "promo.solar": "Saulės aktyvumas",
+  "reading.cosmicReading": "Kosminis Skaitymas",
+  "reading.selectSign": "Koks jūsų Saulės ženklas?",
+  "reading.selectSignSubtitle": "Personalizuokite savo kosminį skaitymą",
+  "reading.useBirthChart": "Arba naudokite gimimo diagramą tikslesniam skaitymui",
+  "reading.continue": "Tęsti ✦",
+  "reading.next": "Toliau ✦",
+  "reading.close": "Uždaryti ✦",
+  "reading.forYou": "Jums",
+  "reading.summary": "Šiandienos kosminė tema",
+  "reading.tapToBegin": "Paspauskite, kad pradėtumėte skaitymą",
+  "reading.summaryTitle": "Šiandienos kosminė tema",
+  "reading.yourFrequency": "Jūsų dažnis",
+  "reading.openInBinara": "Atidaryti Binara",
+  "reading.forYouSign": "Jums ({sign})",
+  "reading.phaseOf": "{current} iš {total}"
 }
