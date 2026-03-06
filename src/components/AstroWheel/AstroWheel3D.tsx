@@ -10,6 +10,7 @@ import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioD
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
+import ReadingCameraFramer from '@/features/cosmic-reading/animation/ReadingCameraFramer'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -1725,6 +1726,9 @@ function WheelScene({
         />
       )}
 
+      {/* Reading camera framing — shifts camera to eliminate empty space above wheel */}
+      <ReadingCameraFramer isActive={readingAnimation?.isActive ?? false} />
+
       {/* Phase 7: Cinematic tilt after entrance */}
       <TiltAnimator controlsRef={controlsRef} tiltStarted={tiltStarted} onTiltDone={handleTiltDone} />
 
@@ -1735,8 +1739,9 @@ function WheelScene({
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning}
+        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning && !(readingAnimation?.isActive)}
         autoRotateSpeed={viewMode === 'heliocentric' ? 0.08 : 0.3 * rotationSpeed}
+        enabled={!(readingAnimation?.isActive)}
         enableDamping
         dampingFactor={0.05}
         minPolarAngle={0.3}
