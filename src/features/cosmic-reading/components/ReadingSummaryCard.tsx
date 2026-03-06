@@ -8,13 +8,22 @@ interface ReadingSummaryCardProps {
   summary: CosmicReading['summary']
   frequencyPhase?: ReadingPhase
   isVisible: boolean
+  onClose?: () => void
 }
 
-export default function ReadingSummaryCard({ summary, frequencyPhase, isVisible }: ReadingSummaryCardProps) {
-  const { t } = useTranslation()
+const SIGN_NAMES_LT: Record<string, string> = {
+  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vėžys',
+  leo: 'Liūtas', virgo: 'Mergelė', libra: 'Svarstyklės', scorpio: 'Skorpionas',
+  sagittarius: 'Šaulys', capricorn: 'Ožiaragis', aquarius: 'Vandenis', pisces: 'Žuvys',
+}
+
+export default function ReadingSummaryCard({ summary, frequencyPhase, isVisible, onClose }: ReadingSummaryCardProps) {
+  const { t, lang } = useTranslation()
   const { zodiacProfile } = useReadingContext()
   const signName = zodiacProfile?.sunSign
-    ? zodiacProfile.sunSign.charAt(0).toUpperCase() + zodiacProfile.sunSign.slice(1)
+    ? lang === 'lt'
+      ? SIGN_NAMES_LT[zodiacProfile.sunSign] ?? zodiacProfile.sunSign.charAt(0).toUpperCase() + zodiacProfile.sunSign.slice(1)
+      : zodiacProfile.sunSign.charAt(0).toUpperCase() + zodiacProfile.sunSign.slice(1)
     : null
   const freq = frequencyPhase?.frequencyRecommendation
 
@@ -23,7 +32,7 @@ export default function ReadingSummaryCard({ summary, frequencyPhase, isVisible 
       className={`phase-card-transition ${isVisible ? 'phase-card-visible' : 'phase-card-hidden'}`}
     >
       <div
-        className="rounded-2xl p-6 max-h-[40vh] overflow-y-auto"
+        className="relative rounded-2xl p-6 max-h-[40vh] overflow-y-auto"
         style={{
           background: 'linear-gradient(180deg, rgba(13, 13, 26, 0.92) 0%, rgba(13, 13, 26, 0.97) 100%)',
           border: '1px solid rgba(147, 197, 253, 0.06)',
@@ -33,6 +42,17 @@ export default function ReadingSummaryCard({ summary, frequencyPhase, isVisible 
           scrollbarWidth: 'none',
         }}
       >
+        {/* Close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/10 transition-all active:scale-90 z-10"
+            aria-label="Close reading"
+          >
+            <span className="text-xs leading-none">&#x2715;</span>
+          </button>
+        )}
+
         {/* Title */}
         <div className="text-center mb-2">
           <span className="text-lg reading-shimmer">✦</span>

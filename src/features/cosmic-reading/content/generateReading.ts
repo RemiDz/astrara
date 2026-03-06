@@ -16,21 +16,52 @@ import { PLANETARY_FREQUENCIES } from './templates/frequencyTemplates'
 import { HOUSE_THEMES } from './templates/houseTemplates'
 import { ZODIAC_SIGNS, getHouseForTransit } from '../utils/zodiacHelpers'
 
+type Lang = 'en' | 'lt'
+
 // === MOON PHASE THEME LOOKUP ===
 
-const MOON_PHASE_THEMES: Record<string, string> = {
-  'New Moon':         'New Beginnings',
-  'Waxing Crescent':  'Emerging Growth',
-  'First Quarter':    'Determined Action',
-  'Waxing Gibbous':   'Patient Refinement',
-  'Full Moon':        'Illumination',
-  'Waning Gibbous':   'Grateful Reflection',
-  'Last Quarter':     'Release & Surrender',
-  'Waning Crescent':  'Stillness & Renewal',
+const MOON_PHASE_THEMES: Record<string, { en: string; lt: string }> = {
+  'New Moon':         { en: 'New Beginnings',      lt: 'Naujos pradžios' },
+  'Waxing Crescent':  { en: 'Emerging Growth',     lt: 'Besiformuojantis augimas' },
+  'First Quarter':    { en: 'Determined Action',    lt: 'Ryžtingas veiksmas' },
+  'Waxing Gibbous':   { en: 'Patient Refinement',  lt: 'Kantrus tobulinimas' },
+  'Full Moon':        { en: 'Illumination',         lt: 'Nušvitimas' },
+  'Waning Gibbous':   { en: 'Grateful Reflection',  lt: 'Dėkingas apmąstymas' },
+  'Last Quarter':     { en: 'Release & Surrender',  lt: 'Paleidimas ir atsidavimas' },
+  'Waning Crescent':  { en: 'Stillness & Renewal',  lt: 'Tyla ir atsinaujinimas' },
 }
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+// === ZODIAC SIGN NAME LOOKUP ===
+
+const SIGN_NAMES_LT: Record<string, string> = {
+  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vėžys',
+  leo: 'Liūtas', virgo: 'Mergelė', libra: 'Svarstyklės', scorpio: 'Skorpionas',
+  sagittarius: 'Šaulys', capricorn: 'Ožiaragis', aquarius: 'Vandenis', pisces: 'Žuvys',
+}
+
+const MOON_PHASE_NAMES_LT: Record<string, string> = {
+  'New Moon': 'Jaunatis',
+  'Waxing Crescent': 'Jaunėjantis pjautuvas',
+  'First Quarter': 'Pirmasis ketvirtis',
+  'Waxing Gibbous': 'Jaunėjantis kupranugaris',
+  'Full Moon': 'Pilnatis',
+  'Waning Gibbous': 'Senėjantis kupranugaris',
+  'Last Quarter': 'Paskutinis ketvirtis',
+  'Waning Crescent': 'Senėjantis pjautuvas',
+}
+
+function signName(sign: string, lang: Lang): string {
+  if (lang === 'lt') return SIGN_NAMES_LT[sign] ?? capitalize(sign)
+  return capitalize(sign)
+}
+
+function moonPhaseName(phase: string, lang: Lang): string {
+  if (lang === 'lt') return MOON_PHASE_NAMES_LT[phase] ?? phase
+  return phase
 }
 
 // === MAIN READING GENERATOR ===
@@ -46,7 +77,8 @@ export function generateCosmicReading(
     }
     notableAspects: AspectData[]
   },
-  zodiacProfile?: ZodiacProfile | null
+  zodiacProfile?: ZodiacProfile | null,
+  lang: Lang = 'en'
 ): CosmicReading {
   const phases: ReadingPhase[] = []
   const allKeywords: string[] = []
@@ -56,30 +88,35 @@ export function generateCosmicReading(
   const moonSignData = MOON_IN_SIGN[astroData.moon.zodiacSign as ZodiacSign]
 
   const moonGeneralReading = moonPhaseData && moonSignData
-    ? `${moonPhaseData.general}\n\n${moonSignData.general}`
-    : moonPhaseData?.general ?? moonSignData?.general ?? 'The Moon continues its journey through the sky.'
+    ? `${moonPhaseData.general[lang]}\n\n${moonSignData.general[lang]}`
+    : moonPhaseData?.general[lang] ?? moonSignData?.general[lang] ?? (lang === 'lt' ? 'Mėnulis tęsia savo kelionę per dangų.' : 'The Moon continues its journey through the sky.')
 
   const moonKeywords = [
-    ...(moonPhaseData?.themeKeywords ?? []),
-    ...(moonSignData?.themeKeywords ?? []),
+    ...(moonPhaseData?.themeKeywords[lang] ?? []),
+    ...(moonSignData?.themeKeywords[lang] ?? []),
   ]
   allKeywords.push(...moonKeywords)
 
-  const moonPhaseTitle = astroData.moon.phase
-  const moonSignCapitalised = capitalize(astroData.moon.zodiacSign)
+  const moonPhaseTitle = moonPhaseName(astroData.moon.phase, lang)
+  const moonSignCapitalised = signName(astroData.moon.zodiacSign, lang)
 
   // Moon personal reading
   let moonPersonalReading: string | undefined
   if (zodiacProfile) {
     const house = getHouseForTransit(zodiacProfile.sunSign, astroData.moon.zodiacSign as ZodiacSign)
-    moonPersonalReading = moonSignData?.personalByHouse?.[house]
+    const personalData = moonSignData?.personalByHouse?.[house]
+    moonPersonalReading = personalData ? personalData[lang] : undefined
   }
+
+  const moonSubtitle = lang === 'lt'
+    ? `${moonPhaseName(astroData.moon.phase, lang)} ${moonSignCapitalised} ženkle · ${astroData.moon.degreeInSign}°`
+    : `${astroData.moon.phase} in ${moonSignCapitalised} · ${astroData.moon.degreeInSign}°`
 
   phases.push({
     id: 'moon-phase',
     type: 'moon-phase',
     title: moonPhaseTitle,
-    subtitle: `${astroData.moon.phase} in ${moonSignCapitalised} · ${astroData.moon.degreeInSign}°`,
+    subtitle: moonSubtitle,
     icon: '☽',
     generalReading: moonGeneralReading,
     personalReading: moonPersonalReading,
@@ -99,25 +136,31 @@ export function generateCosmicReading(
   const sun = astroData.planets.find(p => p.id === 'sun')
   if (sun) {
     const sunSignData = SUN_IN_SIGN[sun.zodiacSign as ZodiacSign]
-    const sunKeywords = sunSignData?.themeKeywords ?? []
+    const sunKeywords = sunSignData?.themeKeywords[lang] ?? []
     allKeywords.push(...sunKeywords)
 
-    const sunSignCapitalised = capitalize(sun.zodiacSign)
+    const sunSignCapitalised = signName(sun.zodiacSign, lang)
 
     // Sun personal reading
     let sunPersonalReading: string | undefined
     if (zodiacProfile) {
       const house = getHouseForTransit(zodiacProfile.sunSign, sun.zodiacSign as ZodiacSign)
-      sunPersonalReading = sunSignData?.personalByHouse?.[house]
+      const personalData = sunSignData?.personalByHouse?.[house]
+      sunPersonalReading = personalData ? personalData[lang] : undefined
     }
+
+    const sunTitle = lang === 'lt' ? 'Saulė šiandien' : 'The Sun Today'
+    const sunSubtitle = lang === 'lt'
+      ? `Saulė ${sunSignCapitalised} ženkle · ${sun.degreeInSign}°`
+      : `Sun in ${sunSignCapitalised} · ${sun.degreeInSign}°`
 
     phases.push({
       id: 'sun-position',
       type: 'sun-position',
-      title: 'The Sun Today',
-      subtitle: `Sun in ${sunSignCapitalised} · ${sun.degreeInSign}°`,
+      title: sunTitle,
+      subtitle: sunSubtitle,
       icon: '☉',
-      generalReading: sunSignData?.general ?? 'The Sun continues its annual journey through the zodiac.',
+      generalReading: sunSignData?.general[lang] ?? (lang === 'lt' ? 'Saulė tęsia savo metinę kelionę per zodiaką.' : 'The Sun continues its annual journey through the zodiac.'),
       personalReading: sunPersonalReading,
       animation: {
         camera: { target: 'sun', zoom: 1.2 },
@@ -139,8 +182,8 @@ export function generateCosmicReading(
     const aspectDesc = ASPECT_DESCRIPTIONS[aspectType]
     if (!aspectDesc) continue
 
-    const reading = generateAspectReading(aspect.planet1, aspect.planet2, aspectType, aspect.orb)
-    allKeywords.push(aspectDesc.name.toLowerCase())
+    const reading = generateAspectReading(aspect.planet1, aspect.planet2, aspectType, aspect.orb, lang)
+    allKeywords.push(aspectDesc.name[lang].toLowerCase())
 
     // Aspect personal reading
     let aspectPersonalReading: string | undefined
@@ -155,6 +198,7 @@ export function generateCosmicReading(
           p2.zodiacSign,
           aspectType,
           zodiacProfile.sunSign,
+          lang,
         )
       }
     }
@@ -178,8 +222,8 @@ export function generateCosmicReading(
     phases.push({
       id: `aspect-${aspect.planet1}-${aspectType}-${aspect.planet2}`,
       type: 'planetary-aspect',
-      title: `${aspectDesc.name}`,
-      subtitle: `${aspect.planet1Glyph} ${aspect.symbol} ${aspect.planet2Glyph} · ${aspect.orb}° orb`,
+      title: `${aspectDesc.name[lang]}`,
+      subtitle: `${aspect.planet1Glyph} ${aspect.symbol} ${aspect.planet2Glyph} · ${aspect.orb}° ${lang === 'lt' ? 'orbita' : 'orb'}`,
       icon: aspect.symbol,
       generalReading: reading,
       personalReading: aspectPersonalReading || undefined,
@@ -195,7 +239,7 @@ export function generateCosmicReading(
   const retrogradePlanets = astroData.planets.filter(p => p.isRetrograde)
   if (retrogradePlanets.length > 0) {
     const retroIds = retrogradePlanets.map(p => p.id)
-    const summary = generateRetrogradeSummary(retroIds)
+    const summary = generateRetrogradeSummary(retroIds, lang)
 
     if (summary) {
       const retroHighlights = retrogradePlanets.map(p => ({
@@ -204,7 +248,9 @@ export function generateCosmicReading(
         intensity: 0.6,
       }))
 
-      allKeywords.push('retrograde', 'review', 'reflection')
+      allKeywords.push(
+        ...(lang === 'lt' ? ['retrogradas', 'peržiūra', 'apmąstymas'] : ['retrograde', 'review', 'reflection'])
+      )
 
       // Retrograde personal reading — combine personal readings for each retrograde planet
       let retroPersonalReading: string | undefined
@@ -212,17 +258,20 @@ export function generateCosmicReading(
         const personalParts = retrogradePlanets.map(planet => {
           const house = getHouseForTransit(zodiacProfile.sunSign, planet.zodiacSign as ZodiacSign)
           const retroData = RETROGRADE_READINGS[planet.id as CelestialBodyId]
-          return retroData?.personalByHouse?.[house] ?? ''
+          const personalData = retroData?.personalByHouse?.[house]
+          return personalData ? personalData[lang] : ''
         }).filter(Boolean)
         if (personalParts.length > 0) {
           retroPersonalReading = personalParts.join(' ')
         }
       }
 
+      const retroTitle = lang === 'lt' ? 'Retrogradų stebėjimas' : 'Retrograde Watch'
+
       phases.push({
         id: 'retrograde-summary',
         type: 'retrograde',
-        title: 'Retrograde Watch',
+        title: retroTitle,
         subtitle: retrogradePlanets.map(p => `${p.glyph} ${p.name}`).join(' · '),
         icon: '℞',
         generalReading: summary,
@@ -247,7 +296,9 @@ export function generateCosmicReading(
     const dominantPlanet = astroData.planets.find(p => p.id === dominantPlanetId)
     const planetName = dominantPlanet?.name ?? capitalize(dominantPlanetId)
 
-    allKeywords.push('frequency', 'sound healing')
+    allKeywords.push(
+      ...(lang === 'lt' ? ['dažnis', 'garso gijimas'] : ['frequency', 'sound healing'])
+    )
 
     // Frequency personal reading
     let freqPersonalReading: string | undefined
@@ -255,17 +306,24 @@ export function generateCosmicReading(
       const house = getHouseForTransit(zodiacProfile.sunSign, dominantPlanet.zodiacSign as ZodiacSign)
       const houseTheme = HOUSE_THEMES[house]
       if (houseTheme) {
-        freqPersonalReading = `As a ${capitalize(zodiacProfile.sunSign)}, this frequency resonates particularly with your ${houseTheme.area.toLowerCase()}. Consider a sound session focused on ${houseTheme.keywords.slice(0, 2).join(' and ')}.`
+        freqPersonalReading = lang === 'lt'
+          ? `Kaip ${signName(zodiacProfile.sunSign, lang)}, šis dažnis ypač rezonuoja su jūsų ${houseTheme.area[lang].toLowerCase()} sritimi. Apsvarstykite garso sesiją, orientuotą į ${houseTheme.keywords[lang].slice(0, 2).join(' ir ')}.`
+          : `As a ${capitalize(zodiacProfile.sunSign)}, this frequency resonates particularly with your ${houseTheme.area[lang].toLowerCase()}. Consider a sound session focused on ${houseTheme.keywords[lang].slice(0, 2).join(' and ')}.`
       }
     }
+
+    const freqTitle = lang === 'lt' ? 'Garso gijimas' : 'Sound Healing'
+    const freqGeneralReading = lang === 'lt'
+      ? `Šiandienos dominuojanti planetinė įtaka yra ${planetName}, rezonuojanti su ${freq.chakra[lang]} čakra. ${freq.name[lang]} ties ${freq.hz} Hz palaiko ${freq.description[lang].toLowerCase()}. Darbas su šiuo dažniu — per derinimo šakutes, dainuojančius dubenėlius ar binauralius ritmus — gali padėti jums prisiderinti prie dienos vyraujančios energijos.`
+      : `Today's dominant planetary influence is ${planetName}, resonating with the ${freq.chakra[lang]} chakra. The ${freq.name[lang]} at ${freq.hz} Hz supports ${freq.description[lang].toLowerCase()}. Working with this frequency — through tuning forks, singing bowls, or binaural beats — can help you attune to the day's prevailing energy.`
 
     phases.push({
       id: 'frequency-recommendation',
       type: 'frequency-recommendation',
-      title: 'Sound Healing',
-      subtitle: `${freq.name} · ${freq.hz} Hz`,
+      title: freqTitle,
+      subtitle: `${freq.name[lang]} · ${freq.hz} Hz`,
       icon: '🔔',
-      generalReading: `Today's dominant planetary influence is ${planetName}, resonating with the ${freq.chakra} chakra. The ${freq.name} at ${freq.hz} Hz supports ${freq.description.toLowerCase()}. Working with this frequency — through tuning forks, singing bowls, or binaural beats — can help you attune to the day's prevailing energy.`,
+      generalReading: freqGeneralReading,
       personalReading: freqPersonalReading,
       animation: {
         camera: { target: dominantPlanetId, zoom: 1.2 },
@@ -278,15 +336,15 @@ export function generateCosmicReading(
       },
       frequencyRecommendation: {
         hz: freq.hz,
-        name: freq.name,
-        description: freq.description,
+        name: freq.name[lang],
+        description: freq.description[lang],
         appLink: freq.binaraLink,
       },
     })
   }
 
   // --- SUMMARY ---
-  const summary = generateSummary(phases, astroData, allKeywords, zodiacProfile)
+  const summary = generateSummary(phases, astroData, allKeywords, lang, zodiacProfile)
 
   const now = new Date()
   return {
@@ -329,22 +387,22 @@ function getDominantPlanetId(astroData: {
 
 // === PERSONAL ADVICE FOR SUMMARY ===
 
-const HOUSE_ADVICE: Record<number, string> = {
-  1: 'Focus on yourself today — your energy and presence are amplified.',
-  2: 'Financial awareness and a clear sense of your own worth are highlighted.',
-  3: 'Pay attention to conversations and the ideas flowing around you.',
-  4: 'Home and family matters deserve your attention and care.',
-  5: 'Follow what brings you joy — creative expression and pleasure are favoured.',
-  6: 'Your daily routines and health habits are calling for attention.',
-  7: 'Partnerships and close relationships take centre stage.',
-  8: 'Deep emotional processing and shared resources need your awareness.',
-  9: 'Expansion through learning, travel, or philosophical inquiry is calling.',
-  10: 'Career and public reputation are highlighted — act with intention.',
-  11: 'Community connections and your broader social vision are energised.',
-  12: 'Your inner world and spiritual life need quiet attention.',
+const HOUSE_ADVICE: Record<number, { en: string; lt: string }> = {
+  1:  { en: 'Focus on yourself today — your energy and presence are amplified.', lt: 'Sutelkite dėmesį į save šiandien — jūsų energija ir buvimas yra sustiprinti.' },
+  2:  { en: 'Financial awareness and a clear sense of your own worth are highlighted.', lt: 'Finansinis sąmoningumas ir aiškus savo vertės pojūtis yra paryškinti.' },
+  3:  { en: 'Pay attention to conversations and the ideas flowing around you.', lt: 'Atkreipkite dėmesį į pokalbius ir aplink jus tekančias idėjas.' },
+  4:  { en: 'Home and family matters deserve your attention and care.', lt: 'Namų ir šeimos reikalai nusipelno jūsų dėmesio ir rūpesčio.' },
+  5:  { en: 'Follow what brings you joy — creative expression and pleasure are favoured.', lt: 'Sekite tuo, kas teikia džiaugsmą — kūrybinė raiška ir malonumas yra palankūs.' },
+  6:  { en: 'Your daily routines and health habits are calling for attention.', lt: 'Jūsų kasdienės rutinos ir sveikatos įpročiai reikalauja dėmesio.' },
+  7:  { en: 'Partnerships and close relationships take centre stage.', lt: 'Partnerystės ir artimi santykiai užima pagrindinę sceną.' },
+  8:  { en: 'Deep emotional processing and shared resources need your awareness.', lt: 'Gilus emocinis apdorojimas ir bendri ištekliai reikalauja jūsų sąmoningumo.' },
+  9:  { en: 'Expansion through learning, travel, or philosophical inquiry is calling.', lt: 'Plėtra per mokymąsi, keliones ar filosofinę paiešką kviečia.' },
+  10: { en: 'Career and public reputation are highlighted — act with intention.', lt: 'Karjera ir viešoji reputacija yra paryškintos — veikite su ketinimu.' },
+  11: { en: 'Community connections and your broader social vision are energised.', lt: 'Bendruomenės ryšiai ir jūsų platesnė socialinė vizija yra energizuoti.' },
+  12: { en: 'Your inner world and spiritual life need quiet attention.', lt: 'Jūsų vidinis pasaulis ir dvasinis gyvenimas reikalauja tylaus dėmesio.' },
 }
 
-function getPersonalAdvice(sunSign: ZodiacSign, phases: ReadingPhase[]): string {
+function getPersonalAdvice(sunSign: ZodiacSign, phases: ReadingPhase[], lang: Lang): string {
   const activatedHouses = new Set<number>()
   for (const phase of phases) {
     if (phase.celestialData.sign) {
@@ -356,7 +414,7 @@ function getPersonalAdvice(sunSign: ZodiacSign, phases: ReadingPhase[]): string 
   if (houses.length === 0) return ''
 
   const adviceParts = houses
-    .map(h => HOUSE_ADVICE[h])
+    .map(h => HOUSE_ADVICE[h]?.[lang])
     .filter(Boolean)
 
   return adviceParts.join(' ')
@@ -369,15 +427,18 @@ function generateSummary(
     planets: PlanetPosition[]
   },
   allKeywords: string[],
+  lang: Lang,
   zodiacProfile?: ZodiacProfile | null
 ): CosmicReading['summary'] {
   const sun = astroData.planets.find(p => p.id === 'sun')
   const sunSign = sun?.zodiacSign ?? 'aries'
-  const sunSignCapitalised = capitalize(sunSign)
-  const moonPhaseTheme = MOON_PHASE_THEMES[astroData.moon.phase] ?? 'Cosmic Flow'
-  const moonSignCapitalised = capitalize(astroData.moon.zodiacSign)
+  const sunSignCapitalised = signName(sunSign, lang)
+  const moonPhaseTheme = MOON_PHASE_THEMES[astroData.moon.phase]?.[lang] ?? (lang === 'lt' ? 'Kosminė tėkmė' : 'Cosmic Flow')
+  const moonSignCapitalised = signName(astroData.moon.zodiacSign, lang)
 
-  const theme = `${moonPhaseTheme} · ${sunSignCapitalised} Season`
+  const theme = lang === 'lt'
+    ? `${moonPhaseTheme} · ${sunSignCapitalised} sezonas`
+    : `${moonPhaseTheme} · ${sunSignCapitalised} Season`
 
   // Deduplicate and pick top keywords
   const uniqueKeywords = [...new Set(allKeywords)].slice(0, 5)
@@ -386,17 +447,27 @@ function generateSummary(
   const aspectPhases = phases.filter(p => p.type === 'planetary-aspect')
   const hasRetrograde = phases.some(p => p.type === 'retrograde')
 
-  let generalSummary = `Today's cosmic weather is shaped by a ${astroData.moon.phase} in ${moonSignCapitalised} and the Sun in ${sunSignCapitalised}.`
+  const moonPhaseLocalized = moonPhaseName(astroData.moon.phase, lang)
+
+  let generalSummary = lang === 'lt'
+    ? `Šiandienos kosminis oras formuojamas ${moonPhaseLocalized} ${moonSignCapitalised} ženkle ir Saulės ${sunSignCapitalised} ženkle.`
+    : `Today's cosmic weather is shaped by a ${astroData.moon.phase} in ${moonSignCapitalised} and the Sun in ${sunSignCapitalised}.`
 
   if (aspectPhases.length > 0) {
-    generalSummary += ` ${aspectPhases.length} notable aspect${aspectPhases.length > 1 ? 's' : ''} ${aspectPhases.length > 1 ? 'colour' : 'colours'} the day with dynamic planetary conversations.`
+    generalSummary += lang === 'lt'
+      ? ` ${aspectPhases.length} ryšk${aspectPhases.length > 1 ? 'ūs aspektai nuspalvina' : 'us aspektas nuspalvina'} dieną dinaminėmis planetų sąveikomis.`
+      : ` ${aspectPhases.length} notable aspect${aspectPhases.length > 1 ? 's' : ''} ${aspectPhases.length > 1 ? 'colour' : 'colours'} the day with dynamic planetary conversations.`
   }
 
   if (hasRetrograde) {
-    generalSummary += ' Retrograde energy invites reflection and review alongside forward movement.'
+    generalSummary += lang === 'lt'
+      ? ' Retrogradinė energija kviečia apmąstymui ir peržiūrai šalia judėjimo pirmyn.'
+      : ' Retrograde energy invites reflection and review alongside forward movement.'
   }
 
-  generalSummary += ' Listen to what the sky is saying — and trust your own inner compass.'
+  generalSummary += lang === 'lt'
+    ? ' Klausykite, ką dangus sako — ir pasitikėkite savo vidiniu kompasu.'
+    : ' Listen to what the sky is saying — and trust your own inner compass.'
 
   // Personal summary
   let personalSummary: string | undefined
@@ -410,12 +481,15 @@ function generateSummary(
 
     const houseAreas = Array.from(activatedHouses)
       .slice(0, 3)
-      .map(h => HOUSE_THEMES[h]?.area.toLowerCase())
+      .map(h => HOUSE_THEMES[h]?.area[lang].toLowerCase())
       .filter(Boolean)
 
     if (houseAreas.length > 0) {
-      const advice = getPersonalAdvice(zodiacProfile.sunSign, phases)
-      personalSummary = `For you as a ${capitalize(zodiacProfile.sunSign)}, today's cosmic energy is most active in your ${houseAreas.join(', ')} areas. ${advice}`
+      const advice = getPersonalAdvice(zodiacProfile.sunSign, phases, lang)
+      const signDisplayName = signName(zodiacProfile.sunSign, lang)
+      personalSummary = lang === 'lt'
+        ? `Jums kaip ${signDisplayName}, šiandienos kosminė energija yra aktyviausia jūsų ${houseAreas.join(', ')} srityse. ${advice}`
+        : `For you as a ${signDisplayName}, today's cosmic energy is most active in your ${houseAreas.join(', ')} areas. ${advice}`
     }
   }
 

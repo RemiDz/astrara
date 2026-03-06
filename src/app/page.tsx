@@ -327,7 +327,7 @@ function HomePage() {
   }, [astroData])
 
   return (
-    <ReadingProvider astroData={readingAstroData}>
+    <ReadingProvider astroData={readingAstroData} lang={lang}>
     <div className="min-h-screen relative">
       <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
@@ -354,6 +354,7 @@ function HomePage() {
           {/* Stacked layout: wheel on top, weather below */}
           <div>
             {/* Astro Wheel */}
+            <ReadingWheelShift>
             <div className="py-4 relative">
               {astroData ? (
                 <ReadingAwareWheel
@@ -576,6 +577,7 @@ function HomePage() {
                 <span>→</span>
               </button>
             </div>
+            </ReadingWheelShift>
 
             {/* Cosmic Weather Panel */}
             <div className="mt-6">
@@ -852,6 +854,16 @@ function ReadingDim({ children, className = '' }: { children: React.ReactNode; c
   const { isReadingActive } = useReadingContext()
   return (
     <div className={`transition-opacity duration-300 ${isReadingActive ? 'opacity-30 pointer-events-none' : ''} ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+// Shift wheel upward when reading is active — reclaims space for the bottom sheet card
+function ReadingWheelShift({ children }: { children: React.ReactNode }) {
+  const { isReadingActive } = useReadingContext()
+  return (
+    <div className={`transition-transform duration-700 ease-out ${isReadingActive ? '-translate-y-[60px]' : 'translate-y-0'}`}>
       {children}
     </div>
   )

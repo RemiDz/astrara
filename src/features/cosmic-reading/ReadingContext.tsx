@@ -55,9 +55,11 @@ export function useReadingContext(): ReadingContextValue {
 export function ReadingProvider({
   children,
   astroData,
+  lang = 'en',
 }: {
   children: React.ReactNode
   astroData: AstroDataForReading | null
+  lang?: 'en' | 'lt'
 }) {
   const { state, dispatch } = useReadingStateMachine()
   const [currentReading, setCurrentReading] = useState<CosmicReading | null>(null)
@@ -98,9 +100,9 @@ export function ReadingProvider({
   // Generate reading helper
   const generateReading = useCallback(() => {
     if (!astroData) return
-    const reading = generateCosmicReading(astroData, zodiacProfile)
+    const reading = generateCosmicReading(astroData, zodiacProfile, lang)
     setCurrentReading(reading)
-  }, [astroData, zodiacProfile])
+  }, [astroData, zodiacProfile, lang])
 
   // === ACTIONS ===
 
@@ -117,11 +119,11 @@ export function ReadingProvider({
     setZodiacProfile(profile)
     // Generate reading with the new profile
     if (astroData) {
-      const reading = generateCosmicReading(astroData, profile)
+      const reading = generateCosmicReading(astroData, profile, lang)
       setCurrentReading(reading)
     }
     dispatch({ type: 'COMPLETE_ONBOARDING' })
-  }, [setZodiacProfile, astroData, dispatch])
+  }, [setZodiacProfile, astroData, lang, dispatch])
 
   const dismissOnboarding = useCallback(() => {
     dispatch({ type: 'DISMISS_ONBOARDING' })

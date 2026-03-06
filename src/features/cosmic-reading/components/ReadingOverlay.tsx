@@ -58,25 +58,20 @@ export default function ReadingOverlay() {
         }}
       />
 
-      {/* Close button — this IS interactive */}
-      <button
-        onClick={exitReading}
-        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/50 hover:text-white/80 hover:bg-black/60 transition-all active:scale-90 pointer-events-auto"
-        aria-label="Close reading"
-      >
-        ✕
-      </button>
-
       {/* Content area — BOTTOM SHEET that slides up */}
       <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-auto px-4 pb-6"
-        style={{ maxHeight: '45vh' }}
+        className="absolute bottom-0 left-0 right-0 pointer-events-auto px-4"
+        style={{
+          maxHeight: '45vh',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+        }}
       >
         {showSummary && currentReading ? (
           <ReadingSummaryCard
             summary={currentReading.summary}
             frequencyPhase={frequencyPhase}
             isVisible={isSummaryVisible}
+            onClose={exitReading}
           />
         ) : showCard && currentPhase ? (
           <PhaseCard
@@ -84,12 +79,18 @@ export default function ReadingOverlay() {
             isVisible={isCardVisible}
             phaseIndex={currentPhaseIndex}
             totalPhases={totalPhases}
+            onClose={exitReading}
           />
         ) : null}
 
-        {/* Navigation — only show when card is visible or summary is showing */}
+        {/* Navigation */}
         {(isCardVisible || isSummaryVisible) && (
-          <div className="mt-3 max-w-lg mx-auto">
+          <div
+            className="mt-3 max-w-lg mx-auto"
+            style={{
+              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)',
+            }}
+          >
             <PhaseNavigation
               onNext={nextPhase}
               onExit={exitReading}
