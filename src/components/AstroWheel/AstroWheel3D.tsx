@@ -1787,7 +1787,8 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
       style={{
         height: '95vw',
         maxHeight: '550px',
-        overflow: 'visible',
+        overflowX: 'hidden',
+        overflowY: 'visible',
         touchAction: 'none',
         background: 'transparent',
         WebkitTapHighlightColor: 'transparent',

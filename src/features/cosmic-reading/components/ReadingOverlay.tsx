@@ -55,7 +55,10 @@ export default function ReadingOverlay() {
   const showCard = state.status === 'PHASE_ANIMATING' || state.status === 'PHASE_READING' || state.status === 'PHASE_TRANSITIONING'
   const showSummary = state.status === 'SUMMARY'
   const showContent = showCard || showSummary
-  const contentFaded = state.status === 'PHASE_TRANSITIONING' || state.status === 'PHASE_ANIMATING'
+  const contentOpacity = state.status === 'PHASE_READING' || state.status === 'SUMMARY' ? 1
+    : state.status === 'PHASE_ANIMATING' ? 0.7
+    : state.status === 'PHASE_TRANSITIONING' ? 0.3
+    : 0
   const isLastPhase = currentPhaseIndex >= totalPhases - 1
   const frequencyPhase = currentReading?.phases.find(p => p.type === 'frequency-recommendation')
   const isExiting = state.status === 'EXITING'
@@ -101,10 +104,8 @@ export default function ReadingOverlay() {
           {/* Scrollable content area — fades between phases, sheet stays open */}
           <div
             ref={contentRef}
-            className={`reading-content-scroll relative max-h-[32vh] overflow-y-auto p-5 pb-3 transition-opacity duration-300 ${
-              contentFaded ? 'opacity-0' : 'opacity-100'
-            }`}
-            style={{ scrollbarWidth: 'none' }}
+            className="reading-content-scroll relative max-h-[32vh] overflow-y-auto p-5 pb-3 transition-opacity duration-300"
+            style={{ scrollbarWidth: 'none', opacity: contentOpacity }}
           >
             {/* Close button */}
             <button

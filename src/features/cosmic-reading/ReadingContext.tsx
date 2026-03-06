@@ -161,7 +161,7 @@ export function ReadingProvider({
 
     switch (state.status) {
       case 'PREPARING':
-        timerRef.current = setTimeout(() => dispatch({ type: 'PREPARING_COMPLETE' }), 400)
+        timerRef.current = setTimeout(() => dispatch({ type: 'PREPARING_COMPLETE' }), 100)
         break
       case 'PHASE_ANIMATING':
         // 3-second fallback — primary trigger is onAnimationComplete from camera controller
@@ -170,10 +170,10 @@ export function ReadingProvider({
             animCompleteGuard.current = true
             dispatch({ type: 'ANIMATION_COMPLETE' })
           }
-        }, 3000)
+        }, 1200)
         break
       case 'PHASE_TRANSITIONING':
-        timerRef.current = setTimeout(() => dispatch({ type: 'ANIMATION_COMPLETE' }), 400)
+        timerRef.current = setTimeout(() => dispatch({ type: 'ANIMATION_COMPLETE' }), 150)
         break
       case 'EXITING':
         timerRef.current = setTimeout(() => {

@@ -68,7 +68,7 @@ export default function Header({
     : location?.city || ''
 
   return (
-    <header className="relative z-30 px-4 pt-4 pb-2">
+    <header className={`relative z-30 px-4 pt-4 ${compact ? 'pb-0' : 'pb-2'}`}>
       <div className="max-w-5xl mx-auto flex items-start justify-between">
         {/* Left — text block */}
         <div className="flex flex-col min-w-0">

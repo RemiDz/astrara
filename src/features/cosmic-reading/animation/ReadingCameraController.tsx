@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import type { PlanetPosition } from '@/lib/astronomy'
 
 const R_PLANET = 1.5
-const LERP_SPEED = 0.03
+const LERP_SPEED = 0.08
 
 function longitudeToPos(longitude: number, radius: number): THREE.Vector3 {
   const rad = (longitude - 90) * (Math.PI / 180)
@@ -137,7 +137,7 @@ export default function ReadingCameraController({
       // Check if we've reached the target
       if (!hasCompletedRef.current) {
         const dist = camera.position.distanceTo(targetCamPos)
-        if (dist < 0.1) {
+        if (dist < 0.2) {
           hasCompletedRef.current = true
           onComplete?.()
         }
