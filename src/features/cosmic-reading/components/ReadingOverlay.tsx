@@ -58,12 +58,12 @@ export default function ReadingOverlay() {
         }}
       />
 
-      {/* Content area — BOTTOM SHEET that slides up */}
+      {/* Card content area — sits above the fixed button */}
       <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-auto px-4"
+        className="absolute left-0 right-0 pointer-events-auto px-4"
         style={{
+          bottom: 'calc(64px + max(28px, calc(env(safe-area-inset-bottom, 20px) + 8px)))',
           maxHeight: '45vh',
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
         }}
       >
         {showSummary && currentReading ? (
@@ -82,15 +82,17 @@ export default function ReadingOverlay() {
             onClose={exitReading}
           />
         ) : null}
+      </div>
 
-        {/* Navigation */}
-        {(isCardVisible || isSummaryVisible) && (
-          <div
-            className="mt-3 max-w-lg mx-auto"
-            style={{
-              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)',
-            }}
-          >
+      {/* Navigation button — FIXED at very bottom, always visible */}
+      {(isCardVisible || isSummaryVisible) && (
+        <div
+          className="absolute bottom-0 left-0 right-0 pointer-events-auto px-4"
+          style={{
+            paddingBottom: 'max(28px, calc(env(safe-area-inset-bottom, 20px) + 8px))',
+          }}
+        >
+          <div className="max-w-lg mx-auto">
             <PhaseNavigation
               onNext={nextPhase}
               onExit={exitReading}
@@ -98,8 +100,8 @@ export default function ReadingOverlay() {
               isSummary={showSummary}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <style>{`
         .reading-overlay-transition {
