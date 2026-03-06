@@ -1780,19 +1780,16 @@ function WheelScene({
 export default function AstroWheel3D(props: AstroWheel3DProps) {
   const { t } = useTranslation()
   const [sceneReady, setSceneReady] = useState(false)
-  const isReadingMode = props.readingAnimation?.isActive === true
 
   return (
     <div
       className="relative w-full select-none"
       style={{
-        height: isReadingMode ? '65vw' : '95vw',
-        maxHeight: isReadingMode ? '380px' : '550px',
-        overflowX: 'hidden',
-        overflowY: 'hidden',
+        height: '95vw',
+        maxHeight: '550px',
+        overflow: 'visible',
         touchAction: 'none',
         background: 'transparent',
-        transition: 'height 0.5s ease-out, max-height 0.5s ease-out',
         WebkitTapHighlightColor: 'transparent',
         WebkitUserSelect: 'none',
         userSelect: 'none',
@@ -1808,23 +1805,18 @@ export default function AstroWheel3D(props: AstroWheel3DProps) {
         </div>
       )}
 
-      {/* Canvas — hidden until scene renders first frame; maintains original size and centres vertically */}
+      {/* Canvas — hidden until scene renders first frame */}
       <div style={{
         opacity: sceneReady ? 1 : 0,
         width: '100%',
-        height: '95vw',
-        maxHeight: '550px',
+        height: '100%',
         position: 'absolute',
-        left: 0,
-        right: 0,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        overflow: 'hidden',
+        inset: 0,
       }}>
         <Canvas
           tabIndex={-1}
           camera={{ position: [0, 1.5, 7], fov: 38, near: 0.1, far: 100 }}
-          style={{ background: 'transparent', overflow: 'hidden', outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+          style={{ background: 'transparent', overflow: 'visible', outline: 'none', WebkitTapHighlightColor: 'transparent' }}
           gl={{ alpha: true, antialias: true }}
           onCreated={() => {
             requestAnimationFrame(() => {
