@@ -1623,38 +1623,48 @@ function WheelScene({
 
   // Reading mode camera reframing — manipulate through OrbitControls' own object
   const readingCamActive = readingAnimation?.isActive ?? false
-  const readingCamRef = useRef({ wasActive: false, savedY: 1.5, savedZ: 7, savedTargetY: 0 })
+  const readingCamRef = useRef({
+    wasActive: false,
+    savedPos: new THREE.Vector3(0, 1.5, 7),
+    savedTarget: new THREE.Vector3(0, 0, 0),
+  })
 
   useFrame(() => {
     if (!controlsRef.current) return
     const cam = controlsRef.current.object
 
+    // Just entered reading — save full camera state
     if (readingCamActive && !readingCamRef.current.wasActive) {
       readingCamRef.current.wasActive = true
-      readingCamRef.current.savedY = cam.position.y
-      readingCamRef.current.savedZ = cam.position.z
-      readingCamRef.current.savedTargetY = controlsRef.current.target.y
+      readingCamRef.current.savedPos.copy(cam.position)
+      readingCamRef.current.savedTarget.copy(controlsRef.current.target)
     }
 
+    // During reading — lerp to reading framing
     if (readingCamActive) {
-      cam.position.y += (1.0 - cam.position.y) * 0.05
-      cam.position.z += (6.5 - cam.position.z) * 0.05
-      // Tilt view down — target Y goes negative so camera looks downward at wheel
-      controlsRef.current.target.y += (-0.4 - controlsRef.current.target.y) * 0.05
+      // Target camera position: same X as saved (keep centred), lower Y (wheel higher), same Z
+      const targetPos = readingCamRef.current.savedPos.clone()
+      targetPos.y = readingCamRef.current.savedPos.y - 0.5
+
+      cam.position.lerp(targetPos, 0.05)
+
+      // Tilt view: target looks slightly lower
+      const targetLookAt = readingCamRef.current.savedTarget.clone()
+      targetLookAt.y = readingCamRef.current.savedTarget.y - 0.4
+
+      controlsRef.current.target.lerp(targetLookAt, 0.05)
       controlsRef.current.update()
     }
 
+    // Exiting reading — lerp back to saved state
     if (!readingCamActive && readingCamRef.current.wasActive) {
-      const dy = Math.abs(cam.position.y - readingCamRef.current.savedY)
-      const dz = Math.abs(cam.position.z - readingCamRef.current.savedZ)
-      cam.position.y += (readingCamRef.current.savedY - cam.position.y) * 0.05
-      cam.position.z += (readingCamRef.current.savedZ - cam.position.z) * 0.05
-      controlsRef.current.target.y += (readingCamRef.current.savedTargetY - controlsRef.current.target.y) * 0.05
+      cam.position.lerp(readingCamRef.current.savedPos, 0.05)
+      controlsRef.current.target.lerp(readingCamRef.current.savedTarget, 0.05)
       controlsRef.current.update()
-      if (dy < 0.05 && dz < 0.05) {
-        cam.position.y = readingCamRef.current.savedY
-        cam.position.z = readingCamRef.current.savedZ
-        controlsRef.current.target.y = readingCamRef.current.savedTargetY
+
+      if (cam.position.distanceTo(readingCamRef.current.savedPos) < 0.05) {
+        cam.position.copy(readingCamRef.current.savedPos)
+        controlsRef.current.target.copy(readingCamRef.current.savedTarget)
         readingCamRef.current.wasActive = false
         controlsRef.current.update()
       }
