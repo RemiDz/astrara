@@ -10,7 +10,7 @@ interface Props {
 
 // During reading, reposition camera to frame the wheel higher in view
 // This eliminates the empty black space above the wheel
-const READING_CAMERA_POS = new THREE.Vector3(0, 0.5, 6.2)
+const READING_CAMERA_POS = new THREE.Vector3(0, 1.1, 6.5)
 const DEFAULT_CAMERA_POS = new THREE.Vector3(0, 1.5, 7)
 
 export default function ReadingCameraFramer({ isActive }: Props) {
