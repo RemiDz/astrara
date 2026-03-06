@@ -507,7 +507,7 @@ function HomePage() {
 
                 const prevLabel = isToday ? `← ${t('nav.yesterday')}` : `← ${formatShortDate(prevDate)}`
                 const nextLabel = isToday ? `${t('nav.tomorrow')} →` : `${formatShortDate(nextDate)} →`
-                const centreLabel = isToday ? t('nav.today') : formatShortDate(targetDate)
+                const centreLabel = t('nav.today')
 
                 return (
                   <div className="flex items-center justify-center gap-2 py-4">
