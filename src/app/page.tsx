@@ -328,7 +328,7 @@ function HomePage() {
   }, [astroData])
 
   return (
-    <ReadingProvider astroData={readingAstroData} lang={lang}>
+    <ReadingProvider astroData={readingAstroData} lang={lang} selectedDate={targetDate}>
     <div className="min-h-screen relative overflow-x-hidden">
       <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
@@ -586,6 +586,7 @@ function HomePage() {
                   planets={astroData.planets}
                   moon={astroData.moon}
                   notableAspects={astroData.notableAspects}
+                  selectedDate={targetDate}
                   onPlanetClick={(p) => { handlePlanetTap(p); trackEvent('planet-tap', { planet: p.id }) }}
                   onAspectClick={(a) => { handleAspectTap(a); trackEvent('aspect-tap', { aspect: `${a.planet1}-${a.type}-${a.planet2}` }) }}
                 />

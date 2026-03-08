@@ -1,4 +1,5 @@
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import { getCosmicWeatherTitle } from '@/lib/dateTitle'
 import type {
   ZodiacProfile,
   ZodiacSign,
@@ -112,7 +113,8 @@ export function generateCosmicReading(
     notableAspects: AspectData[]
   },
   zodiacProfile?: ZodiacProfile | null,
-  lang: Lang = 'en'
+  lang: Lang = 'en',
+  selectedDate?: Date,
 ): CosmicReading {
   const phases: ReadingPhase[] = []
   const allKeywords: string[] = []
@@ -387,7 +389,7 @@ export function generateCosmicReading(
   const summaryPhase: ReadingPhase = {
     id: 'summary-overview',
     type: 'summary',
-    title: lang === 'lt' ? 'Šiandienos Kosminė Orbitė' : "Today's Cosmic Weather",
+    title: getCosmicWeatherTitle(selectedDate ?? new Date(), lang),
     subtitle: summary.theme,
     icon: '✦',
     generalReading: summary.generalSummary,

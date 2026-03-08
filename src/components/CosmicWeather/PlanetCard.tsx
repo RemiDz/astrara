@@ -51,7 +51,10 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
             {planet.signGlyph} {planet.degreeInSign}°
           </p>
           <p className="text-[11px] text-white/30 mb-2">
-            <span style={{ color: planet.colour }}>{dist.formattedKm}</span> km · <span style={{ color: planet.colour }}>{dist.formattedMiles}</span> mi · ✦ {dist.formattedLightTravel}
+            <span className="text-white/20">🌍</span>
+            <span className="mx-1" style={{ opacity: 0.5 }}>&rarr;</span>
+            <span style={{ color: planet.colour }}>{planet.glyph}</span>
+            <span className="ml-1.5"><span style={{ color: planet.colour }}>{dist.formattedKm}</span> km · <span style={{ color: planet.colour }}>{dist.formattedMiles}</span> mi · ✦ {dist.formattedLightTravel}</span>
           </p>
           {insight && (
             <p className="text-[13px] text-white/40 leading-relaxed">

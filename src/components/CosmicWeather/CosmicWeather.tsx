@@ -2,6 +2,7 @@
 
 import type { PlanetPosition, MoonData, AspectData } from '@/lib/astronomy'
 import { useTranslation } from '@/i18n/useTranslation'
+import { getCosmicWeatherTitle } from '@/lib/dateTitle'
 import MoonPhaseCard from './MoonPhaseCard'
 import PlanetCard from './PlanetCard'
 import AspectHighlight from './AspectHighlight'
@@ -10,12 +11,13 @@ interface CosmicWeatherProps {
   planets: PlanetPosition[]
   moon: MoonData
   notableAspects: AspectData[]
+  selectedDate: Date
   onPlanetClick: (planet: PlanetPosition) => void
   onAspectClick: (aspect: AspectData) => void
 }
 
-export default function CosmicWeather({ planets, moon, notableAspects, onPlanetClick, onAspectClick }: CosmicWeatherProps) {
-  const { t } = useTranslation()
+export default function CosmicWeather({ planets, moon, notableAspects, selectedDate, onPlanetClick, onAspectClick }: CosmicWeatherProps) {
+  const { t, lang } = useTranslation()
 
   return (
     <div className="space-y-3">
@@ -25,7 +27,7 @@ export default function CosmicWeather({ planets, moon, notableAspects, onPlanetC
       {/* Planet Cards */}
       <section>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-3 tracking-wide" style={{ color: 'var(--text-muted)' }}>
-          {t('weather.title')}
+          {getCosmicWeatherTitle(selectedDate, lang)}
         </h2>
         <div className="space-y-3">
           {planets.map((planet, i) => (

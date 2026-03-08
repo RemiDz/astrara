@@ -823,6 +823,7 @@ function PlanetOrb({
   labelOpacityRef?: React.MutableRefObject<number>
   readingDimOpacity?: number
 }) {
+  const { t } = useTranslation()
   const meshRef = useRef<THREE.Mesh>(null!)
   const groupRef = useRef<THREE.Group>(null!)
   const [isFlashing, setIsFlashing] = useState(false)
@@ -830,6 +831,7 @@ function PlanetOrb({
   const currentScale = useRef(0)
   const colour = useMemo(() => new THREE.Color(planet.colour), [planet.colour])
   const config = PLANET_CONFIG[planet.id] ?? { radius: 0.12, pulseSpeed: 0.6 }
+  const translatedName = t(`planet.${planet.id}`)
 
   // Overlap prevention: offset Y and radius when planets are within 8° of each other
   const { yOffset, radiusOffset } = useMemo(() => {
@@ -980,7 +982,7 @@ function PlanetOrb({
             fontFamily: "'DM Sans', sans-serif",
           }}>
           {showHelioLabel
-            ? (planet.id === 'moon' ? planet.glyph : `${planet.glyph} ${planet.name}`)
+            ? (planet.id === 'moon' ? planet.glyph : `${planet.glyph} ${translatedName}`)
             : `${planet.glyph} ${planet.degreeInSign}°`}
         </div>
       </Html>

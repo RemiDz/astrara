@@ -57,10 +57,12 @@ export function ReadingProvider({
   children,
   astroData,
   lang = 'en',
+  selectedDate,
 }: {
   children: React.ReactNode
   astroData: AstroDataForReading | null
   lang?: 'en' | 'lt'
+  selectedDate?: Date
 }) {
   const { state, dispatch } = useReadingStateMachine()
   const [currentReading, setCurrentReading] = useState<CosmicReading | null>(null)
@@ -101,9 +103,9 @@ export function ReadingProvider({
   // Generate reading helper
   const generateReading = useCallback(() => {
     if (!astroData) return
-    const reading = generateCosmicReading(astroData, zodiacProfile, lang)
+    const reading = generateCosmicReading(astroData, zodiacProfile, lang, selectedDate)
     setCurrentReading(reading)
-  }, [astroData, zodiacProfile, lang])
+  }, [astroData, zodiacProfile, lang, selectedDate])
 
   // === ACTIONS ===
 
@@ -120,7 +122,7 @@ export function ReadingProvider({
     setZodiacProfile(profile)
     // Generate reading with the new profile
     if (astroData) {
-      const reading = generateCosmicReading(astroData, profile, lang)
+      const reading = generateCosmicReading(astroData, profile, lang, selectedDate)
       setCurrentReading(reading)
     }
     dispatch({ type: 'COMPLETE_ONBOARDING' })
