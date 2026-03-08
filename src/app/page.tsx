@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
+import { GlossaryTooltipProvider } from '@/components/GlossaryTerm'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useRealTime } from '@/hooks/useRealTime'
 import { useLocation } from '@/hooks/useLocation'
@@ -896,7 +897,9 @@ function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrappe
 export default function Page() {
   return (
     <LanguageProvider>
-      <HomePage />
+      <GlossaryTooltipProvider>
+        <HomePage />
+      </GlossaryTooltipProvider>
     </LanguageProvider>
   )
 }

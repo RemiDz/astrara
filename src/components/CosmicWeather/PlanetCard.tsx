@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import GlassCard from '@/components/ui/GlassCard'
 import { PLANET_DOMAINS } from '@/features/cosmic-reading/content/templates/planetDomains'
+import GlossaryTerm from '@/components/GlossaryTerm'
 
 interface PlanetCardProps {
   planet: PlanetPosition
@@ -34,9 +35,11 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
                 : `${t(`planet.${planet.id}`)} in ${t(`zodiac.${planet.zodiacSign}`)}`}
             </h3>
             {planet.isRetrograde && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
-                Rx
-              </span>
+              <GlossaryTerm termKey="retrograde">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                  Rx
+                </span>
+              </GlossaryTerm>
             )}
           </div>
           {domain && (

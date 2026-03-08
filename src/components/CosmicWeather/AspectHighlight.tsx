@@ -4,6 +4,7 @@ import type { AspectData } from '@/lib/astronomy'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import GlassCard from '@/components/ui/GlassCard'
+import GlossaryTerm from '@/components/GlossaryTerm'
 
 interface AspectHighlightProps {
   aspect: AspectData
@@ -33,7 +34,7 @@ export default function AspectHighlight({ aspect, index, onClick }: AspectHighli
       </div>
 
       <p className="text-[11px] text-white/45 mb-1">
-        {t(`aspect.${aspect.type}.plain`)}
+        <GlossaryTerm termKey={aspect.type}>{t(`aspect.${aspect.type}.plain`)}</GlossaryTerm>
       </p>
 
       <p className="text-[13px] text-white/40 leading-relaxed">

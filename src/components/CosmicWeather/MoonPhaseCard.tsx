@@ -4,9 +4,21 @@ import type { MoonData } from '@/lib/astronomy'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import GlassCard from '@/components/ui/GlassCard'
+import GlossaryTerm from '@/components/GlossaryTerm'
 
 interface MoonPhaseCardProps {
   moon: MoonData
+}
+
+const MOON_PHASE_GLOSSARY_KEY: Record<string, string> = {
+  'New Moon': 'new_moon',
+  'Waxing Crescent': 'waxing_crescent',
+  'First Quarter': 'first_quarter',
+  'Waxing Gibbous': 'waxing_gibbous',
+  'Full Moon': 'full_moon',
+  'Waning Gibbous': 'waning_gibbous',
+  'Last Quarter': 'last_quarter',
+  'Waning Crescent': 'waning_crescent',
 }
 
 const MOON_PHASE_NAMES_LT: Record<string, string> = {
@@ -37,7 +49,7 @@ export default function MoonPhaseCard({ moon }: MoonPhaseCardProps) {
         <span className="text-2xl">{moon.emoji}</span>
         <div>
           <h3 className="text-lg font-serif text-white/85">
-            {phaseName}
+            <GlossaryTerm termKey={MOON_PHASE_GLOSSARY_KEY[moon.phase] ?? 'new_moon'}>{phaseName}</GlossaryTerm>
           </h3>
           <p className="text-xs text-white/35">
             {Math.round(moon.illumination * 100)}% {t('moon.illumination')}
