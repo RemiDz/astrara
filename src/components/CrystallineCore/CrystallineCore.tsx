@@ -43,11 +43,19 @@ const CIRCLE_SEGMENTS = 64
 const X_TILT = 0.17 // ~10°
 const Z_ROT_SPEED = 0.04 // rad/s
 
-// Three depth layers matching harmonicwaves.app HarmonicLogo
+// Three layers distributed spherically — each layer's seed pattern is rotated
+// to a different orientation, creating a volumetric 3D light form
 const LAYERS = [
-  { scale: 0.78, z: -0.06, alpha: 0.12 }, // back layer
-  { scale: 1.0,  z: 0,     alpha: 0.25 }, // main layer
-  { scale: 1.21, z: 0.06,  alpha: 0.08 }, // depth layer
+  { scale: 1.0,  alpha: 0.25, phaseOffset: 0 },   // front face
+  { scale: 0.85, alpha: 0.15, phaseOffset: 2.1 },  // tilted ~63° on X
+  { scale: 0.92, alpha: 0.10, phaseOffset: 4.2 },  // tilted ~63° on Y
+]
+
+// Rotation per layer — distributes seed patterns across a sphere
+const LAYER_ROTATIONS: [number, number, number][] = [
+  [0, 0, 0],          // front face (primary visible pattern)
+  [1.1, 0.3, 0],      // tilted forward + slight twist
+  [-0.3, 1.1, 0],     // tilted sideways + slight opposite twist
 ]
 
 const NUM_EMANATION = 5
@@ -133,19 +141,22 @@ export default function CrystallineCore({
   const circleGeom = useMemo(() => createCircleGeometry(CIRCLE_RADIUS, CIRCLE_SEGMENTS), [])
   const glowTexture = useMemo(() => createGlowTexture(), [])
 
-  // ── Seed of Life: 3 layers × 7 circles = 21 lines ──
+  // ── Seed of Life: 3 layers × 7 circles = 21 lines, spherically distributed ──
   const seeds = useMemo(() => {
     const positions = seedPositions(CIRCLE_RADIUS)
-    return LAYERS.map((layer) => ({
-      ...layer,
-      circles: positions.map(([x, y]) => {
+    return LAYERS.map((layer, li) => {
+      const group = new THREE.Group()
+      group.rotation.set(...LAYER_ROTATIONS[li])
+      const circles = positions.map(([x, y]) => {
         const mat = makeLineMat()
         const line = new THREE.Line(circleGeom, mat)
-        line.position.set(x * layer.scale, y * layer.scale, layer.z)
+        line.position.set(x * layer.scale, y * layer.scale, 0)
         line.scale.setScalar(layer.scale)
+        group.add(line)
         return { line, mat }
-      }),
-    }))
+      })
+      return { ...layer, group, circles }
+    })
   }, [circleGeom])
 
   // ── Emanation rings: 5 expanding circles ──
@@ -281,7 +292,7 @@ export default function CrystallineCore({
     // ──────────── SEED OF LIFE CIRCLES ────────────
     // Per-layer time pulse + per-petal phase offset (from HarmonicLogo)
     seeds.forEach((layer) => {
-      const layerPulse = 0.85 + Math.sin(time * 0.5 + layer.z * 8) * 0.15
+      const layerPulse = 0.85 + Math.sin(time * 0.5 + layer.phaseOffset) * 0.15
       layer.circles.forEach((c, ci) => {
         const petalPulse = ci > 0 ? (0.8 + Math.sin(time * 0.6 + ci * 1.05) * 0.2) : 1
         c.mat.color.copy(col)
@@ -345,12 +356,10 @@ export default function CrystallineCore({
 
   return (
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
-      {/* 3 depth layers × 7 Seed of Life circles */}
-      {seeds.flatMap((layer, li) =>
-        layer.circles.map((c, ci) => (
-          <primitive key={`s${li}-${ci}`} object={c.line} />
-        ))
-      )}
+      {/* 3 spherically-distributed Seed of Life layers */}
+      {seeds.map((layer, li) => (
+        <primitive key={`layer-${li}`} object={layer.group} />
+      ))}
 
       {/* 5 emanation rings — grow outward from centre */}
       {emanations.map((e, i) => (

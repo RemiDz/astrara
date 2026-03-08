@@ -584,7 +584,7 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 
 | Element | Count | Type | Details |
 |---------|-------|------|---------|
-| Seed circles | 3 layers × 7 = 21 | THREE.Line | Shared circle geometry (r=0.12, 64 segments). Layers at z=-0.06/0/+0.06 with scales 0.78/1.0/1.21 and base alphas 0.12/0.25/0.08 |
+| Seed circles | 3 layers × 7 = 21 | THREE.Line | Shared circle geometry (r=0.12, 64 segments). Layers distributed spherically via sub-group rotations: front (0,0,0), tilted X (1.1,0.3,0), tilted Y (-0.3,1.1,0). Scales 1.0/0.85/0.92, alphas 0.25/0.15/0.10 |
 | Emanation rings | 5 | THREE.Line | Shared circle geometry, scale grows 0.5→4.3 over lifecycle, triangle-wave opacity |
 | Frequency waves | 3 | THREE.Line | Dynamic vertex updates: sub-bass (4×spatial, 0.8×temporal), main compound (14+9+21 harmonics), ghost (phase-shifted echo) with Gaussian envelope |
 | Core glow | 2 sprites | THREE.Sprite | White-hot inner (scale 0.06) + element-coloured outer halo (scale 0.2), 64×64 procedural radial gradient texture |
@@ -592,8 +592,9 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 | Tap target | 1 | Invisible mesh | SphereGeometry(0.3), visible=false |
 
 - Circle arrangement per layer: 1 centre + 6 at radius offset (0°–300° at 60° intervals)
+- Each layer placed in a sub-group rotated to a different orientation, creating a volumetric spherical light form
 - Additive blending on all materials — intersections glow brighter, no point lights needed
-- Pattern on XY plane with 0.17 rad (~10°) X-tilt for depth hint
+- Whole form has 0.17 rad (~10°) X-tilt for viewing angle
 
 ### Element Colour Mapping
 
