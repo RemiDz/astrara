@@ -1672,54 +1672,67 @@ function WheelScene({
 
   const handleTiltDone = useCallback(() => setTiltDone(true), [])
 
-  // Reading mode camera reframing — adjust target only (let OrbitControls handle position)
+  // Reading mode camera reframing — animate tilt to default, adjust target, lock polar
   const readingCamActive = readingAnimation?.isActive ?? false
+  const DEFAULT_READING_POLAR = Math.PI / 3 // ~60° from top — matches initial tilt
   const readingCamRef = useRef({
     wasActive: false,
     savedTarget: new THREE.Vector3(0, 0, 0),
-    savedPolarMin: 0.3,
-    savedPolarMax: 2.8,
-    settled: false,
+    tiltSettled: false,
+    targetSettled: false,
   })
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!controlsRef.current) return
     const controls = controlsRef.current
 
-    // Just entered reading — save state & lock polar angle
+    // Just entered reading — save state, start animating tilt + target
     if (readingCamActive && !readingCamRef.current.wasActive) {
       readingCamRef.current.wasActive = true
-      readingCamRef.current.settled = false
+      readingCamRef.current.tiltSettled = false
+      readingCamRef.current.targetSettled = false
       readingCamRef.current.savedTarget.copy(controls.target)
-      readingCamRef.current.savedPolarMin = controls.minPolarAngle
-      readingCamRef.current.savedPolarMax = controls.maxPolarAngle
-
-      // Lock polar angle at current value
-      const polar = controls.getPolarAngle()
-      controls.minPolarAngle = polar
-      controls.maxPolarAngle = polar
     }
 
-    // During reading — lerp target.y down (don't touch cam.position — OrbitControls handles it)
-    if (readingCamActive && !readingCamRef.current.settled) {
+    // During reading — animate polar angle toward default 3D tilt
+    if (readingCamActive && !readingCamRef.current.tiltSettled) {
+      const currentPolar = controls.getPolarAngle()
+      const speed = 3
+      const newPolar = THREE.MathUtils.lerp(currentPolar, DEFAULT_READING_POLAR, 1 - Math.exp(-speed * delta))
+
+      // Drive polar by clamping min/max to desired value
+      controls.minPolarAngle = newPolar
+      controls.maxPolarAngle = newPolar
+      controls.update()
+
+      if (Math.abs(newPolar - DEFAULT_READING_POLAR) < 0.01) {
+        controls.minPolarAngle = DEFAULT_READING_POLAR
+        controls.maxPolarAngle = DEFAULT_READING_POLAR
+        controls.update()
+        readingCamRef.current.tiltSettled = true
+      }
+    }
+
+    // During reading — lerp target.y down
+    if (readingCamActive && !readingCamRef.current.targetSettled) {
       const desiredY = readingCamRef.current.savedTarget.y - 0.4
       controls.target.y += (desiredY - controls.target.y) * 0.05
 
       if (Math.abs(controls.target.y - desiredY) < 0.01) {
         controls.target.y = desiredY
-        readingCamRef.current.settled = true
+        readingCamRef.current.targetSettled = true
       }
       controls.update()
     }
 
-    // Exiting reading — restore target and polar limits
+    // Exiting reading — restore target and unlock polar limits
     if (!readingCamActive && readingCamRef.current.wasActive) {
       controls.target.lerp(readingCamRef.current.savedTarget, 0.05)
-      controls.update()
 
-      // Restore polar limits
-      controls.minPolarAngle = readingCamRef.current.savedPolarMin
-      controls.maxPolarAngle = readingCamRef.current.savedPolarMax
+      // Unlock polar limits back to normal range
+      controls.minPolarAngle = 0.3
+      controls.maxPolarAngle = 2.8
+      controls.update()
 
       if (controls.target.distanceTo(readingCamRef.current.savedTarget) < 0.02) {
         controls.target.copy(readingCamRef.current.savedTarget)
