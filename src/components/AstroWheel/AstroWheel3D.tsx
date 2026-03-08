@@ -11,6 +11,7 @@ import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
 import AspectBeam from '@/features/cosmic-reading/animation/AspectBeam'
+import { useTapVsDrag } from '@/hooks/useTapVsDrag'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -164,6 +165,59 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
 })
 
 // ─── Outer Zodiac Ring (Ring 1) ─────────────────────────────────────
+function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRefs }: {
+  sign: typeof ZODIAC_SIGNS[number]
+  gx: number
+  gz: number
+  index: number
+  sceneReady: boolean
+  onSignTap: (signId: string) => void
+  glyphRefs: React.MutableRefObject<(HTMLButtonElement | null)[]>
+}) {
+  const tapHandlers = useTapVsDrag({
+    onTap: () => onSignTap(sign.id),
+  })
+
+  return (
+    <Html
+      position={[gx, 0.06, gz]}
+      center
+      zIndexRange={[100, 0]}
+      occlude={false}
+      style={{ pointerEvents: 'auto', overflow: 'visible' }}
+    >
+      <button
+        ref={(el) => { glyphRefs.current[index] = el }}
+        type="button"
+        onPointerDown={tapHandlers.onPointerDown}
+        onPointerMove={tapHandlers.onPointerMove}
+        onPointerUp={tapHandlers.onPointerUp}
+        className="flex items-center justify-center select-none cursor-pointer
+                   w-11 h-11 rounded-full
+                   active:scale-90 transition-transform duration-150"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          fontSize: '20px',
+          color: ELEMENT_COLOURS[sign.element],
+          opacity: sceneReady ? 0.5 : 0,
+          textShadow: `0 0 10px ${ELEMENT_COLOURS[sign.element]}50, 0 0 20px ${ELEMENT_COLOURS[sign.element]}25, 0 0 40px ${ELEMENT_COLOURS[sign.element]}10`,
+          fontFamily: 'serif',
+          lineHeight: 1,
+          transform: sceneReady ? 'scale(1)' : 'scale(0.5)',
+          transition: `all 0.4s ease-out ${800 + index * 80}ms`,
+          outline: 'none',
+          padding: 0,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        aria-label={`View ${sign.name} details`}
+      >
+        {sign.glyph}
+      </button>
+    </Html>
+  )
+}
+
 function OuterZodiacRing({
   onSignTap,
   sceneReady,
@@ -234,41 +288,15 @@ function OuterZodiacRing({
               emissiveIntensity={0.08}
             />
           </mesh>
-          <Html
-            position={[gx, 0.06, gz]}
-            center
-            zIndexRange={[100, 0]}
-            occlude={false}
-            style={{ pointerEvents: 'auto', overflow: 'visible' }}
-          >
-            <button
-              ref={(el) => { glyphRefs.current[index] = el }}
-              type="button"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onSignTap(sign.id) }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex items-center justify-center select-none cursor-pointer
-                         w-11 h-11 rounded-full
-                         active:scale-90 transition-transform duration-150"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: '20px',
-                color: ELEMENT_COLOURS[sign.element],
-                opacity: sceneReady ? 0.5 : 0,
-                textShadow: `0 0 10px ${ELEMENT_COLOURS[sign.element]}50, 0 0 20px ${ELEMENT_COLOURS[sign.element]}25, 0 0 40px ${ELEMENT_COLOURS[sign.element]}10`,
-                fontFamily: 'serif',
-                lineHeight: 1,
-                transform: sceneReady ? 'scale(1)' : 'scale(0.5)',
-                transition: `all 0.4s ease-out ${800 + index * 80}ms`,
-                outline: 'none',
-                padding: 0,
-                WebkitTapHighlightColor: 'transparent',
-              }}
-              aria-label={`View ${sign.name} details`}
-            >
-              {sign.glyph}
-            </button>
-          </Html>
+          <ZodiacSignButton
+            sign={sign}
+            gx={gx}
+            gz={gz}
+            index={index}
+            sceneReady={sceneReady}
+            onSignTap={onSignTap}
+            glyphRefs={glyphRefs}
+          />
         </group>
       ))}
       {ZODIAC_SIGNS.map((_, i) => {
@@ -673,6 +701,23 @@ function EarthKpAura({ kpIndex }: { kpIndex: number | null }) {
 }
 
 // ─── Earth Centre ───────────────────────────────────────────────────
+function EarthTapTarget({ onEarthTap }: { onEarthTap: () => void }) {
+  const tapHandlers = useTapVsDrag({ onTap: onEarthTap })
+  return (
+    <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'auto', overflow: 'visible' }}>
+      <button
+        type="button"
+        onPointerDown={tapHandlers.onPointerDown}
+        onPointerMove={tapHandlers.onPointerMove}
+        onPointerUp={tapHandlers.onPointerUp}
+        className="w-14 h-14 rounded-full cursor-pointer select-none active:scale-90 transition-transform duration-150"
+        style={{ background: 'transparent', border: 'none', outline: 'none', padding: 0, WebkitTapHighlightColor: 'transparent' }}
+        aria-label="View Earth intelligence"
+      />
+    </Html>
+  )
+}
+
 function EarthCentre({ onEarthTap, kpIndex, labelOpacityRef, phaseValuesRef }: { onEarthTap: () => void; kpIndex: number | null; labelOpacityRef?: React.MutableRefObject<number>; phaseValuesRef?: React.MutableRefObject<PhaseValues> }) {
   const earthLabelRef = useRef<HTMLDivElement>(null)
 
@@ -704,16 +749,7 @@ function EarthCentre({ onEarthTap, kpIndex, labelOpacityRef, phaseValuesRef }: {
       </Html>
 
       {/* Earth tap target */}
-      <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: 'auto', overflow: 'visible' }}>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEarthTap() }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="w-14 h-14 rounded-full cursor-pointer select-none active:scale-90 transition-transform duration-150"
-          style={{ background: 'transparent', border: 'none', outline: 'none', padding: 0, WebkitTapHighlightColor: 'transparent' }}
-          aria-label="View Earth intelligence"
-        />
-      </Html>
+      <EarthTapTarget onEarthTap={onEarthTap} />
     </group>
   )
 }
@@ -893,6 +929,8 @@ function PlanetOrb({
     onTap()
   }, [onTap])
 
+  const tapHandlers = useTapVsDrag({ onTap: handleTap })
+
   // Helio position for this planet
   const helioKey = planet.id.charAt(0).toUpperCase() + planet.id.slice(1)
   const helioPos = helioData?.[helioKey]
@@ -999,8 +1037,9 @@ function PlanetOrb({
       <Html center zIndexRange={[100, 0]} occlude={false} style={{ pointerEvents: isTransitioningProp ? 'none' : 'auto', overflow: 'visible' }}>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); handleTap() }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={tapHandlers.onPointerDown}
+          onPointerMove={tapHandlers.onPointerMove}
+          onPointerUp={tapHandlers.onPointerUp}
           className="flex items-center justify-center select-none cursor-pointer active:scale-90 transition-transform duration-150"
           style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'transparent', border: 'none', padding: 0, outline: 'none', WebkitTapHighlightColor: 'transparent' }}
           aria-label={`View ${planet.name} details`}
