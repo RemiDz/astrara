@@ -73,9 +73,8 @@ astrara.app/
 │   │   │   └── Starfield.tsx            # 2D canvas starfield
 │   │   ├── CrystallineCore/
 │   │   │   ├── CrystallineCore.tsx      # Main controller (form switching, visibility, tap)
-│   │   │   ├── ToroidalField.tsx        # Fire form (torus + particle flow)
 │   │   │   ├── SeedOfLife.tsx           # Water form (7 wireframe spheres + glow)
-│   │   │   ├── IcosahedronForm.tsx      # Earth form (glass icosahedron + vertex morph)
+│   │   │   ├── IcosahedronForm.tsx      # Default form (glass icosahedron + vertex morph)
 │   │   │   ├── EnergyStreams.tsx         # Planet-to-crystal bezier arcs
 │   │   │   ├── CrystalTapOverlay.tsx    # Bottom sheet with cosmic message
 │   │   │   └── crystalUtils.ts          # getDominantElement(), element maps
@@ -359,8 +358,8 @@ astronomy-engine (client-side)
     │   ├── SunCoronaAnimated (sun glow, moves geo→centre)
     │   ├── PlanetPolygon (sacred geometry lines)
     │   ├── SunCentreLabel (helio "Sun" label)
-    │   └── CrystallineCore (element-based crystal + energy streams)
-    │       ├── ToroidalField / SeedOfLife / IcosahedronForm
+    │   └── CrystallineCore (element-based crystal @ Y=1.4 + energy streams)
+    │       ├── SeedOfLife / IcosahedronForm
     │       ├── Tap target (invisible sphere r=0.4)
     │       ├── PointLight (element-coloured)
     │       └── EnergyStreams (5 bezier arcs from planets)
@@ -579,7 +578,7 @@ Provides via React Context:
 
 ### Overview
 
-A living, responsive crystalline energy form hovering above the wheel centre (Y=0.6). Its shape shifts based on the dominant element of the current planetary configuration. Users can tap it to receive a cosmic crystallisation message.
+A living, responsive crystalline energy form hovering well above the wheel centre (Y=1.4) with clear visual separation from the planets and zodiac ring. Its shape shifts based on the dominant element. Users can tap it to receive a cosmic crystallisation message.
 
 ### Element Dominance Calculation
 
@@ -587,16 +586,14 @@ A living, responsive crystalline energy form hovering above the wheel centre (Y=
 1. Maps each planet's zodiac sign to its element (fire/water/earth/air)
 2. Sun and Moon count as weight 2 (luminaries), other planets weight 1
 3. Returns the element with highest weighted count
-4. Ties default to 'air' (which triggers the morphing/hybrid form)
+4. Ties default to 'air'
 
-### Three Crystal Forms
+### Two Crystal Forms
 
 | Element | Form | Component | Geometry |
 |---------|------|-----------|----------|
-| Fire | Toroidal Field | `ToroidalField.tsx` | Torus (r=0.25, tube=0.1) + 50 particle sprites flowing through |
 | Water | Seed of Life | `SeedOfLife.tsx` | 7 wireframe spheres in Seed of Life pattern + 12 intersection glow points |
-| Earth | Icosahedron | `IcosahedronForm.tsx` | Glass icosahedron (r=0.22) + wireframe overlay + vertex morphing every 8–10s |
-| Air / Tie | Morphing | Cycles through all three | 20s rotation: Toroid → Seed → Icosahedron → Toroid... |
+| Fire / Earth / Air / Tie | Icosahedron | `IcosahedronForm.tsx` | Glass icosahedron (r=0.22) + wireframe overlay + vertex morphing every 8–10s |
 
 ### Energy Streams
 
@@ -626,9 +623,10 @@ A living, responsive crystalline energy form hovering above the wheel centre (Y=
 ### Settings
 
 - **Crystal Core toggle**: on/off (default ON), stored in `crystalEnabled` within `astrara-settings`
-- **Crystal Form override**: 'auto' / 'toroid' / 'seed' / 'icosa' (default 'auto'), stored in `crystalForm`
-- When 'auto', form follows dominant element calculation
-- 4 selectable buttons in Settings panel (only visible when crystal is enabled)
+- **Crystal Form override**: 'auto' / 'seed' / 'icosa' (default 'auto'), stored in `crystalForm`
+- When 'auto', form follows dominant element calculation (water → seed, all others → icosa)
+- 3 selectable buttons in Settings panel (only visible when crystal is enabled)
+- Legacy 'toroid' values in localStorage are migrated to 'auto' on load
 
 ### Point Light
 
@@ -737,7 +735,7 @@ Dual oscillator + filtered noise, all parameters velocity-mapped:
 | rotationSoundEnabled | boolean | true | — |
 | immersiveUniverse | boolean | false | — |
 | crystalEnabled | boolean | true | — |
-| crystalForm | CrystalFormOverride | 'auto' | 'auto'/'toroid'/'seed'/'icosa' |
+| crystalForm | CrystalFormOverride | 'auto' | 'auto'/'seed'/'icosa' |
 
 - Location search with debounced Nominatim API
 - Language dropdown (EN/LT with flags)
@@ -1044,6 +1042,7 @@ All are expected error handling — no bugs or incomplete features indicated.
 
 | Date | Commit | Change |
 |------|--------|--------|
+| 2026-03-08 | — | fix: remove toroid form, reposition crystal higher above wheel (Y=1.4) |
 | 2026-03-08 | — | feat: Crystalline Core — living 4D energy focal point with element-based form shifting |
 | 2026-03-08 | `92d2847` | fix: keep wheel auto-rotation spinning during Cosmic Reading overlay |
 | 2026-03-08 | `75d116a` | feat: 3D curved dashed energy arc animations for aspect connections |

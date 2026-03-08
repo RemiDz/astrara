@@ -5,13 +5,11 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { PlanetPosition } from '@/lib/astronomy'
 import { getActiveForm, ELEMENT_COLOURS, getDominantElement, type CrystalForm, type CrystalFormOverride } from './crystalUtils'
-import ToroidalField from './ToroidalField'
 import SeedOfLife from './SeedOfLife'
 import IcosahedronForm from './IcosahedronForm'
 import EnergyStreams from './EnergyStreams'
 
-const CRYSTAL_Y = 0.6
-const MORPH_CYCLE_DURATION = 20
+const CRYSTAL_Y = 1.4
 const TRANSITION_DURATION = 2 // seconds for fade in/out
 
 interface CrystallineCoreProps {
@@ -21,8 +19,6 @@ interface CrystallineCoreProps {
   readingActive: boolean
   onCrystalTap: () => void
 }
-
-const MORPH_SEQUENCE: CrystalForm[] = ['toroid', 'seed', 'icosa']
 
 export default function CrystallineCore({
   planets,
@@ -38,8 +34,7 @@ export default function CrystallineCore({
 
   // Current displayed form + transition state
   const activeForm = getActiveForm(formOverride, planets)
-  const [displayedForm, setDisplayedForm] = useState<CrystalForm>(activeForm === 'morph' ? 'toroid' : activeForm)
-  const [morphIndex, setMorphIndex] = useState(0)
+  const [displayedForm, setDisplayedForm] = useState<CrystalForm>(activeForm)
 
   // Visibility for helio transitions
   const visibilityRef = useRef(viewMode === 'geocentric' ? 1 : 0)
@@ -50,26 +45,12 @@ export default function CrystallineCore({
   const [transitioning, setTransitioning] = useState(false)
   const pendingFormRef = useRef<CrystalForm | null>(null)
 
-  // Track the active form for transitions
-  const prevActiveFormRef = useRef(activeForm)
-
   // Handle form changes (from element change or settings)
   useEffect(() => {
-    const newForm = activeForm === 'morph' ? MORPH_SEQUENCE[morphIndex] : activeForm
-    if (newForm !== displayedForm && !transitioning) {
-      pendingFormRef.current = newForm
+    if (activeForm !== displayedForm && !transitioning) {
+      pendingFormRef.current = activeForm
       setTransitioning(true)
     }
-    prevActiveFormRef.current = activeForm
-  }, [activeForm, morphIndex])
-
-  // Morph cycling for air/no-dominant
-  useEffect(() => {
-    if (activeForm !== 'morph') return
-    const interval = setInterval(() => {
-      setMorphIndex((prev) => (prev + 1) % MORPH_SEQUENCE.length)
-    }, MORPH_CYCLE_DURATION * 1000)
-    return () => clearInterval(interval)
   }, [activeForm])
 
   // Dominant element for colour
@@ -154,7 +135,6 @@ export default function CrystallineCore({
     <>
       <group ref={groupRef} position={[0, CRYSTAL_Y, 0]}>
         {/* Crystal form */}
-        {displayedForm === 'toroid' && <ToroidalField opacity={formOpacity} />}
         {displayedForm === 'seed' && <SeedOfLife opacity={formOpacity} />}
         {displayedForm === 'icosa' && <IcosahedronForm opacity={formOpacity} />}
 

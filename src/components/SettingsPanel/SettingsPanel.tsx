@@ -6,7 +6,7 @@ import { useLanguage, type Language } from '@/i18n/LanguageContext'
 import { searchCity, type UserLocation } from '@/lib/location'
 import Modal from '@/components/ui/Modal'
 
-export type CrystalFormOverride = 'auto' | 'toroid' | 'seed' | 'icosa'
+export type CrystalFormOverride = 'auto' | 'seed' | 'icosa'
 
 export interface AstraraSettings {
   planetScale: number
@@ -385,7 +385,6 @@ export default function SettingsPanel({
             <div className="grid grid-cols-2 gap-1.5">
               {([
                 { value: 'auto' as const, labelKey: 'settings.crystalFormAuto' },
-                { value: 'toroid' as const, labelKey: 'settings.crystalFormToroid' },
                 { value: 'seed' as const, labelKey: 'settings.crystalFormSeed' },
                 { value: 'icosa' as const, labelKey: 'settings.crystalFormIcosa' },
               ]).map((opt) => (

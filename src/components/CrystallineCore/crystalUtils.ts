@@ -2,8 +2,8 @@ import type { PlanetPosition } from '@/lib/astronomy'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 
 export type ElementType = 'fire' | 'water' | 'earth' | 'air'
-export type CrystalForm = 'toroid' | 'seed' | 'icosa' | 'morph'
-export type CrystalFormOverride = 'auto' | 'toroid' | 'seed' | 'icosa'
+export type CrystalForm = 'seed' | 'icosa'
+export type CrystalFormOverride = 'auto' | 'seed' | 'icosa'
 
 const SIGN_TO_ELEMENT: Record<string, ElementType> = {}
 ZODIAC_SIGNS.forEach((s) => {
@@ -43,16 +43,16 @@ export function getDominantElement(planets: PlanetPosition[]): ElementType {
 
 export function elementToForm(element: ElementType): CrystalForm {
   switch (element) {
-    case 'fire': return 'toroid'
     case 'water': return 'seed'
-    case 'earth': return 'icosa'
-    case 'air': return 'morph'
+    default: return 'icosa' // fire, earth, air, tie → icosahedron
   }
 }
 
 export function getActiveForm(override: CrystalFormOverride, planets: PlanetPosition[]): CrystalForm {
-  if (override !== 'auto') return override
-  return elementToForm(getDominantElement(planets))
+  if (override === 'auto') return elementToForm(getDominantElement(planets))
+  // Migrate legacy 'toroid' override to 'auto'
+  if ((override as string) === 'toroid') return elementToForm(getDominantElement(planets))
+  return override
 }
 
 export const ELEMENT_COLOURS: Record<ElementType, string> = {

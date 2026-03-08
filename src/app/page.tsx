@@ -46,7 +46,12 @@ function HomePage() {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('astrara-settings')
-        if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+        if (saved) {
+          const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+          // Migrate legacy 'toroid' crystal form
+          if (parsed.crystalForm === 'toroid') parsed.crystalForm = 'auto'
+          return parsed
+        }
       } catch { /* ignore */ }
     }
     return DEFAULT_SETTINGS

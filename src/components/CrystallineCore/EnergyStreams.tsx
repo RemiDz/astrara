@@ -35,11 +35,11 @@ function EnergyStream({ planet, crystalPos, index, opacity }: {
   const { geometry, material } = useMemo(() => {
     const startPos = longitudeToPosition(planet.eclipticLongitude, R_PLANET)
 
-    // Deterministic control point based on planet index
+    // Deterministic control point — halfway between planet and crystal with outward curve
     const angleOffset = index * 0.7
-    const midX = (startPos.x + crystalPos.x) / 2 + Math.sin(angleOffset) * 0.15
-    const midY = (startPos.y + crystalPos.y) / 2 + 0.3
-    const midZ = (startPos.z + crystalPos.z) / 2 + Math.cos(angleOffset) * 0.15
+    const midX = (startPos.x + crystalPos.x) / 2 + Math.sin(angleOffset) * 0.2
+    const midY = (startPos.y + crystalPos.y) / 2 + 0.15
+    const midZ = (startPos.z + crystalPos.z) / 2 + Math.cos(angleOffset) * 0.2
     const controlPoint = new THREE.Vector3(midX, midY, midZ)
 
     const curve = new THREE.QuadraticBezierCurve3(startPos, controlPoint, crystalPos)
