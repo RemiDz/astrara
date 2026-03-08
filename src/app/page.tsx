@@ -329,6 +329,7 @@ function HomePage() {
 
   return (
     <ReadingProvider astroData={readingAstroData} lang={lang} selectedDate={targetDate}>
+    <ReadingPanelCloser onClose={handleCloseTooltip} />
     <div className="min-h-screen relative overflow-x-hidden">
       <CosmicBackground immersiveUniverse={settings.immersiveUniverse} />
 
@@ -851,6 +852,21 @@ function HomePage() {
   )
 }
 
+// Auto-close any open planet/zodiac/aspect panel when reading starts
+function ReadingPanelCloser({ onClose }: { onClose: () => void }) {
+  const { isReadingActive } = useReadingContext()
+  const wasActive = useRef(false)
+
+  useEffect(() => {
+    if (isReadingActive && !wasActive.current) {
+      onClose()
+    }
+    wasActive.current = isReadingActive
+  }, [isReadingActive, onClose])
+
+  return null
+}
+
 // Hide controls completely during an active reading (reclaims layout space)
 function ReadingDim({ children }: { children: React.ReactNode }) {
   const { isReadingActive } = useReadingContext()
@@ -881,11 +897,13 @@ function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
 }
 
 // Bridge: reads reading animation state and passes dim/glow info to the wheel
+// Also blocks planet/zodiac/aspect/earth taps while reading is active
 function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrapper>) {
   const animState = useReadingAnimation()
+  const active = animState.isActive
 
   const readingAnimation = useMemo(() => {
-    if (!animState.isActive) return undefined
+    if (!active) return undefined
     return {
       isActive: true,
       highlights: Array.from(animState.highlights.entries()).map(([bodyId, h]) => ({
@@ -898,9 +916,23 @@ function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrappe
       aspectLine: animState.aspectLine,
       aspectType: animState.aspectType,
     }
-  }, [animState])
+  }, [animState, active])
 
-  return <AstroWheel3DWrapper {...props} readingAnimation={readingAnimation} />
+  const noop = useCallback(() => {}, [])
+  const noopPlanet = useCallback((_p: PlanetPosition) => {}, [])
+  const noopSign = useCallback((_s: string) => {}, [])
+  const noopAspect = useCallback((_a: AspectData) => {}, [])
+
+  return (
+    <AstroWheel3DWrapper
+      {...props}
+      readingAnimation={readingAnimation}
+      onPlanetTap={active ? noopPlanet : props.onPlanetTap}
+      onSignTap={active ? noopSign : props.onSignTap}
+      onAspectTap={active ? noopAspect : props.onAspectTap}
+      onEarthTap={active ? noop : props.onEarthTap}
+    />
+  )
 }
 
 export default function Page() {
