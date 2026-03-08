@@ -864,11 +864,17 @@ function ReadingAwareHeader(props: React.ComponentProps<typeof Header>) {
   return <Header {...props} compact={isReadingActive} />
 }
 
-// Reduce padding above wheel during reading
+// Reduce padding above wheel during reading + shift wheel up so modal doesn't clip it
 function ReadingWheelPadding({ children }: { children: React.ReactNode }) {
   const { isReadingActive } = useReadingContext()
   return (
-    <div className={`relative ${isReadingActive ? 'pt-0 pb-0' : 'pt-1 pb-4'}`} style={{ transition: 'padding 0.4s ease-out' }}>
+    <div
+      className={`relative ${isReadingActive ? 'pt-0 pb-0' : 'pt-1 pb-4'}`}
+      style={{
+        transform: isReadingActive ? 'translateY(-70px)' : 'translateY(0)',
+        transition: 'transform 600ms ease-in-out, padding 0.4s ease-out',
+      }}
+    >
       {children}
     </div>
   )
