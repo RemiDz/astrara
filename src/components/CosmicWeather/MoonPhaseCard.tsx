@@ -9,11 +9,23 @@ interface MoonPhaseCardProps {
   moon: MoonData
 }
 
+const MOON_PHASE_NAMES_LT: Record<string, string> = {
+  'New Moon': 'Jaunatis',
+  'Waxing Crescent': 'Augantis Pjautuvas',
+  'First Quarter': 'Pirmasis Ketvirtis',
+  'Waxing Gibbous': 'Augantis Priespilnis',
+  'Full Moon': 'Pilnatis',
+  'Waning Gibbous': 'Dylantis Priespilnis',
+  'Last Quarter': 'Paskutinis Ketvirtis',
+  'Waning Crescent': 'Dylantis Pjautuvas',
+}
+
 export default function MoonPhaseCard({ moon }: MoonPhaseCardProps) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
   const content = useContent()
   const phaseKey = moon.phase.toLowerCase().replace(/\s+/g, '-')
   const phaseInsight = content?.phaseMeanings?.[phaseKey]
+  const phaseName = lang === 'lt' ? (MOON_PHASE_NAMES_LT[moon.phase] ?? moon.phase) : moon.phase
 
   return (
     <GlassCard>
@@ -25,7 +37,7 @@ export default function MoonPhaseCard({ moon }: MoonPhaseCardProps) {
         <span className="text-2xl">{moon.emoji}</span>
         <div>
           <h3 className="text-lg font-serif text-white/85">
-            {moon.phase}
+            {phaseName}
           </h3>
           <p className="text-xs text-white/35">
             {Math.round(moon.illumination * 100)}% {t('moon.illumination')}
