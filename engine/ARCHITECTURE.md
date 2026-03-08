@@ -573,25 +573,27 @@ Provides via React Context:
 
 ### Overview
 
-An ethereal sacred geometry pattern made of light — 7 overlapping circles forming a Seed of Life / Flower of Life pattern, floating above the wheel centre (Y=1.6). Rendered entirely with `THREE.Line` and `THREE.LineBasicMaterial` with additive blending. No meshes, no solids — pure light geometry whose intersections glow brighter where circles overlap.
+An ethereal sacred geometry mandala made of light, faithfully recreating the harmonicwaves.app Living Mandala (HarmonicLogo) in Three.js/R3F. Floats above the wheel centre (Y=1.6). Rendered entirely with `THREE.Line`, `THREE.Sprite`, and `THREE.Points` — no meshes, no solids. All materials use `AdditiveBlending` for luminous intersections and ethereal quality.
 
 ### Component Structure
 
-- `CrystallineCore.tsx` — Sacred geometry pattern: 7 circle lines + centre glow sprite, all animation, visibility, tap handling, `getDominantElement()` utility
+- `CrystallineCore.tsx` — Full mandala: 3-layer seed circles, emanation rings, frequency waves, core glow, particles, all animation, visibility, tap handling, `getDominantElement()` utility
 - `CrystalMessage.tsx` — Bottom sheet overlay with placeholder cosmic crystallisation message (EN + LT)
 
-### Rendering
+### Rendering Layers (from harmonicwaves.app HarmonicLogo)
 
-| Element | Type | Details |
-|---------|------|---------|
-| 7 circles | THREE.Line | Shared BufferGeometry (radius=0.12, 64 segments), shared LineBasicMaterial (AdditiveBlending, opacity=0.25 base) |
-| Centre glow | THREE.Sprite | SpriteMaterial with procedural 64×64 radial gradient CanvasTexture, AdditiveBlending, scale=0.08 |
-| Tap target | Invisible mesh | SphereGeometry(0.3), visible=false |
+| Element | Count | Type | Details |
+|---------|-------|------|---------|
+| Seed circles | 3 layers × 7 = 21 | THREE.Line | Shared circle geometry (r=0.12, 64 segments). Layers at z=-0.06/0/+0.06 with scales 0.78/1.0/1.21 and base alphas 0.12/0.25/0.08 |
+| Emanation rings | 5 | THREE.Line | Shared circle geometry, scale grows 0.5→4.3 over lifecycle, triangle-wave opacity |
+| Frequency waves | 3 | THREE.Line | Dynamic vertex updates: sub-bass (4×spatial, 0.8×temporal), main compound (14+9+21 harmonics), ghost (phase-shifted echo) with Gaussian envelope |
+| Core glow | 2 sprites | THREE.Sprite | White-hot inner (scale 0.06) + element-coloured outer halo (scale 0.2), 64×64 procedural radial gradient texture |
+| Particles | 30 | THREE.Points | Spirit dust scattered in 3D sphere, shared PointsMaterial, breathing opacity |
+| Tap target | 1 | Invisible mesh | SphereGeometry(0.3), visible=false |
 
-- Circle arrangement: 1 centre + 6 at radius offset (0°, 60°, 120°, 180°, 240°, 300°)
-- Additive blending makes intersections glow brighter (~0.5 opacity where two circles cross)
-- No point lights — additive blending creates its own luminous glow
-- Pattern lies on XY plane with X-tilt of 0.15 rad (~8.5°) for depth hint
+- Circle arrangement per layer: 1 centre + 6 at radius offset (0°–300° at 60° intervals)
+- Additive blending on all materials — intersections glow brighter, no point lights needed
+- Pattern on XY plane with 0.17 rad (~10°) X-tilt for depth hint
 
 ### Element Colour Mapping
 
@@ -610,21 +612,24 @@ An ethereal sacred geometry pattern made of light — 7 overlapping circles form
 
 Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 
-### Animation
+### Animation (matching HarmonicLogo frequencies)
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | Y position | 1.6 + 0.02×sin(t×0.5) | Gentle hover float |
-| Rotation | Z-axis, 0.05 rad/s | ~126s per revolution — intersections shift hypnotically |
-| X tilt | 0.15 rad (constant) | Slight 3D depth hint |
-| Scale breathe | 1.0 + 0.015×sin(t×0.7) | Subtle expansion/contraction |
-| Circle opacity | 0.2 + 0.08×sin(t×0.8) | Breathing pulse |
-| Centre glow opacity | 0.4 + 0.15×sin(t×1.0) | Slightly offset pulse |
+| Z rotation | 0.04 rad/s | Slow spin — intersections shift mesmerisingly |
+| X tilt | 0.17 rad (constant) | ~10° 3D depth hint |
+| Breath scale | 0.93 + 0.07×sin(t×0.3) | Compound breathing (HarmonicLogo match) |
+| Core pulse | 0.6 + 0.25×sin(t×1.4) + 0.15×sin(t×3.1) | Dual-frequency compound — complex, alive feel |
+| Layer pulse | 0.85 + 0.15×sin(t×0.5 + z×8) | Per-layer phase offset for wave-through-depth effect |
+| Petal pulse | 0.8 + 0.2×sin(t×0.6 + i×1.05) | Per-petal phase for ripple/bloom effect |
+| Emanation lifecycle | 0.2 Hz, staggered phases | Triangle-wave opacity: fade in → fade out as ring expands |
+| Particle opacity | 0.12 + 0.06×sin(t×1.5) | Gentle shimmer |
 
 ### Tap Interaction
 
 - Invisible sphere tap target (r=0.3) using `useTapVsDrag` hook
-- On tap: circle opacities spike to 0.6, centre glow to 0.9, fade back over 600ms
+- On tap: all opacities spike ×2.5 then fade back over 600ms
 - Opens `CrystalMessage` bottom sheet modal
 
 ### Visibility Rules
@@ -640,7 +645,6 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 ### Settings
 
 - **Crystal Core toggle**: on/off (default ON), stored as `crystalEnabled` in `astrara-settings`
-- No form selector — single icosahedron form only
 
 ---
 

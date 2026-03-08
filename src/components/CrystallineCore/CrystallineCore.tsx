@@ -38,10 +38,22 @@ const ELEMENT_COLOURS: Record<DominantElement, string> = {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const CRYSTAL_Y = 1.6
-const Z_ROTATION_SPEED = 0.05 // rad/s — ~126s per revolution
 const CIRCLE_RADIUS = 0.12
 const CIRCLE_SEGMENTS = 64
-const X_TILT = 0.15 // ~8.5° tilt for depth hint
+const X_TILT = 0.17 // ~10°
+const Z_ROT_SPEED = 0.04 // rad/s
+
+// Three depth layers matching harmonicwaves.app HarmonicLogo
+const LAYERS = [
+  { scale: 0.78, z: -0.06, alpha: 0.12 }, // back layer
+  { scale: 1.0,  z: 0,     alpha: 0.25 }, // main layer
+  { scale: 1.21, z: 0.06,  alpha: 0.08 }, // depth layer
+]
+
+const NUM_EMANATION = 5
+const NUM_PARTICLES = 30
+const WAVE_SEGMENTS = 80
+const WAVE_EXTENT = 0.3
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -54,18 +66,39 @@ function createCircleGeometry(radius: number, segments: number): THREE.BufferGeo
   return new THREE.BufferGeometry().setFromPoints(points)
 }
 
-function createGlowTexture(): THREE.CanvasTexture {
+function createGlowTexture(size = 64): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 64
+  canvas.width = size
+  canvas.height = size
   const ctx = canvas.getContext('2d')!
-  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
-  gradient.addColorStop(0, 'rgba(255,255,255,1)')
-  gradient.addColorStop(0.3, 'rgba(255,255,255,0.3)')
-  gradient.addColorStop(1, 'rgba(255,255,255,0)')
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, 64, 64)
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  g.addColorStop(0, 'rgba(255,255,255,1)')
+  g.addColorStop(0.15, 'rgba(255,255,255,0.6)')
+  g.addColorStop(0.4, 'rgba(255,255,255,0.15)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
   return new THREE.CanvasTexture(canvas)
+}
+
+function seedPositions(radius: number): [number, number][] {
+  const pos: [number, number][] = [[0, 0]]
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2
+    pos.push([Math.cos(a) * radius, Math.sin(a) * radius])
+  }
+  return pos
+}
+
+function makeLineMat(): THREE.LineBasicMaterial {
+  const mat = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+  })
+  mat.depthWrite = false
+  return mat
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -87,157 +120,254 @@ export default function CrystallineCore({
 }: CrystallineCoreProps) {
   const groupRef = useRef<THREE.Group>(null)
   const zRotRef = useRef(0)
-
-  // Entrance + visibility
   const entranceFadeRef = useRef(0)
   const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0)
-
-  // Tap pulse
   const pulseRef = useRef({ active: false, time: 0 })
 
-  // Element colour
   const dominantElement = getDominantElement(planets)
   const targetColour = useMemo(() => new THREE.Color(ELEMENT_COLOURS[dominantElement]), [dominantElement])
   const currentColourRef = useRef(new THREE.Color(ELEMENT_COLOURS[dominantElement]))
-
   const isGeo = viewMode === 'geocentric'
 
-  // ── Geometries & materials (created once) ──
-
+  // ── Shared geometry & texture ──
   const circleGeom = useMemo(() => createCircleGeometry(CIRCLE_RADIUS, CIRCLE_SEGMENTS), [])
-
-  const lineMat = useMemo(() => {
-    const mat = new THREE.LineBasicMaterial({
-      color: new THREE.Color(ELEMENT_COLOURS['neutral']),
-      transparent: true,
-      opacity: 0,
-      blending: THREE.AdditiveBlending,
-    })
-    mat.depthWrite = false
-    return mat
-  }, [])
-
   const glowTexture = useMemo(() => createGlowTexture(), [])
 
-  const spriteMat = useMemo(() => {
-    const mat = new THREE.SpriteMaterial({
-      color: new THREE.Color(ELEMENT_COLOURS['neutral']),
+  // ── Seed of Life: 3 layers × 7 circles = 21 lines ──
+  const seeds = useMemo(() => {
+    const positions = seedPositions(CIRCLE_RADIUS)
+    return LAYERS.map((layer) => ({
+      ...layer,
+      circles: positions.map(([x, y]) => {
+        const mat = makeLineMat()
+        const line = new THREE.Line(circleGeom, mat)
+        line.position.set(x * layer.scale, y * layer.scale, layer.z)
+        line.scale.setScalar(layer.scale)
+        return { line, mat }
+      }),
+    }))
+  }, [circleGeom])
+
+  // ── Emanation rings: 5 expanding circles ──
+  const emanations = useMemo(() =>
+    Array.from({ length: NUM_EMANATION }, (_, i) => {
+      const mat = makeLineMat()
+      const line = new THREE.Line(circleGeom, mat)
+      return { line, mat, phase: i / NUM_EMANATION }
+    }),
+  [circleGeom])
+
+  // ── Frequency waves: sub-bass, main compound, ghost ──
+  const waves = useMemo(() =>
+    [0, 1, 2].map(() => {
+      const positions = new Float32Array((WAVE_SEGMENTS + 1) * 3)
+      const geom = new THREE.BufferGeometry()
+      geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      const mat = makeLineMat()
+      const line = new THREE.Line(geom, mat)
+      return { line, mat, geom }
+    }),
+  [])
+
+  // ── Core glow: white-hot inner + coloured outer halo ──
+  const coreGlow = useMemo(() => {
+    const mkSprite = () => {
+      const mat = new THREE.SpriteMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        map: glowTexture,
+      })
+      mat.depthWrite = false
+      return mat
+    }
+    return { inner: mkSprite(), outer: mkSprite() }
+  }, [glowTexture])
+
+  // ── Particles: 30 luminous points ──
+  const particleObj = useMemo(() => {
+    const pos = new Float32Array(NUM_PARTICLES * 3)
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      const r = 0.04 + Math.random() * 0.2
+      const a = Math.random() * Math.PI * 2
+      pos[i * 3] = Math.cos(a) * r
+      pos[i * 3 + 1] = Math.sin(a) * r
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.1
+    }
+    const geom = new THREE.BufferGeometry()
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    const mat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.006,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
-      map: glowTexture,
+      sizeAttenuation: true,
     })
     mat.depthWrite = false
-    return mat
-  }, [glowTexture])
-
-  // 7 circle positions (Seed of Life)
-  const circlePositions = useMemo((): [number, number][] => {
-    const positions: [number, number][] = [[0, 0]]
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2
-      positions.push([Math.cos(a) * CIRCLE_RADIUS, Math.sin(a) * CIRCLE_RADIUS])
-    }
-    return positions
+    return { obj: new THREE.Points(geom, mat), mat, geom }
   }, [])
 
-  // Create THREE.Line objects (share geometry + material)
-  const lines = useMemo(() => {
-    return circlePositions.map(([x, y]) => {
-      const line = new THREE.Line(circleGeom, lineMat)
-      line.position.set(x, y, 0)
-      return line
-    })
-  }, [circleGeom, circlePositions, lineMat])
+  // ── Cleanup ──
+  useEffect(() => () => {
+    circleGeom.dispose()
+    glowTexture.dispose()
+    seeds.forEach((l) => l.circles.forEach((c) => c.mat.dispose()))
+    emanations.forEach((e) => e.mat.dispose())
+    waves.forEach((w) => { w.geom.dispose(); w.mat.dispose() })
+    coreGlow.inner.dispose()
+    coreGlow.outer.dispose()
+    particleObj.geom.dispose()
+    particleObj.mat.dispose()
+  }, [circleGeom, glowTexture, seeds, emanations, waves, coreGlow, particleObj])
 
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      circleGeom.dispose()
-      lineMat.dispose()
-      spriteMat.dispose()
-      glowTexture.dispose()
-    }
-  }, [circleGeom, lineMat, spriteMat, glowTexture])
-
-  // Tap handler
+  // ── Tap ──
   const handleTap = useCallback(() => {
     pulseRef.current = { active: true, time: 0 }
     onCrystalTap()
   }, [onCrystalTap])
-
   const tapHandlers = useTapVsDrag({ onTap: handleTap })
 
+  // ── Frame loop ──
   useFrame((_, delta) => {
     if (!groupRef.current) return
-
     const time = (groupRef.current.userData.t ?? 0) + delta
     groupRef.current.userData.t = time
 
-    // ── Entrance fade (scale 0.5→1 over 800ms) ──
+    // ── Entrance (scale 0.5→1 over 800ms) ──
     if (entranceComplete && entranceFadeRef.current < 1) {
       entranceFadeRef.current = Math.min(entranceFadeRef.current + delta / 0.8, 1)
     }
-    const entranceT = entranceFadeRef.current
+    const eT = entranceFadeRef.current
 
     // ── Helio fade ──
-    const helioTarget = isGeo ? 1 : 0
-    helioFadeRef.current += (helioTarget - helioFadeRef.current) * Math.min(delta * 4, 0.2)
-
-    // ── Reading dimming (40% of normal) ──
-    const readingMul = readingActive ? 0.4 : 1
+    helioFadeRef.current += ((isGeo ? 1 : 0) - helioFadeRef.current) * Math.min(delta * 4, 0.2)
 
     // ── Combined visibility ──
-    const vis = entranceT * helioFadeRef.current * readingMul
+    const vis = eT * helioFadeRef.current * (readingActive ? 0.4 : 1)
     groupRef.current.visible = vis > 0.01
 
-    // ── Position: floating hover ──
+    // ── Position: gentle float ──
     groupRef.current.position.y = CRYSTAL_Y + 0.02 * Math.sin(time * 0.5)
 
-    // ── Rotation: fixed X tilt + accumulated Z spin ──
-    zRotRef.current += Z_ROTATION_SPEED * delta
+    // ── Rotation: fixed X-tilt + slow Z-spin ──
+    zRotRef.current += Z_ROT_SPEED * delta
     groupRef.current.rotation.set(X_TILT, 0, zRotRef.current)
 
-    // ── Scale: entrance + breathing ──
-    const entranceScale = 0.5 + 0.5 * entranceT
-    const breatheScale = 1.0 + 0.015 * Math.sin(time * 0.7)
-    groupRef.current.scale.setScalar(entranceScale * breatheScale)
+    // ── Scale: entrance + compound breathing (harmonicwaves.app pattern) ──
+    const breath = 0.93 + Math.sin(time * 0.3) * 0.07
+    groupRef.current.scale.setScalar((0.5 + 0.5 * eT) * breath)
 
     // ── Colour lerp ──
     currentColourRef.current.lerp(targetColour, Math.min(delta / 1.5, 0.05))
+    const col = currentColourRef.current
 
-    // ── Base opacities ──
-    let lineOpacity = 0.2 + 0.08 * Math.sin(time * 0.8)
-    let spriteOpacity = 0.4 + 0.15 * Math.sin(time * 1.0)
+    // ── Core pulse: dual-frequency compound oscillation ──
+    const cp = 0.6 + Math.sin(time * 1.4) * 0.25 + Math.sin(time * 3.1) * 0.15
 
-    // ── Tap pulse ──
+    // ── Tap pulse multiplier ──
+    let tap = 1
     if (pulseRef.current.active) {
       pulseRef.current.time += delta
       const pt = pulseRef.current.time
       if (pt < 0.6) {
-        const fade = 1 - pt / 0.6
-        lineOpacity = lineOpacity + (0.6 - lineOpacity) * fade
-        spriteOpacity = spriteOpacity + (0.9 - spriteOpacity) * fade
+        tap = 1 + 1.5 * (1 - pt / 0.6)
       } else {
         pulseRef.current.active = false
       }
     }
 
-    // ── Apply to materials ──
-    lineMat.color.copy(currentColourRef.current)
-    lineMat.opacity = lineOpacity * vis
+    // ──────────── SEED OF LIFE CIRCLES ────────────
+    // Per-layer time pulse + per-petal phase offset (from HarmonicLogo)
+    seeds.forEach((layer) => {
+      const layerPulse = 0.85 + Math.sin(time * 0.5 + layer.z * 8) * 0.15
+      layer.circles.forEach((c, ci) => {
+        const petalPulse = ci > 0 ? (0.8 + Math.sin(time * 0.6 + ci * 1.05) * 0.2) : 1
+        c.mat.color.copy(col)
+        c.mat.opacity = layer.alpha * layerPulse * petalPulse * vis * tap
+      })
+    })
 
-    spriteMat.color.copy(currentColourRef.current)
-    spriteMat.opacity = spriteOpacity * vis
+    // ──────────── EMANATION RINGS ────────────
+    // Grow outward, fade in then out (triangle wave opacity)
+    emanations.forEach((ring) => {
+      const life = ((time * 0.2 + ring.phase) % 1)
+      ring.line.scale.setScalar(0.5 + life * 3.8)
+      ring.mat.color.copy(col)
+      ring.mat.opacity = (life < 0.5 ? life * 0.3 : (1 - life) * 0.3) * vis * tap
+    })
+
+    // ──────────── FREQUENCY WAVES ────────────
+    // Three layered sine waves with Gaussian envelope (from HarmonicLogo)
+    const waveBaseAlphas = [0.08, 0.18, 0.10]
+    waves.forEach(({ mat, geom }, wi) => {
+      const attr = geom.getAttribute('position') as THREE.BufferAttribute
+      for (let i = 0; i <= WAVE_SEGMENTS; i++) {
+        const t01 = i / WAVE_SEGMENTS
+        const n = t01 * 2 - 1 // -1 to 1
+        const x = n * WAVE_EXTENT
+        const env = Math.pow(Math.max(0, 1 - n * n), 1.5)
+        let y = 0
+        if (wi === 0) {
+          // Sub-bass: slow, wide sine
+          y = Math.sin(t01 * Math.PI * 4 + time * 0.8) * env * 0.015
+        } else if (wi === 1) {
+          // Main: compound harmonic (carrier + sub-harmonic + overtone)
+          const f1 = Math.sin(t01 * Math.PI * 14 + time * 2.8) * env
+          const f2 = Math.sin(t01 * Math.PI * 9 - time * 2.0) * env * 0.35
+          const f3 = Math.sin(t01 * Math.PI * 21 + time * 3.5) * env * 0.12
+          y = (f1 + f2 + f3) * 0.027
+        } else {
+          // Ghost: phase-shifted echo of main
+          const f1 = Math.sin(t01 * Math.PI * 14 + time * 2.8 + 1.5) * env
+          const f2 = Math.sin(t01 * Math.PI * 9 - time * 2.0 + 1.0) * env * 0.35
+          y = (f1 + f2) * 0.021
+        }
+        attr.setXYZ(i, x, y, 0)
+      }
+      attr.needsUpdate = true
+      mat.color.copy(col)
+      mat.opacity = waveBaseAlphas[wi] * vis * tap
+    })
+
+    // ──────────── CORE GLOW ────────────
+    // White-hot inner + coloured outer halo (from HarmonicLogo energy core)
+    coreGlow.inner.opacity = 0.7 * cp * vis * tap
+    coreGlow.outer.color.copy(col)
+    coreGlow.outer.opacity = 0.3 * cp * vis * tap
+
+    // ──────────── PARTICLES ────────────
+    // Ethereal spirit dust
+    particleObj.mat.color.copy(col)
+    particleObj.mat.opacity = (0.12 + Math.sin(time * 1.5) * 0.06) * vis * tap
   })
 
   return (
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
-      {/* 7 overlapping circles — Seed of Life / Flower of Life */}
-      {lines.map((line, i) => <primitive key={i} object={line} />)}
+      {/* 3 depth layers × 7 Seed of Life circles */}
+      {seeds.flatMap((layer, li) =>
+        layer.circles.map((c, ci) => (
+          <primitive key={`s${li}-${ci}`} object={c.line} />
+        ))
+      )}
 
-      {/* Centre glow point */}
-      <sprite material={spriteMat} scale={[0.08, 0.08, 0.08]} />
+      {/* 5 emanation rings — grow outward from centre */}
+      {emanations.map((e, i) => (
+        <primitive key={`e${i}`} object={e.line} />
+      ))}
+
+      {/* 3 frequency waves — harmonic energy flow through centre */}
+      {waves.map((w, i) => (
+        <primitive key={`w${i}`} object={w.line} />
+      ))}
+
+      {/* Core glow — white-hot centre + coloured halo */}
+      <sprite material={coreGlow.inner} scale={[0.06, 0.06, 0.06]} />
+      <sprite material={coreGlow.outer} scale={[0.2, 0.2, 0.2]} />
+
+      {/* Luminous particles — spirit dust */}
+      <primitive object={particleObj.obj} />
 
       {/* Invisible tap target */}
       <mesh {...tapHandlers}>
