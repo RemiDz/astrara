@@ -1633,52 +1633,59 @@ function WheelScene({
 
   const handleTiltDone = useCallback(() => setTiltDone(true), [])
 
-  // Reading mode camera reframing — manipulate through OrbitControls' own object
+  // Reading mode camera reframing — adjust target only (let OrbitControls handle position)
   const readingCamActive = readingAnimation?.isActive ?? false
   const readingCamRef = useRef({
     wasActive: false,
-    savedPos: new THREE.Vector3(0, 1.5, 7),
     savedTarget: new THREE.Vector3(0, 0, 0),
+    savedPolarMin: 0.3,
+    savedPolarMax: 2.8,
+    settled: false,
   })
 
   useFrame(() => {
     if (!controlsRef.current) return
-    const cam = controlsRef.current.object
+    const controls = controlsRef.current
 
-    // Just entered reading — save full camera state
+    // Just entered reading — save state & lock polar angle
     if (readingCamActive && !readingCamRef.current.wasActive) {
       readingCamRef.current.wasActive = true
-      readingCamRef.current.savedPos.copy(cam.position)
-      readingCamRef.current.savedTarget.copy(controlsRef.current.target)
+      readingCamRef.current.settled = false
+      readingCamRef.current.savedTarget.copy(controls.target)
+      readingCamRef.current.savedPolarMin = controls.minPolarAngle
+      readingCamRef.current.savedPolarMax = controls.maxPolarAngle
+
+      // Lock polar angle at current value
+      const polar = controls.getPolarAngle()
+      controls.minPolarAngle = polar
+      controls.maxPolarAngle = polar
     }
 
-    // During reading — lerp to reading framing
-    if (readingCamActive) {
-      // Target camera position: same X as saved (keep centred), lower Y (wheel higher), same Z
-      const targetPos = readingCamRef.current.savedPos.clone()
-      targetPos.y = readingCamRef.current.savedPos.y - 0.5
+    // During reading — lerp target.y down (don't touch cam.position — OrbitControls handles it)
+    if (readingCamActive && !readingCamRef.current.settled) {
+      const desiredY = readingCamRef.current.savedTarget.y - 0.4
+      controls.target.y += (desiredY - controls.target.y) * 0.05
 
-      cam.position.lerp(targetPos, 0.05)
-
-      // Tilt view: target looks slightly lower
-      const targetLookAt = readingCamRef.current.savedTarget.clone()
-      targetLookAt.y = readingCamRef.current.savedTarget.y - 0.4
-
-      controlsRef.current.target.lerp(targetLookAt, 0.05)
-      controlsRef.current.update()
+      if (Math.abs(controls.target.y - desiredY) < 0.01) {
+        controls.target.y = desiredY
+        readingCamRef.current.settled = true
+      }
+      controls.update()
     }
 
-    // Exiting reading — lerp back to saved state
+    // Exiting reading — restore target and polar limits
     if (!readingCamActive && readingCamRef.current.wasActive) {
-      cam.position.lerp(readingCamRef.current.savedPos, 0.05)
-      controlsRef.current.target.lerp(readingCamRef.current.savedTarget, 0.05)
-      controlsRef.current.update()
+      controls.target.lerp(readingCamRef.current.savedTarget, 0.05)
+      controls.update()
 
-      if (cam.position.distanceTo(readingCamRef.current.savedPos) < 0.05) {
-        cam.position.copy(readingCamRef.current.savedPos)
-        controlsRef.current.target.copy(readingCamRef.current.savedTarget)
+      // Restore polar limits
+      controls.minPolarAngle = readingCamRef.current.savedPolarMin
+      controls.maxPolarAngle = readingCamRef.current.savedPolarMax
+
+      if (controls.target.distanceTo(readingCamRef.current.savedTarget) < 0.02) {
+        controls.target.copy(readingCamRef.current.savedTarget)
         readingCamRef.current.wasActive = false
-        controlsRef.current.update()
+        controls.update()
       }
     }
   })
@@ -1820,9 +1827,9 @@ function WheelScene({
         enablePan={false}
         autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning && !(readingAnimation?.isActive)}
         autoRotateSpeed={viewMode === 'heliocentric' ? 0.08 : 0.3 * rotationSpeed}
-        enabled={!(readingAnimation?.isActive)}
+        enabled
         enableDamping
-        dampingFactor={0.05}
+        dampingFactor={readingAnimation?.isActive ? 0.08 : 0.05}
         minPolarAngle={0.3}
         maxPolarAngle={2.8}
         minAzimuthAngle={-Infinity}
