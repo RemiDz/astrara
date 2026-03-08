@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo, useCallback } from 'react'
+import { useRef, useMemo, useCallback, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { PlanetPosition } from '@/lib/astronomy'
@@ -38,7 +38,35 @@ const ELEMENT_COLOURS: Record<DominantElement, string> = {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const CRYSTAL_Y = 1.6
-const ROTATION_SPEED = 0.12 // rad/s
+const Z_ROTATION_SPEED = 0.05 // rad/s — ~126s per revolution
+const CIRCLE_RADIUS = 0.12
+const CIRCLE_SEGMENTS = 64
+const X_TILT = 0.15 // ~8.5° tilt for depth hint
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function createCircleGeometry(radius: number, segments: number): THREE.BufferGeometry {
+  const points: THREE.Vector3[] = []
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI * 2
+    points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0))
+  }
+  return new THREE.BufferGeometry().setFromPoints(points)
+}
+
+function createGlowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')!
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
+  gradient.addColorStop(0, 'rgba(255,255,255,1)')
+  gradient.addColorStop(0.3, 'rgba(255,255,255,0.3)')
+  gradient.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(canvas)
+}
 
 // ─── Component ──────────────────────────────────────────────────────
 
@@ -58,38 +86,90 @@ export default function CrystallineCore({
   onCrystalTap,
 }: CrystallineCoreProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const rotateRef = useRef<THREE.Group>(null)
-  const innerMatRef = useRef<THREE.MeshBasicMaterial>(null)
-  const shellMatRef = useRef<THREE.MeshStandardMaterial>(null)
-  const wireMatRef = useRef<THREE.MeshBasicMaterial>(null)
-  const lightRef = useRef<THREE.PointLight>(null)
+  const zRotRef = useRef(0)
 
-  // Entrance + visibility animation refs
-  const entranceFadeRef = useRef(0) // 0→1 during entrance
+  // Entrance + visibility
+  const entranceFadeRef = useRef(0)
   const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0)
 
-  // Tap pulse state
-  const pulseRef = useRef({ active: false, time: 0, emissivePeak: false })
+  // Tap pulse
+  const pulseRef = useRef({ active: false, time: 0 })
 
-  // Target colour
+  // Element colour
   const dominantElement = getDominantElement(planets)
   const targetColour = useMemo(() => new THREE.Color(ELEMENT_COLOURS[dominantElement]), [dominantElement])
-
-  // Colour lerp ref (current colour state for smooth transitions)
   const currentColourRef = useRef(new THREE.Color(ELEMENT_COLOURS[dominantElement]))
 
   const isGeo = viewMode === 'geocentric'
 
-  // Tap handler via useTapVsDrag
+  // ── Geometries & materials (created once) ──
+
+  const circleGeom = useMemo(() => createCircleGeometry(CIRCLE_RADIUS, CIRCLE_SEGMENTS), [])
+
+  const lineMat = useMemo(() => {
+    const mat = new THREE.LineBasicMaterial({
+      color: new THREE.Color(ELEMENT_COLOURS['neutral']),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+    })
+    mat.depthWrite = false
+    return mat
+  }, [])
+
+  const glowTexture = useMemo(() => createGlowTexture(), [])
+
+  const spriteMat = useMemo(() => {
+    const mat = new THREE.SpriteMaterial({
+      color: new THREE.Color(ELEMENT_COLOURS['neutral']),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      map: glowTexture,
+    })
+    mat.depthWrite = false
+    return mat
+  }, [glowTexture])
+
+  // 7 circle positions (Seed of Life)
+  const circlePositions = useMemo((): [number, number][] => {
+    const positions: [number, number][] = [[0, 0]]
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2
+      positions.push([Math.cos(a) * CIRCLE_RADIUS, Math.sin(a) * CIRCLE_RADIUS])
+    }
+    return positions
+  }, [])
+
+  // Create THREE.Line objects (share geometry + material)
+  const lines = useMemo(() => {
+    return circlePositions.map(([x, y]) => {
+      const line = new THREE.Line(circleGeom, lineMat)
+      line.position.set(x, y, 0)
+      return line
+    })
+  }, [circleGeom, circlePositions, lineMat])
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      circleGeom.dispose()
+      lineMat.dispose()
+      spriteMat.dispose()
+      glowTexture.dispose()
+    }
+  }, [circleGeom, lineMat, spriteMat, glowTexture])
+
+  // Tap handler
   const handleTap = useCallback(() => {
-    pulseRef.current = { active: true, time: 0, emissivePeak: true }
+    pulseRef.current = { active: true, time: 0 }
     onCrystalTap()
   }, [onCrystalTap])
 
   const tapHandlers = useTapVsDrag({ onTap: handleTap })
 
   useFrame((_, delta) => {
-    if (!groupRef.current || !rotateRef.current) return
+    if (!groupRef.current) return
 
     const time = (groupRef.current.userData.t ?? 0) + delta
     groupRef.current.userData.t = time
@@ -104,140 +184,66 @@ export default function CrystallineCore({
     const helioTarget = isGeo ? 1 : 0
     helioFadeRef.current += (helioTarget - helioFadeRef.current) * Math.min(delta * 4, 0.2)
 
-    // ── Reading dimming (50% of normal opacity for all layers) ──
-    const readingMul = readingActive ? 0.5 : 1
+    // ── Reading dimming (40% of normal) ──
+    const readingMul = readingActive ? 0.4 : 1
 
     // ── Combined visibility ──
     const vis = entranceT * helioFadeRef.current * readingMul
     groupRef.current.visible = vis > 0.01
 
     // ── Position: floating hover ──
-    groupRef.current.position.y = CRYSTAL_Y + 0.025 * Math.sin(time * 0.6)
+    groupRef.current.position.y = CRYSTAL_Y + 0.02 * Math.sin(time * 0.5)
 
-    // ── Rotation (Y-axis only) ──
-    rotateRef.current.rotation.y += ROTATION_SPEED * delta
+    // ── Rotation: fixed X tilt + accumulated Z spin ──
+    zRotRef.current += Z_ROTATION_SPEED * delta
+    groupRef.current.rotation.set(X_TILT, 0, zRotRef.current)
 
-    // ── Scale: entrance + breathing + tap pulse ──
+    // ── Scale: entrance + breathing ──
     const entranceScale = 0.5 + 0.5 * entranceT
-    const breathe = 1.0 + 0.02 * Math.sin(time * 0.8)
-    let tapScale = 1
-    if (pulseRef.current.active) {
-      pulseRef.current.time += delta
-      const pt = pulseRef.current.time
-      if (pt < 0.4) {
-        tapScale = 1 + 0.12 * Math.sin((pt / 0.4) * Math.PI)
-      } else {
-        pulseRef.current.active = false
-      }
-    }
-    const finalScale = entranceScale * breathe * tapScale
-    groupRef.current.scale.setScalar(finalScale)
+    const breatheScale = 1.0 + 0.015 * Math.sin(time * 0.7)
+    groupRef.current.scale.setScalar(entranceScale * breatheScale)
 
     // ── Colour lerp ──
     currentColourRef.current.lerp(targetColour, Math.min(delta / 1.5, 0.05))
 
-    // ── Emissive intensity on shell: breathing + tap spike ──
-    let emissiveI = 0.15 + 0.1 * Math.sin(time * 1.0)
-    if (readingActive) emissiveI = 0.05
-    if (pulseRef.current.emissivePeak) {
+    // ── Base opacities ──
+    let lineOpacity = 0.2 + 0.08 * Math.sin(time * 0.8)
+    let spriteOpacity = 0.4 + 0.15 * Math.sin(time * 1.0)
+
+    // ── Tap pulse ──
+    if (pulseRef.current.active) {
+      pulseRef.current.time += delta
       const pt = pulseRef.current.time
       if (pt < 0.6) {
-        emissiveI = 0.6 * (1 - pt / 0.6) + emissiveI * (pt / 0.6)
+        const fade = 1 - pt / 0.6
+        lineOpacity = lineOpacity + (0.6 - lineOpacity) * fade
+        spriteOpacity = spriteOpacity + (0.9 - spriteOpacity) * fade
       } else {
-        pulseRef.current.emissivePeak = false
+        pulseRef.current.active = false
       }
     }
 
-    // ── Layer 1: Inner core — additive glow ──
-    if (innerMatRef.current) {
-      innerMatRef.current.color.copy(currentColourRef.current)
-      const innerBase = 0.2 + 0.1 * Math.sin(time * 1.0)
-      innerMatRef.current.opacity = innerBase * vis
-    }
+    // ── Apply to materials ──
+    lineMat.color.copy(currentColourRef.current)
+    lineMat.opacity = lineOpacity * vis
 
-    // ── Layer 2: Glass shell — reflective facets ──
-    if (shellMatRef.current) {
-      shellMatRef.current.emissive.copy(currentColourRef.current)
-      shellMatRef.current.emissiveIntensity = emissiveI
-      shellMatRef.current.opacity = 0.12 * vis
-    }
-
-    // ── Layer 3: Wireframe edges ──
-    if (wireMatRef.current) {
-      wireMatRef.current.color.copy(currentColourRef.current)
-      const wireBase = 0.15 + 0.08 * Math.sin(time * 1.2)
-      wireMatRef.current.opacity = wireBase * vis
-    }
-
-    // ── Point light ──
-    if (lightRef.current) {
-      lightRef.current.color.copy(currentColourRef.current)
-      lightRef.current.intensity = 0.15 * vis
-    }
+    spriteMat.color.copy(currentColourRef.current)
+    spriteMat.opacity = spriteOpacity * vis
   })
 
   return (
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
-      <group ref={rotateRef}>
-        {/* Layer 1: Inner glow core */}
-        <mesh>
-          <icosahedronGeometry args={[0.12, 0]} />
-          <meshBasicMaterial
-            ref={innerMatRef}
-            color={ELEMENT_COLOURS[dominantElement]}
-            transparent
-            opacity={0}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </mesh>
+      {/* 7 overlapping circles — Seed of Life / Flower of Life */}
+      {lines.map((line, i) => <primitive key={i} object={line} />)}
 
-        {/* Layer 2: Glass shell */}
-        <mesh>
-          <icosahedronGeometry args={[0.18, 0]} />
-          <meshStandardMaterial
-            ref={shellMatRef}
-            color="#ffffff"
-            transparent
-            opacity={0}
-            metalness={0.8}
-            roughness={0.05}
-            envMapIntensity={2.0}
-            side={THREE.DoubleSide}
-            emissive={ELEMENT_COLOURS[dominantElement]}
-            emissiveIntensity={0.15}
-            depthWrite={false}
-          />
-        </mesh>
+      {/* Centre glow point */}
+      <sprite material={spriteMat} scale={[0.08, 0.08, 0.08]} />
 
-        {/* Layer 3: Wireframe edge highlight */}
-        <mesh>
-          <icosahedronGeometry args={[0.181, 0]} />
-          <meshBasicMaterial
-            ref={wireMatRef}
-            color={ELEMENT_COLOURS[dominantElement]}
-            wireframe
-            transparent
-            opacity={0}
-            depthWrite={false}
-          />
-        </mesh>
-      </group>
-
-      {/* Tap target — larger invisible hitbox */}
+      {/* Invisible tap target */}
       <mesh {...tapHandlers}>
-        <sphereGeometry args={[0.35, 16, 16]} />
+        <sphereGeometry args={[0.3, 16, 16]} />
         <meshBasicMaterial visible={false} />
       </mesh>
-
-      {/* Subtle point light */}
-      <pointLight
-        ref={lightRef}
-        intensity={0}
-        distance={1.5}
-        decay={2}
-        color={ELEMENT_COLOURS[dominantElement]}
-      />
     </group>
   )
 }

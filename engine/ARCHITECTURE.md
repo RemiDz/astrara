@@ -573,25 +573,25 @@ Provides via React Context:
 
 ### Overview
 
-A single, elegant glass icosahedron floating well above the wheel centre (Y=1.6). Its inner glow colour shifts based on the dominant astrological element. Minimal and hypnotic — uses a three-layer rendering technique for reliable glass appearance across all devices.
+An ethereal sacred geometry pattern made of light — 7 overlapping circles forming a Seed of Life / Flower of Life pattern, floating above the wheel centre (Y=1.6). Rendered entirely with `THREE.Line` and `THREE.LineBasicMaterial` with additive blending. No meshes, no solids — pure light geometry whose intersections glow brighter where circles overlap.
 
 ### Component Structure
 
-- `CrystallineCore.tsx` — Single component: three-layer mesh, all animation, tap handling, `getDominantElement()` utility
+- `CrystallineCore.tsx` — Sacred geometry pattern: 7 circle lines + centre glow sprite, all animation, visibility, tap handling, `getDominantElement()` utility
 - `CrystalMessage.tsx` — Bottom sheet overlay with placeholder cosmic crystallisation message (EN + LT)
 
-### Three-Layer Rendering
+### Rendering
 
-| Layer | Geometry | Material | Purpose |
-|-------|----------|----------|---------|
-| 1 — Inner core | IcosahedronGeometry(0.12, 0) | MeshBasicMaterial, AdditiveBlending | Soft coloured inner glow |
-| 2 — Glass shell | IcosahedronGeometry(0.18, 0) | MeshStandardMaterial, metalness=0.8, roughness=0.05, envMapIntensity=2.0, color=#ffffff | Reflective faceted surface |
-| 3 — Wireframe | IcosahedronGeometry(0.181, 0) | MeshBasicMaterial, wireframe=true | Geometric edge definition |
+| Element | Type | Details |
+|---------|------|---------|
+| 7 circles | THREE.Line | Shared BufferGeometry (radius=0.12, 64 segments), shared LineBasicMaterial (AdditiveBlending, opacity=0.25 base) |
+| Centre glow | THREE.Sprite | SpriteMaterial with procedural 64×64 radial gradient CanvasTexture, AdditiveBlending, scale=0.08 |
+| Tap target | Invisible mesh | SphereGeometry(0.3), visible=false |
 
-- Layer 1 colour = element colour, additive blending for luminous glow against dark background
-- Layer 2 colour = white, relies on `<Environment preset="night">` for reflections; emissive set to element colour for inner glow pulse
-- Layer 3 colour = element colour, slightly larger than shell to avoid z-fighting
-- All three layers rotate together inside a shared group
+- Circle arrangement: 1 centre + 6 at radius offset (0°, 60°, 120°, 180°, 240°, 300°)
+- Additive blending makes intersections glow brighter (~0.5 opacity where two circles cross)
+- No point lights — additive blending creates its own luminous glow
+- Pattern lies on XY plane with X-tilt of 0.15 rad (~8.5°) for depth hint
 
 ### Element Colour Mapping
 
@@ -614,17 +614,17 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
-| Y position | 1.6 + 0.025×sin(t×0.6) | Gentle hover float |
-| Rotation | Y-axis, 0.12 rad/s | ~52s per revolution |
-| Scale breathe | 1.0 + 0.02×sin(t×0.8) | Barely perceptible |
-| Inner core opacity | 0.2 + 0.1×sin(t×1.0) | Breathing glow pulse |
-| Shell emissive | 0.15 + 0.1×sin(t×1.0) | Soft inner glow on shell |
-| Wireframe opacity | 0.15 + 0.08×sin(t×1.2) | Subtle edge breathing |
+| Y position | 1.6 + 0.02×sin(t×0.5) | Gentle hover float |
+| Rotation | Z-axis, 0.05 rad/s | ~126s per revolution — intersections shift hypnotically |
+| X tilt | 0.15 rad (constant) | Slight 3D depth hint |
+| Scale breathe | 1.0 + 0.015×sin(t×0.7) | Subtle expansion/contraction |
+| Circle opacity | 0.2 + 0.08×sin(t×0.8) | Breathing pulse |
+| Centre glow opacity | 0.4 + 0.15×sin(t×1.0) | Slightly offset pulse |
 
 ### Tap Interaction
 
-- Invisible sphere tap target (r=0.35) using `useTapVsDrag` hook
-- On tap: scale pulse to 1.12 over 400ms, emissive spike to 0.6 fading over 600ms
+- Invisible sphere tap target (r=0.3) using `useTapVsDrag` hook
+- On tap: circle opacities spike to 0.6, centre glow to 0.9, fade back over 600ms
 - Opens `CrystalMessage` bottom sheet modal
 
 ### Visibility Rules
@@ -632,15 +632,10 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 | Context | Behaviour |
 |---------|-----------|
 | Before entrance complete | Hidden — fades in with scale 0.5→1 over 800ms after phase 6 |
-| Geocentric view | Fully visible (opacity 0.9) |
+| Geocentric view | Fully visible |
 | Heliocentric view | Faded out to 0 over ~500ms |
-| Cosmic Reading active | All layers to 50% of normal opacity, shell emissive dimmed to 0.05 |
+| Cosmic Reading active | All opacities to 40% of normal values |
 | Disabled in settings | Completely unmounted from scene |
-
-### Lighting
-
-- Single `PointLight` at crystal position: intensity=0.15, distance=1.5, decay=2
-- Colour lerps in sync with crystal colour
 
 ### Settings
 
