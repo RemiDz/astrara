@@ -10,6 +10,7 @@ import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioD
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
 import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
+import AspectBeam from '@/features/cosmic-reading/animation/AspectBeam'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -43,6 +44,15 @@ interface AstroWheel3DProps {
     isActive: boolean
     highlights: Array<{ bodyId: string; effect: string; color?: string; intensity: number }>
     dimOpacity: number
+    aspectLine?: {
+      from: string
+      to: string
+      color: string
+      style: 'solid' | 'dashed'
+      animateDrawing: boolean
+      drawDuration: number
+    } | null
+    aspectType?: string | null
   }
 }
 
@@ -1785,6 +1795,15 @@ function WheelScene({
       {readingAnimation?.isActive && readingAnimation.highlights.length > 0 && (
         <PlanetGlow
           highlights={readingAnimation.highlights}
+          planets={planets}
+        />
+      )}
+
+      {/* Aspect beam — animated energy line between connected planets */}
+      {readingAnimation?.isActive && readingAnimation.aspectLine && readingAnimation.aspectType && (
+        <AspectBeam
+          aspectLine={readingAnimation.aspectLine}
+          aspectType={readingAnimation.aspectType}
           planets={planets}
         />
       )}

@@ -33,6 +33,15 @@ interface Props {
     isActive: boolean
     highlights: Array<{ bodyId: string; effect: string; color?: string; intensity: number }>
     dimOpacity: number
+    aspectLine?: {
+      from: string
+      to: string
+      color: string
+      style: 'solid' | 'dashed'
+      animateDrawing: boolean
+      drawDuration: number
+    } | null
+    aspectType?: string | null
   }
 }
 

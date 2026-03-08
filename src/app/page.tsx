@@ -889,6 +889,8 @@ function ReadingAwareWheel(props: React.ComponentProps<typeof AstroWheel3DWrappe
         intensity: h.intensity,
       })),
       dimOpacity: animState.dimOpacity,
+      aspectLine: animState.aspectLine,
+      aspectType: animState.aspectType,
     }
   }, [animState])
 

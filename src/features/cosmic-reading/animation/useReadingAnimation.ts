@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useReadingContext } from '../ReadingContext'
-import type { CelestialBodyId } from '../types'
+import type { CelestialBodyId, AspectType } from '../types'
 
 export interface ReadingAnimationState {
   isActive: boolean
@@ -21,6 +21,7 @@ export interface ReadingAnimationState {
     animateDrawing: boolean
     drawDuration: number
   } | null
+  aspectType: AspectType | null
 }
 
 export function useReadingAnimation(): ReadingAnimationState {
@@ -36,6 +37,7 @@ export function useReadingAnimation(): ReadingAnimationState {
         cameraZoom: 1,
         cameraTransitionMs: 1500,
         aspectLine: null,
+        aspectType: null,
       }
     }
 
@@ -67,6 +69,7 @@ export function useReadingAnimation(): ReadingAnimationState {
         animateDrawing: anim.aspectLine.animateDrawing,
         drawDuration: anim.aspectLine.drawDuration ?? 1000,
       } : null,
+      aspectType: (currentPhase.celestialData?.aspect as AspectType) ?? null,
     }
   }, [isReadingActive, currentPhase])
 }
@@ -86,6 +89,7 @@ export function serializeAnimationState(state: ReadingAnimationState): Serialize
     cameraZoom: state.cameraZoom,
     cameraTransitionMs: state.cameraTransitionMs,
     aspectLine: state.aspectLine,
+    aspectType: state.aspectType,
   }
 }
 
@@ -109,5 +113,6 @@ export interface SerializedReadingAnimation {
     animateDrawing: boolean
     drawDuration: number
   } | null
+  aspectType: string | null
   onAnimationComplete?: () => void
 }
