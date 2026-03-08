@@ -77,8 +77,19 @@ const MOON_PHASE_NAMES_LT: Record<string, string> = {
   'Waning Crescent': 'Senėjantis pjautuvas',
 }
 
+const SIGN_LOCATIVE_LT: Record<string, string> = {
+  aries: 'Avine', taurus: 'Jautyje', gemini: 'Dvyniuose', cancer: 'Vėžyje',
+  leo: 'Liūte', virgo: 'Mergelėje', libra: 'Svarstyklėse', scorpio: 'Skorpione',
+  sagittarius: 'Šaulyje', capricorn: 'Ožiaragyje', aquarius: 'Vandenyje', pisces: 'Žuvyse',
+}
+
 function signName(sign: string, lang: Lang): string {
   if (lang === 'lt') return SIGN_NAMES_LT[sign] ?? capitalize(sign)
+  return capitalize(sign)
+}
+
+function signLocative(sign: string, lang: Lang): string {
+  if (lang === 'lt') return SIGN_LOCATIVE_LT[sign] ?? (SIGN_NAMES_LT[sign] ?? capitalize(sign))
   return capitalize(sign)
 }
 
@@ -131,8 +142,9 @@ export function generateCosmicReading(
     moonPersonalReading = personalData ? personalData[lang] : undefined
   }
 
+  const moonSignLocative = signLocative(astroData.moon.zodiacSign, lang)
   const moonSubtitle = lang === 'lt'
-    ? `${moonPhaseName(astroData.moon.phase, lang)} ${moonSignCapitalised} ženkle · ${astroData.moon.degreeInSign}°`
+    ? `${moonPhaseName(astroData.moon.phase, lang)} ${moonSignLocative} · ${astroData.moon.degreeInSign}°`
     : `${astroData.moon.phase} in ${moonSignCapitalised} · ${astroData.moon.degreeInSign}°`
 
   phases.push({
@@ -174,8 +186,9 @@ export function generateCosmicReading(
     }
 
     const sunTitle = lang === 'lt' ? 'Saulė šiandien' : 'The Sun Today'
+    const sunSignLocative = signLocative(sun.zodiacSign, lang)
     const sunSubtitle = lang === 'lt'
-      ? `Saulė ${sunSignCapitalised} ženkle · ${sun.degreeInSign}°`
+      ? `Saulė ${sunSignLocative} · ${sun.degreeInSign}°`
       : `Sun in ${sunSignCapitalised} · ${sun.degreeInSign}°`
 
     phases.push({
@@ -477,6 +490,7 @@ function generateSummary(
   const sunSignCapitalised = signName(sunSign, lang)
   const moonPhaseTheme = MOON_PHASE_THEMES[astroData.moon.phase]?.[lang] ?? (lang === 'lt' ? 'Kosminė tėkmė' : 'Cosmic Flow')
   const moonSignCapitalised = signName(astroData.moon.zodiacSign, lang)
+  const moonSignLoc = signLocative(astroData.moon.zodiacSign, lang)
 
   const theme = lang === 'lt'
     ? `${moonPhaseTheme} · ${sunSignCapitalised} sezonas`
@@ -494,7 +508,7 @@ function generateSummary(
   const moonPlain = MOON_PHASE_PLAIN_NAMES[astroData.moon.phase]?.[lang] ?? moonPhaseTheme
 
   let generalSummary = lang === 'lt'
-    ? `Šiandien vyrauja ${moonPlain.toLowerCase()} energija, kai Mėnulis keliauja per ${moonSignCapitalised}.`
+    ? `Šiandien vyrauja ${moonPlain.toLowerCase()} energija, Mėnulis yra ${moonSignLoc}.`
     : `Today carries a ${moonPlain.toLowerCase()} energy, with the Moon moving through ${moonSignCapitalised}.`
 
   if (aspectPhases.length > 0) {

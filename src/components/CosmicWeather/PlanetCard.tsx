@@ -29,7 +29,9 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <h3 className="text-base font-serif text-white/85">
-              {t(`planet.${planet.id}`)} in {t(`zodiac.${planet.zodiacSign}`)}
+              {lang === 'lt'
+                ? `${t(`planet.${planet.id}`)} ${t(`zodiac.${planet.zodiacSign}.loc`)}`
+                : `${t(`planet.${planet.id}`)} in ${t(`zodiac.${planet.zodiacSign}`)}`}
             </h3>
             {planet.isRetrograde && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">

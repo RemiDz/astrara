@@ -46,7 +46,9 @@ export default function MoonPhaseCard({ moon }: MoonPhaseCardProps) {
       </div>
 
       <p className="text-sm text-white/45 mt-3">
-        {t('moon.in')} {t(`zodiac.${moon.zodiacSign}`)} {moon.signGlyph} {moon.degreeInSign}°
+        {lang === 'lt'
+          ? `${t('moon.in')} ${t(`zodiac.${moon.zodiacSign}.loc`)} ${moon.signGlyph} ${moon.degreeInSign}°`
+          : `${t('moon.in')} ${t(`zodiac.${moon.zodiacSign}`)} ${moon.signGlyph} ${moon.degreeInSign}°`}
       </p>
 
       {phaseInsight && (
