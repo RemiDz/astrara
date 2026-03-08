@@ -580,6 +580,7 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 - `CrystallineCore.tsx` — Full mandala: 5-layer gyroscope seed circles, heartbeat wave, emanation rings, frequency waves, core glow, particles, independent Y-rotation, compass tilt, `getDominantElement()` utility
 - `CrystalMessage.tsx` — Cosmic Pulse dashboard modal with 7 visual KPI widgets (EN + LT)
 - `getKeyPlanet.ts` — Determines today's most significant planet (sign ingress → tightest aspect → Moon)
+- `EnergyLinks.tsx` — Animated Bézier arc connections from mother shape to key planets (max 3). Dashed material with flowing dash animation, draw-in/fade lifecycle, planet emissive boost
 - `kpis/` — 7 KPI components: ElementBalance, KeyPlayer, CosmicIntensity, KpIndex, SchumannResonance, SolarActivity, AspectMap
 
 ### Rendering Layers (from harmonicwaves.app HarmonicLogo)
@@ -702,6 +703,31 @@ normalised to 1-10 (raw × 10 / 20, capped)
 - Invisible sphere tap target (r=0.3) using `useTapVsDrag` hook
 - On tap: all opacities spike ×2.5 then fade back over 600ms
 - Opens Cosmic Pulse dashboard modal (CrystalMessage)
+
+### Energy Links (Mother Shape → Planet Connections)
+
+Animated curved arcs flowing from the mother shape (Y=1.6) down to significant planets on the wheel. Max 3 connections at any time.
+
+**Connection Targets** (computed in page.tsx):
+1. **Key Player** (always): from `getKeyPlanet()` — primary connection, opacity 0.25
+2. **Tightest Aspect Pair** (conditional): both planets in tightest aspect with orb < 3° — secondary, opacity 0.15
+3. If Key Player is in the aspect pair, 2 connections total (not 3)
+
+**Visual Implementation** (`EnergyLinks.tsx`):
+- 3D Quadratic Bézier curves (48 sample points) with control point offset outward from wheel centre
+- `THREE.LineDashedMaterial` with additive blending, planet colour, dashSize 0.04 / gapSize 0.03
+- `dashOffset -= delta × 0.4` creates flowing energy from mother shape toward planet
+- Gentle opacity pulse: `base × (0.8 + 0.2 × sin(t×1.5 + i))`
+- Geometry rebuilt every 10 frames to track planet positions
+
+**Lifecycle Animation**:
+- **Draw-in**: `setDrawRange(0, progress × 48)` over 1 second, staggered by 300ms between connections
+- **Fade-out**: opacity → 0 over 600ms when connections change (day navigation)
+- **During reading**: connections dim to 50% opacity
+
+**Planet Emissive Boost**: Connected planets get +0.3 `emissiveIntensity` via `isConnected` prop on PlanetOrb
+
+**Data Flow**: `page.tsx` computes `ConnectionTarget[]` → wrapper → AstroWheel3D → EnergyLinks + PlanetOrb
 
 ### Visibility Rules
 

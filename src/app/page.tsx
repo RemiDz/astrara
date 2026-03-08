@@ -27,6 +27,7 @@ import AboutModal from '@/components/AboutModal/AboutModal'
 import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
 import CrystalMessage from '@/components/CrystallineCore/CrystalMessage'
 import { getKeyPlanet } from '@/components/CrystallineCore/getKeyPlanet'
+import type { ConnectionTarget } from '@/components/CrystallineCore/EnergyLinks'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -132,6 +133,20 @@ function HomePage() {
     const kp = getKeyPlanet(astroData.planets, astroData.aspects, astroData.moon)
     const planet = astroData.planets.find(p => p.id === kp.planet)
     return planet?.eclipticLongitude
+  }, [astroData])
+
+  // Connection targets for energy links from mother shape to key planets
+  const connectionTargets: ConnectionTarget[] = useMemo(() => {
+    if (!astroData) return []
+    const kp = getKeyPlanet(astroData.planets, astroData.aspects, astroData.moon)
+    const targets: ConnectionTarget[] = [{ planetId: kp.planet, type: 'key' }]
+    // Add tightest aspect pair (orb < 3°)
+    const tight = astroData.aspects.filter(a => a.orb < 3).sort((a, b) => a.orb - b.orb)[0]
+    if (tight) {
+      if (tight.planet1 !== kp.planet) targets.push({ planetId: tight.planet1, type: 'aspect' })
+      if (tight.planet2 !== kp.planet) targets.push({ planetId: tight.planet2, type: 'aspect' })
+    }
+    return targets.slice(0, 3)
   }, [astroData])
 
   // Header date display ref — updated by rAF during autoplay, avoids re-renders
@@ -393,6 +408,7 @@ function HomePage() {
                   crystalEnabled={settings.crystalEnabled}
                   onCrystalTap={() => setShowCrystalOverlay(true)}
                   keyPlanetLongitude={keyPlanetLongitude}
+                  connectionTargets={connectionTargets}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>

@@ -3,6 +3,7 @@
 import React, { Component, Suspense, lazy, type ReactNode } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import type { HelioData } from '@/lib/heliocentric'
+import type { ConnectionTarget } from '@/components/CrystallineCore/EnergyLinks'
 import AstroWheel from './AstroWheel'
 import Shimmer from '@/components/ui/Shimmer'
 
@@ -46,6 +47,7 @@ interface Props {
   crystalEnabled?: boolean
   onCrystalTap?: () => void
   keyPlanetLongitude?: number
+  connectionTargets?: ConnectionTarget[]
 }
 
 interface ErrorBoundaryState {

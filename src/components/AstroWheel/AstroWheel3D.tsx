@@ -13,6 +13,7 @@ import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
 import AspectBeam from '@/features/cosmic-reading/animation/AspectBeam'
 import { useTapVsDrag } from '@/hooks/useTapVsDrag'
 import CrystallineCore from '@/components/CrystallineCore/CrystallineCore'
+import EnergyLinks, { type ConnectionTarget } from '@/components/CrystallineCore/EnergyLinks'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -59,6 +60,7 @@ interface AstroWheel3DProps {
   crystalEnabled?: boolean
   onCrystalTap?: () => void
   keyPlanetLongitude?: number
+  connectionTargets?: ConnectionTarget[]
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -863,7 +865,7 @@ function SunCorona({ solarActivity, sceneReady }: { solarActivity: SolarActivity
 function PlanetOrb({
   planet, index, isSelected, onTap, planets, sceneReady, entranceDelay, planetScale = 1,
   phaseValuesRef, helioData, isTransitioning: isTransitioningProp, labelOpacityRef,
-  readingDimOpacity,
+  readingDimOpacity, isConnected,
 }: {
   planet: PlanetPosition; index: number; isSelected: boolean; onTap: () => void
   planets: PlanetPosition[]; sceneReady: boolean; entranceDelay: number; planetScale?: number
@@ -872,6 +874,7 @@ function PlanetOrb({
   isTransitioning?: boolean
   labelOpacityRef?: React.MutableRefObject<number>
   readingDimOpacity?: number
+  isConnected?: boolean
 }) {
   const { t } = useTranslation()
   const meshRef = useRef<THREE.Mesh>(null!)
@@ -986,6 +989,8 @@ function PlanetOrb({
       let breath = 0.4 + Math.sin(t * config.pulseSpeed + index * 1.2) * 0.2
       if (isFlashing) breath = 3.0
       else if (isSelected) breath *= 2.5
+      // Connected planet emissive boost
+      if (isConnected) breath += 0.3
       const mat = meshRef.current.material as THREE.MeshStandardMaterial
       mat.emissiveIntensity = breath
     }
@@ -1643,7 +1648,7 @@ function WheelScene({
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
   sunLabel, showHelioLabels = true, readingAnimation,
-  crystalEnabled = true, onCrystalTap, keyPlanetLongitude,
+  crystalEnabled = true, onCrystalTap, keyPlanetLongitude, connectionTargets = [],
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1827,6 +1832,7 @@ function WheelScene({
               isTransitioning={isTransitioning}
               labelOpacityRef={labelOpacityRef}
               readingDimOpacity={dimOpacity}
+              isConnected={connectionTargets.some(ct => ct.planetId === planet.id)}
             />
           )
         })}
@@ -1862,6 +1868,15 @@ function WheelScene({
             entranceComplete={entranceComplete}
             onCrystalTap={onCrystalTap}
             keyPlanetLongitude={keyPlanetLongitude}
+          />
+        )}
+        {crystalEnabled && connectionTargets.length > 0 && (
+          <EnergyLinks
+            planets={planets}
+            connectionTargets={connectionTargets}
+            readingActive={readingAnimation?.isActive ?? false}
+            entranceComplete={entranceComplete}
+            viewMode={viewMode ?? 'geocentric'}
           />
         )}
       </group>
