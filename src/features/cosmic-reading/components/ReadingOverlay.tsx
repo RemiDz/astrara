@@ -10,9 +10,9 @@ import PhaseProgressBar from './PhaseProgressBar'
 import { PLANET_DOMAINS } from '../content/templates/planetDomains'
 
 const SIGN_NAMES_LT: Record<string, string> = {
-  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vezys',
-  leo: 'Liutas', virgo: 'Mergele', libra: 'Svarstykles', scorpio: 'Skorpionas',
-  sagittarius: 'Saulys', capricorn: 'Oziaragis', aquarius: 'Vandenis', pisces: 'Zuvys',
+  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vėžys',
+  leo: 'Liūtas', virgo: 'Mergelė', libra: 'Svarstyklės', scorpio: 'Skorpionas',
+  sagittarius: 'Šaulys', capricorn: 'Ožiaragis', aquarius: 'Vandenis', pisces: 'Žuvys',
 }
 
 export default function ReadingOverlay() {

@@ -13,9 +13,9 @@ const MOON_PHASE_NAMES_LT: Record<string, string> = {
   'New Moon': 'Jaunatis',
   'Waxing Crescent': 'Augantis Pjautuvas',
   'First Quarter': 'Pirmasis Ketvirtis',
-  'Waxing Gibbous': 'Augantis Priespilnis',
+  'Waxing Gibbous': 'Augantis Priešpilnis',
   'Full Moon': 'Pilnatis',
-  'Waning Gibbous': 'Dylantis Priespilnis',
+  'Waning Gibbous': 'Dylantis Priešpilnis',
   'Last Quarter': 'Paskutinis Ketvirtis',
   'Waning Crescent': 'Dylantis Pjautuvas',
 }

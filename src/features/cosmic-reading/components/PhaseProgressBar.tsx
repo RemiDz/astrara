@@ -10,9 +10,9 @@ interface PhaseProgressBarProps {
 }
 
 const PHASE_META: Record<PhaseType, { icon: string; label: { en: string; lt: string } }> = {
-  'summary':                  { icon: '✦', label: { en: 'Overview',  lt: 'Apzvalga' } },
-  'moon-phase':               { icon: '☽', label: { en: 'Moon',      lt: 'Menulis' } },
-  'sun-position':             { icon: '☉', label: { en: 'Sun',       lt: 'Saule' } },
+  'summary':                  { icon: '✦', label: { en: 'Overview',  lt: 'Apžvalga' } },
+  'moon-phase':               { icon: '☽', label: { en: 'Moon',      lt: 'Mėnulis' } },
+  'sun-position':             { icon: '☉', label: { en: 'Sun',       lt: 'Saulė' } },
   'planetary-aspect':         { icon: '△', label: { en: 'Aspects',   lt: 'Aspektai' } },
   'retrograde':               { icon: '℞', label: { en: 'Retro',     lt: 'Retro' } },
   'frequency-recommendation': { icon: '♫', label: { en: 'Sound',     lt: 'Garsas' } },

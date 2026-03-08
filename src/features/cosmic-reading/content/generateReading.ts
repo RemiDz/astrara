@@ -34,23 +34,23 @@ const MOON_PHASE_THEMES: Record<string, { en: string; lt: string }> = {
 // === MOON PHASE PLAIN NAMES (Change 4A) ===
 
 const MOON_PHASE_PLAIN_NAMES: Record<string, { en: string; lt: string }> = {
-  'New Moon':         { en: 'New Beginnings',        lt: 'Nauja Pradzia' },
+  'New Moon':         { en: 'New Beginnings',        lt: 'Nauja Pradžia' },
   'Waxing Crescent':  { en: 'Building Momentum',     lt: 'Augantis Pagreitis' },
   'First Quarter':    { en: 'Taking Action',          lt: 'Veikimo Laikas' },
   'Waxing Gibbous':   { en: 'Refining & Perfecting',  lt: 'Tobulinimas' },
   'Full Moon':        { en: 'Peak Energy & Clarity',   lt: 'Pilna Energija' },
   'Waning Gibbous':   { en: 'Sharing & Teaching',      lt: 'Dalijimasis' },
   'Last Quarter':     { en: 'Releasing & Letting Go',  lt: 'Atleidimas' },
-  'Waning Crescent':  { en: 'Rest & Reflection',       lt: 'Poilsis ir Apmastymai' },
+  'Waning Crescent':  { en: 'Rest & Reflection',       lt: 'Poilsis ir Apmąstymai' },
 }
 
 // === ASPECT PLAIN NAMES (Change 4B) ===
 
 const ASPECT_PLAIN_NAMES: Record<string, { en: string; lt: string }> = {
   conjunction: { en: 'Merging Energies',       lt: 'Susijungimas' },
-  sextile:     { en: 'Supportive Connection',  lt: 'Palaikantis Rysys' },
-  square:      { en: 'Creative Tension',       lt: 'Kurybine Itampa' },
-  trine:       { en: 'Natural Flow',           lt: 'Naturalus Srautas' },
+  sextile:     { en: 'Supportive Connection',  lt: 'Palaikantis Ryšys' },
+  square:      { en: 'Creative Tension',       lt: 'Kūrybinė Įtampa' },
+  trine:       { en: 'Natural Flow',           lt: 'Natūralus Srautas' },
   opposition:  { en: 'Balancing Act',          lt: 'Pusiausvyra' },
 }
 
@@ -374,7 +374,7 @@ export function generateCosmicReading(
   const summaryPhase: ReadingPhase = {
     id: 'summary-overview',
     type: 'summary',
-    title: lang === 'lt' ? 'Siandienos Kosmine Orbite' : "Today's Cosmic Weather",
+    title: lang === 'lt' ? 'Šiandienos Kosminė Orbitė' : "Today's Cosmic Weather",
     subtitle: summary.theme,
     icon: '✦',
     generalReading: summary.generalSummary,
@@ -494,23 +494,23 @@ function generateSummary(
   const moonPlain = MOON_PHASE_PLAIN_NAMES[astroData.moon.phase]?.[lang] ?? moonPhaseTheme
 
   let generalSummary = lang === 'lt'
-    ? `Siandien vyrauja ${moonPlain.toLowerCase()} energija, kai Menulis keliauja per ${moonSignCapitalised}.`
+    ? `Šiandien vyrauja ${moonPlain.toLowerCase()} energija, kai Mėnulis keliauja per ${moonSignCapitalised}.`
     : `Today carries a ${moonPlain.toLowerCase()} energy, with the Moon moving through ${moonSignCapitalised}.`
 
   if (aspectPhases.length > 0) {
     generalSummary += lang === 'lt'
-      ? ` ${aspectPhases.length} planetu rys${aspectPhases.length > 1 ? 'iai prideda' : 'ys prideda'} dienai dinamikos.`
+      ? ` ${aspectPhases.length} planetų ryš${aspectPhases.length > 1 ? 'iai prideda' : 'ys prideda'} dienai dinamikos.`
       : ` ${aspectPhases.length} planetary connection${aspectPhases.length > 1 ? 's add' : ' adds'} dynamic energy to the day.`
   }
 
   if (hasRetrograde) {
     generalSummary += lang === 'lt'
-      ? ' Tai tinkamas laikas apmastymui ir perziurai.'
+      ? ' Tai tinkamas laikas apmąstymui ir peržiūrai.'
       : ' This is a good time for reflection and review.'
   }
 
   generalSummary += lang === 'lt'
-    ? ' Pasitikekite savo vidiniu kompasu ir leiskite dienai teketi.'
+    ? ' Pasitikėkite savo vidiniu kompasu ir leiskite dienai tekėti.'
     : ' Trust your inner compass and let the day unfold.'
 
   // Personal summary
