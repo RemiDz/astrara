@@ -577,7 +577,7 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 
 ### Component Structure
 
-- `CrystallineCore.tsx` — Full mandala: 3-layer seed circles, emanation rings, frequency waves, core glow, particles, all animation, visibility, tap handling, compass tilt, `getDominantElement()` utility
+- `CrystallineCore.tsx` — Full mandala: 5-layer gyroscope seed circles, heartbeat wave, emanation rings, frequency waves, core glow, particles, independent Y-rotation, compass tilt, `getDominantElement()` utility
 - `CrystalMessage.tsx` — Cosmic Pulse dashboard modal with 7 visual KPI widgets (EN + LT)
 - `getKeyPlanet.ts` — Determines today's most significant planet (sign ingress → tightest aspect → Moon)
 - `kpis/` — 7 KPI components: ElementBalance, KeyPlayer, CosmicIntensity, KpIndex, SchumannResonance, SolarActivity, AspectMap
@@ -586,7 +586,8 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 
 | Element | Count | Type | Details |
 |---------|-------|------|---------|
-| Seed circles | 3 layers × 7 = 21 | THREE.Line | Shared circle geometry (r=0.12, 64 segments). Layers distributed spherically via sub-group rotations: front (0,0,0), tilted X (1.1,0.3,0), tilted Y (-0.3,1.1,0). Scales 1.0/0.85/0.92, alphas 0.25/0.15/0.10 |
+| Seed circles | 5 layers × 7 = 35 | THREE.Line | Shared circle geometry (r=0.12, 64 segments). Layers distributed as nested gyroscope rings: (0.3,0,0), (0.2,60°Y,0), (0.15,120°Y,0), (60°X,0.3,0), (-0.35,45°Y,30°Z). No flat planes — fully 3D from every angle. Scales 1.0/0.92/0.85/0.88/0.95 |
+| Heartbeat wave | 1 | THREE.Line | 100-segment flowing sine on XZ plane (horizontal through centre). Amplitude 0.10, phase speed 1.2 rad/s, Gaussian envelope (exponent 1.2), opacity 0.40 — brightest element. Breathes with form. |
 | Emanation rings | 5 | THREE.Line | Shared circle geometry, scale grows 0.5→4.3 over lifecycle, triangle-wave opacity |
 | Frequency waves | 3 | THREE.Line | Dynamic vertex updates: sub-bass (4×spatial, 0.8×temporal), main compound (14+9+21 harmonics), ghost (phase-shifted echo) with Gaussian envelope |
 | Core glow | 2 sprites | THREE.Sprite | White-hot inner (scale 0.06) + element-coloured outer halo (scale 0.2), 64×64 procedural radial gradient texture |
@@ -594,9 +595,10 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 | Tap target | 1 | Invisible mesh | SphereGeometry(0.3), visible=false |
 
 - Circle arrangement per layer: 1 centre + 6 at radius offset (0°–300° at 60° intervals)
-- Each layer placed in a sub-group rotated to a different orientation, creating a volumetric spherical light form
+- Five layers placed in sub-groups with gyroscopic rotations (0°, 60°, 120° Y + compound tilts) — no flat planes from any viewing angle
 - Additive blending on all materials — intersections glow brighter, no point lights needed
 - Whole form has 0.17 rad (~10°) X-tilt for viewing angle
+- Independent Y-axis rotation at 0.03 rad/s (~210s per revolution) — visibly slower than wheel, own gravity
 
 ### Element Colour Mapping
 
@@ -620,8 +622,9 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | Y position | 1.6 + 0.02×sin(t×0.5) | Gentle hover float |
-| Z rotation | 0.04 rad/s | Slow spin — intersections shift mesmerisingly |
+| Y rotation | 0.03 rad/s | Independent majestic spin (~210s/rev) — slower than wheel |
 | X tilt | 0.17 rad (constant) | ~10° 3D depth hint |
+| Heartbeat wave | sin(4π×t01 + t×1.2) × env × 0.10 × breath | Flowing sine on XZ plane, highest opacity (0.40) |
 | Breath scale | 0.93 + 0.07×sin(t×0.3) | Compound breathing (HarmonicLogo match) |
 | Core pulse | 0.6 + 0.25×sin(t×1.4) + 0.15×sin(t×3.1) | Dual-frequency compound — complex, alive feel |
 | Layer pulse | 0.85 + 0.15×sin(t×0.5 + z×8) | Per-layer phase offset for wave-through-depth effect |

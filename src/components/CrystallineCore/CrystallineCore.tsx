@@ -41,27 +41,38 @@ const CRYSTAL_Y = 1.6
 const CIRCLE_RADIUS = 0.12
 const CIRCLE_SEGMENTS = 64
 const X_TILT = 0.17 // ~10°
-const Z_ROT_SPEED = 0.04 // rad/s
+const Y_ROT_SPEED = 0.03 // rad/s — independent majestic rotation (~210s per revolution)
 
-// Three layers distributed spherically — each layer's seed pattern is rotated
-// to a different orientation, creating a volumetric 3D light form
+// Five layers distributed as nested gyroscope rings — NO flat planes.
+// Every layer has a different rotational orientation so the form looks
+// fully 3D from every viewing angle. No angle collapses into a flat line.
 const LAYERS = [
-  { scale: 1.0,  alpha: 0.25, phaseOffset: 0 },   // front face
-  { scale: 0.85, alpha: 0.15, phaseOffset: 2.1 },  // tilted ~63° on X
-  { scale: 0.92, alpha: 0.10, phaseOffset: 4.2 },  // tilted ~63° on Y
+  { scale: 1.0,  alpha: 0.22, phaseOffset: 0 },
+  { scale: 0.92, alpha: 0.16, phaseOffset: 1.26 },
+  { scale: 0.85, alpha: 0.12, phaseOffset: 2.51 },
+  { scale: 0.88, alpha: 0.10, phaseOffset: 3.77 },
+  { scale: 0.95, alpha: 0.08, phaseOffset: 5.03 },
 ]
 
-// Rotation per layer — distributes seed patterns across a sphere
+// Rotation per layer — gyroscope ring distribution, 60°/120° Y offsets + compound tilts
 const LAYER_ROTATIONS: [number, number, number][] = [
-  [0, 0, 0],          // front face (primary visible pattern)
-  [1.1, 0.3, 0],      // tilted forward + slight twist
-  [-0.3, 1.1, 0],     // tilted sideways + slight opposite twist
+  [0.3, 0, 0],                    // slight forward tilt (NOT flat)
+  [0.2, Math.PI / 3, 0],          // 60° Y + slight X
+  [0.15, (2 * Math.PI) / 3, 0],   // 120° Y + slight X
+  [Math.PI / 3, 0.3, 0],          // 60° X + slight Y
+  [-0.35, Math.PI / 4, 0.52],     // compound diagonal
 ]
 
 const NUM_EMANATION = 5
 const NUM_PARTICLES = 30
 const WAVE_SEGMENTS = 80
 const WAVE_EXTENT = 0.3
+
+// Heartbeat wave — flowing sine on XZ plane (horizontal through centre)
+const HEARTBEAT_SEGMENTS = 100
+const HEARTBEAT_EXTENT = 0.25
+const HEARTBEAT_AMPLITUDE = 0.10 // roughly matches circle radius
+const HEARTBEAT_PHASE_SPEED = 1.2
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -129,7 +140,7 @@ export default function CrystallineCore({
   keyPlanetLongitude,
 }: CrystallineCoreProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const zRotRef = useRef(0)
+  const yRotRef = useRef(0)
   const entranceFadeRef = useRef(0)
   const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0)
   const pulseRef = useRef({ active: false, time: 0 })
@@ -145,7 +156,7 @@ export default function CrystallineCore({
   const circleGeom = useMemo(() => createCircleGeometry(CIRCLE_RADIUS, CIRCLE_SEGMENTS), [])
   const glowTexture = useMemo(() => createGlowTexture(), [])
 
-  // ── Seed of Life: 3 layers × 7 circles = 21 lines, spherically distributed ──
+  // ── Seed of Life: 5 layers × 7 circles = 35 lines, gyroscope distribution ──
   const seeds = useMemo(() => {
     const positions = seedPositions(CIRCLE_RADIUS)
     return LAYERS.map((layer, li) => {
@@ -183,6 +194,16 @@ export default function CrystallineCore({
       return { line, mat, geom }
     }),
   [])
+
+  // ── Heartbeat wave: flowing sine on XZ plane (horizontal through centre) ──
+  const heartbeat = useMemo(() => {
+    const positions = new Float32Array((HEARTBEAT_SEGMENTS + 1) * 3)
+    const geom = new THREE.BufferGeometry()
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const mat = makeLineMat()
+    const line = new THREE.Line(geom, mat)
+    return { line, mat, geom }
+  }, [])
 
   // ── Core glow: white-hot inner + coloured outer halo ──
   const coreGlow = useMemo(() => {
@@ -231,11 +252,13 @@ export default function CrystallineCore({
     seeds.forEach((l) => l.circles.forEach((c) => c.mat.dispose()))
     emanations.forEach((e) => e.mat.dispose())
     waves.forEach((w) => { w.geom.dispose(); w.mat.dispose() })
+    heartbeat.geom.dispose()
+    heartbeat.mat.dispose()
     coreGlow.inner.dispose()
     coreGlow.outer.dispose()
     particleObj.geom.dispose()
     particleObj.mat.dispose()
-  }, [circleGeom, glowTexture, seeds, emanations, waves, coreGlow, particleObj])
+  }, [circleGeom, glowTexture, seeds, emanations, waves, heartbeat, coreGlow, particleObj])
 
   // ── Tap ──
   const handleTap = useCallback(() => {
@@ -280,12 +303,12 @@ export default function CrystallineCore({
       compassTiltRef.current.z *= 0.95
     }
 
-    // ── Rotation: fixed X-tilt + compass lean + slow Z-spin ──
-    zRotRef.current += Z_ROT_SPEED * delta
+    // ── Rotation: independent Y-spin (0.03 rad/s) + X-tilt + compass lean ──
+    yRotRef.current += Y_ROT_SPEED * delta
     groupRef.current.rotation.set(
       X_TILT + compassTiltRef.current.x,
-      0,
-      zRotRef.current + compassTiltRef.current.z,
+      yRotRef.current,
+      compassTiltRef.current.z,
     )
 
     // ── Scale: entrance + compound breathing (harmonicwaves.app pattern) ──
@@ -364,6 +387,25 @@ export default function CrystallineCore({
       mat.opacity = waveBaseAlphas[wi] * vis * tap
     })
 
+    // ──────────── HEARTBEAT WAVE ────────────
+    // Flowing sine on XZ plane — the cosmic heartbeat / energy pulse
+    {
+      const hbAttr = heartbeat.geom.getAttribute('position') as THREE.BufferAttribute
+      for (let i = 0; i <= HEARTBEAT_SEGMENTS; i++) {
+        const t01 = i / HEARTBEAT_SEGMENTS
+        const n = t01 * 2 - 1 // -1 to 1
+        const x = n * HEARTBEAT_EXTENT
+        // Gaussian envelope — tapers to zero at edges
+        const env = Math.pow(Math.max(0, 1 - n * n), 1.2)
+        // Flowing sine with breathing amplitude modulation
+        const z = Math.sin(t01 * Math.PI * 4 + time * HEARTBEAT_PHASE_SPEED) * env * HEARTBEAT_AMPLITUDE * breath
+        hbAttr.setXYZ(i, x, 0, z) // XZ plane — horizontal through centre
+      }
+      hbAttr.needsUpdate = true
+      heartbeat.mat.color.copy(col)
+      heartbeat.mat.opacity = 0.4 * vis * tap // brightest element
+    }
+
     // ──────────── CORE GLOW ────────────
     // White-hot inner + coloured outer halo (from HarmonicLogo energy core)
     coreGlow.inner.opacity = 0.7 * cp * vis * tap
@@ -378,7 +420,7 @@ export default function CrystallineCore({
 
   return (
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
-      {/* 3 spherically-distributed Seed of Life layers */}
+      {/* 5 gyroscope-distributed Seed of Life layers — no flat planes */}
       {seeds.map((layer, li) => (
         <primitive key={`layer-${li}`} object={layer.group} />
       ))}
@@ -392,6 +434,9 @@ export default function CrystallineCore({
       {waves.map((w, i) => (
         <primitive key={`w${i}`} object={w.line} />
       ))}
+
+      {/* Heartbeat wave — flowing sine on XZ plane */}
+      <primitive object={heartbeat.line} />
 
       {/* Core glow — white-hot centre + coloured halo */}
       <sprite material={coreGlow.inner} scale={[0.06, 0.06, 0.06]} />
