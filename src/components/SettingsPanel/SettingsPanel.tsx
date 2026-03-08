@@ -6,15 +6,12 @@ import { useLanguage, type Language } from '@/i18n/LanguageContext'
 import { searchCity, type UserLocation } from '@/lib/location'
 import Modal from '@/components/ui/Modal'
 
-export type CrystalFormOverride = 'auto' | 'seed' | 'icosa'
-
 export interface AstraraSettings {
   planetScale: number
   rotationSpeed: number
   rotationSoundEnabled: boolean
   immersiveUniverse: boolean
   crystalEnabled: boolean
-  crystalForm: CrystalFormOverride
 }
 
 export const DEFAULT_SETTINGS: AstraraSettings = {
@@ -23,7 +20,6 @@ export const DEFAULT_SETTINGS: AstraraSettings = {
   rotationSoundEnabled: true,
   immersiveUniverse: false,
   crystalEnabled: true,
-  crystalForm: 'auto',
 }
 
 const LANGUAGES: { code: Language; flag: string; name: string }[] = [
@@ -376,36 +372,6 @@ export default function SettingsPanel({
           />
         </div>
 
-        {/* Crystal Form Override — only when crystal is enabled */}
-        {settings.crystalEnabled && (
-          <div className="mb-3">
-            <label className="text-[10px] uppercase tracking-widest text-white/40 block mb-2">
-              {t('settings.crystalForm')}
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {([
-                { value: 'auto' as const, labelKey: 'settings.crystalFormAuto' },
-                { value: 'seed' as const, labelKey: 'settings.crystalFormSeed' },
-                { value: 'icosa' as const, labelKey: 'settings.crystalFormIcosa' },
-              ]).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() =>
-                    onSettingsChange({ ...settings, crystalForm: opt.value })
-                  }
-                  className={`py-2 px-3 rounded-lg text-xs transition-all select-none ${
-                    settings.crystalForm === opt.value
-                      ? 'bg-purple-500/30 border border-purple-400/40 text-white/80'
-                      : 'bg-white/5 border border-white/8 text-white/40 hover:text-white/60'
-                  }`}
-                >
-                  {t(opt.labelKey)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── About ─────────────────────────────────── */}

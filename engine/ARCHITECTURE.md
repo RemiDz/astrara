@@ -72,12 +72,8 @@ astrara.app/
 │   │   │   ├── CosmicBackground.tsx     # 3D starfield + nebulae
 │   │   │   └── Starfield.tsx            # 2D canvas starfield
 │   │   ├── CrystallineCore/
-│   │   │   ├── CrystallineCore.tsx      # Main controller (form switching, visibility, tap)
-│   │   │   ├── SeedOfLife.tsx           # Water form (7 wireframe spheres + glow)
-│   │   │   ├── IcosahedronForm.tsx      # Default form (glass icosahedron + vertex morph)
-│   │   │   ├── EnergyStreams.tsx         # Planet-to-crystal bezier arcs
-│   │   │   ├── CrystalTapOverlay.tsx    # Bottom sheet with cosmic message
-│   │   │   └── crystalUtils.ts          # getDominantElement(), element maps
+│   │   │   ├── CrystallineCore.tsx      # Glass icosahedron + animation + tap + getDominantElement()
+│   │   │   └── CrystalMessage.tsx       # Bottom sheet with cosmic crystallisation message
 │   │   ├── LanguageToggle.tsx           # EN/LT language switcher
 │   │   ├── GlossaryTerm.tsx             # Inline glossary tooltip
 │   │   └── ui/
@@ -358,11 +354,10 @@ astronomy-engine (client-side)
     │   ├── SunCoronaAnimated (sun glow, moves geo→centre)
     │   ├── PlanetPolygon (sacred geometry lines)
     │   ├── SunCentreLabel (helio "Sun" label)
-    │   └── CrystallineCore (element-based crystal @ Y=1.4 + energy streams)
-    │       ├── SeedOfLife / IcosahedronForm
-    │       ├── Tap target (invisible sphere r=0.4)
-    │       ├── PointLight (element-coloured)
-    │       └── EnergyStreams (5 bezier arcs from planets)
+    │   └── CrystallineCore (glass icosahedron @ Y=1.6)
+    │       ├── IcosahedronGeometry (r=0.18, MeshPhysicalMaterial glass)
+    │       ├── Tap target (invisible sphere r=0.35, useTapVsDrag)
+    │       └── PointLight (element-coloured, intensity=0.15)
     │
     ├── Reading Animations
     │   ├── PlanetGlow (highlight spheres)
@@ -578,59 +573,70 @@ Provides via React Context:
 
 ### Overview
 
-A living, responsive crystalline energy form hovering well above the wheel centre (Y=1.4) with clear visual separation from the planets and zodiac ring. Its shape shifts based on the dominant element. Users can tap it to receive a cosmic crystallisation message.
+A single, elegant glass icosahedron floating well above the wheel centre (Y=1.6). Its inner glow colour shifts based on the dominant astrological element. Minimal and hypnotic — no wireframes, no particles, no energy streams.
 
-### Element Dominance Calculation
+### Component Structure
 
-`getDominantElement(planets)` in `crystalUtils.ts`:
-1. Maps each planet's zodiac sign to its element (fire/water/earth/air)
-2. Sun and Moon count as weight 2 (luminaries), other planets weight 1
-3. Returns the element with highest weighted count
-4. Ties default to 'air'
+- `CrystallineCore.tsx` — Single component: mesh, material, all animation, tap handling, `getDominantElement()` utility
+- `CrystalMessage.tsx` — Bottom sheet overlay with placeholder cosmic crystallisation message (EN + LT)
 
-### Two Crystal Forms
+### Geometry & Material
 
-| Element | Form | Component | Geometry |
-|---------|------|-----------|----------|
-| Water | Seed of Life | `SeedOfLife.tsx` | 7 wireframe spheres in Seed of Life pattern + 12 intersection glow points |
-| Fire / Earth / Air / Tie | Icosahedron | `IcosahedronForm.tsx` | Glass icosahedron (r=0.22) + wireframe overlay + vertex morphing every 8–10s |
+- `IcosahedronGeometry(0.18, 0)` — 20-face platonic solid, detail level 0
+- `MeshPhysicalMaterial`: transmission=0.85, thickness=0.5, roughness=0.05, metalness=0.05, ior=2.0, clearcoat=1.0, envMapIntensity=1.5
+- Relies on existing `<Environment preset="night">` for reflections
 
-### Energy Streams
+### Element Colour Mapping
 
-`EnergyStreams.tsx` draws curved bezier arcs from the 5 most prominent planets (Sun, Moon, Mercury, Venus, Mars) to the crystal position. Each stream:
-- Uses `THREE.QuadraticBezierCurve3` with upward-offset control point
-- Additive blending, planet-coloured
-- Pulsing opacity: `0.1 + 0.08 * sin(time * 1.5 + index * 0.7)`
+`getDominantElement(planets)` in `CrystallineCore.tsx`:
+1. Maps each planet's zodiac sign to its element
+2. Sun and Moon count as weight 2, other planets weight 1
+3. Ties return 'neutral'
+
+| Element | Colour | Description |
+|---------|--------|-------------|
+| Fire | #FF6B4A | Warm coral-red |
+| Earth | #4ADE80 | Green |
+| Air | #60A5FA | Blue |
+| Water | #A78BFA | Purple-violet |
+| Neutral (tie) | #C0C0D0 | Silver |
+
+Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
+
+### Animation
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Y position | 1.6 + 0.025×sin(t×0.6) | Gentle hover float |
+| Rotation | Y-axis, 0.12 rad/s | ~52s per revolution |
+| Scale breathe | 1.0 + 0.02×sin(t×0.8) | Barely perceptible |
+| Emissive intensity | 0.15 + 0.1×sin(t×1.0) | Soft inner glow pulse |
 
 ### Tap Interaction
 
-- Invisible sphere tap target (r=0.4) around crystal
-- On tap: scale pulse (1→1.15→1 over 400ms)
-- Opens `CrystalTapOverlay` bottom sheet with:
-  - "Cosmic Crystallisation" title (EN/LT)
-  - Dominant element analysis + planet counts per element
-  - Element-based guidance message
+- Invisible sphere tap target (r=0.35) using `useTapVsDrag` hook
+- On tap: scale pulse to 1.12 over 400ms, emissive spike to 0.6 fading over 600ms
+- Opens `CrystalMessage` bottom sheet modal
 
 ### Visibility Rules
 
 | Context | Behaviour |
 |---------|-----------|
-| Geocentric view | Fully visible |
-| Heliocentric view | Faded out (hidden) — crystal only makes sense in geo context |
-| Cosmic Reading active | Opacity reduced to 50%, remains visible |
-| Crystal disabled in settings | Completely unmounted from scene |
+| Before entrance complete | Hidden — fades in with scale 0.5→1 over 800ms after phase 6 |
+| Geocentric view | Fully visible (opacity 0.9) |
+| Heliocentric view | Faded out to 0 over ~500ms |
+| Cosmic Reading active | Opacity reduced to 40%, emissive dimmed to 0.05 |
+| Disabled in settings | Completely unmounted from scene |
+
+### Lighting
+
+- Single `PointLight` at crystal position: intensity=0.15, distance=1.5, decay=2
+- Colour lerps in sync with crystal colour
 
 ### Settings
 
-- **Crystal Core toggle**: on/off (default ON), stored in `crystalEnabled` within `astrara-settings`
-- **Crystal Form override**: 'auto' / 'seed' / 'icosa' (default 'auto'), stored in `crystalForm`
-- When 'auto', form follows dominant element calculation (water → seed, all others → icosa)
-- 3 selectable buttons in Settings panel (only visible when crystal is enabled)
-- Legacy 'toroid' values in localStorage are migrated to 'auto' on load
-
-### Point Light
-
-Element-coloured `PointLight` at crystal position (intensity=0.3, distance=2). Colour smoothly lerps when element changes.
+- **Crystal Core toggle**: on/off (default ON), stored as `crystalEnabled` in `astrara-settings`
+- No form selector — single icosahedron form only
 
 ---
 
@@ -735,7 +741,6 @@ Dual oscillator + filtered noise, all parameters velocity-mapped:
 | rotationSoundEnabled | boolean | true | — |
 | immersiveUniverse | boolean | false | — |
 | crystalEnabled | boolean | true | — |
-| crystalForm | CrystalFormOverride | 'auto' | 'auto'/'seed'/'icosa' |
 
 - Location search with debounced Nominatim API
 - Language dropdown (EN/LT with flags)
@@ -923,7 +928,7 @@ User-Agent for Nominatim: `"Astrara/2.0 (https://astrara.app)"`
 
 | Key | Contents |
 |-----|----------|
-| `astrara-settings` | AstraraSettings object (planetScale, rotationSpeed, rotationSoundEnabled, immersiveUniverse, crystalEnabled, crystalForm) |
+| `astrara-settings` | AstraraSettings object (planetScale, rotationSpeed, rotationSoundEnabled, immersiveUniverse, crystalEnabled) |
 | `astrara-lang` | Language ('en' or 'lt') |
 | `astrara-audio` | Audio preference ('on' or 'off') |
 | `astrara-audio-hint` | Headphone hint shown flag ('shown') |
@@ -1042,8 +1047,7 @@ All are expected error handling — no bugs or incomplete features indicated.
 
 | Date | Commit | Change |
 |------|--------|--------|
-| 2026-03-08 | — | fix: remove toroid form, reposition crystal higher above wheel (Y=1.4) |
-| 2026-03-08 | — | feat: Crystalline Core — living 4D energy focal point with element-based form shifting |
+| 2026-03-08 | — | feat: Crystalline Core v2 — single glass icosahedron with element-based inner glow |
 | 2026-03-08 | `92d2847` | fix: keep wheel auto-rotation spinning during Cosmic Reading overlay |
 | 2026-03-08 | `75d116a` | feat: 3D curved dashed energy arc animations for aspect connections |
 | 2026-03-07 | `2a83a44` | fix: animate wheel tilt to default 3D perspective when entering Cosmic Reading |

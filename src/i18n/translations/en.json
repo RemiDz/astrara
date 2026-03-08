@@ -211,9 +211,5 @@
   "reading.forYouSign": "For You ({sign})",
   "reading.phaseOf": "{current} of {total}",
   "settings.crystalCore": "Crystalline Core",
-  "settings.crystalCoreHint": "Living energy focal point above the wheel",
-  "settings.crystalForm": "Crystal Form",
-  "settings.crystalFormAuto": "Auto (Element)",
-  "settings.crystalFormSeed": "Seed of Life",
-  "settings.crystalFormIcosa": "Icosahedron"
+  "settings.crystalCoreHint": "Glass gemstone above the wheel"
 }

@@ -25,7 +25,7 @@ import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
 import EarthPanel from '@/components/EarthPanel/EarthPanel'
 import AboutModal from '@/components/AboutModal/AboutModal'
 import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
-import CrystalTapOverlay from '@/components/CrystallineCore/CrystalTapOverlay'
+import CrystalMessage from '@/components/CrystallineCore/CrystalMessage'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -46,12 +46,7 @@ function HomePage() {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('astrara-settings')
-        if (saved) {
-          const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
-          // Migrate legacy 'toroid' crystal form
-          if (parsed.crystalForm === 'toroid') parsed.crystalForm = 'auto'
-          return parsed
-        }
+        if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
       } catch { /* ignore */ }
     }
     return DEFAULT_SETTINGS
@@ -387,7 +382,6 @@ function HomePage() {
                   animationSpeedRef={animationSpeedRef}
                   showHelioLabels={showHelioLabels}
                   crystalEnabled={settings.crystalEnabled}
-                  crystalForm={settings.crystalForm}
                   onCrystalTap={() => setShowCrystalOverlay(true)}
                 />
               ) : (
@@ -660,9 +654,9 @@ function HomePage() {
         }}
       />
 
-      {/* Crystal Tap Overlay */}
+      {/* Crystal Tap Message */}
       {astroData && (
-        <CrystalTapOverlay
+        <CrystalMessage
           isOpen={showCrystalOverlay}
           onClose={() => setShowCrystalOverlay(false)}
           planets={astroData.planets}

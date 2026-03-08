@@ -210,10 +210,6 @@
   "reading.openInBinara": "Atidaryti Binara",
   "reading.forYouSign": "Jums ({sign})",
   "reading.phaseOf": "{current} iš {total}",
-  "settings.crystalCore": "Kristalinė šerdis",
-  "settings.crystalCoreHint": "Gyvas energijos centras virš rato",
-  "settings.crystalForm": "Kristalo forma",
-  "settings.crystalFormAuto": "Automatinis (Elementas)",
-  "settings.crystalFormSeed": "Gyvybės sėkla",
-  "settings.crystalFormIcosa": "Ikosaedras"
+  "settings.crystalCore": "Kristalinė Šerdis",
+  "settings.crystalCoreHint": "Stiklinis brangakmenis virš rato"
 }
