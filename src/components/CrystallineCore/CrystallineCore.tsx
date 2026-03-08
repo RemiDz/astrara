@@ -117,6 +117,7 @@ interface CrystallineCoreProps {
   readingActive: boolean
   entranceComplete: boolean
   onCrystalTap: () => void
+  keyPlanetLongitude?: number // ecliptic longitude in degrees for compass tilt
 }
 
 export default function CrystallineCore({
@@ -125,12 +126,15 @@ export default function CrystallineCore({
   readingActive,
   entranceComplete,
   onCrystalTap,
+  keyPlanetLongitude,
 }: CrystallineCoreProps) {
   const groupRef = useRef<THREE.Group>(null)
   const zRotRef = useRef(0)
   const entranceFadeRef = useRef(0)
   const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0)
   const pulseRef = useRef({ active: false, time: 0 })
+  // Compass tilt: smoothly animated tilt toward key planet
+  const compassTiltRef = useRef({ x: 0, z: 0 })
 
   const dominantElement = getDominantElement(planets)
   const targetColour = useMemo(() => new THREE.Color(ELEMENT_COLOURS[dominantElement]), [dominantElement])
@@ -262,9 +266,27 @@ export default function CrystallineCore({
     // ── Position: gentle float ──
     groupRef.current.position.y = CRYSTAL_Y + 0.02 * Math.sin(time * 0.5)
 
-    // ── Rotation: fixed X-tilt + slow Z-spin ──
+    // ── Compass tilt: lean toward key planet (max 15° = 0.26 rad) ──
+    if (keyPlanetLongitude !== undefined) {
+      // Convert ecliptic longitude to wheel angle (radians, anti-clockwise from right)
+      const targetAngle = (keyPlanetLongitude * Math.PI) / 180
+      const targetTiltX = Math.sin(targetAngle) * 0.15 // max ~8.5°
+      const targetTiltZ = -Math.cos(targetAngle) * 0.15
+      const lerpSpeed = Math.min(delta * 2, 0.1)
+      compassTiltRef.current.x += (targetTiltX - compassTiltRef.current.x) * lerpSpeed
+      compassTiltRef.current.z += (targetTiltZ - compassTiltRef.current.z) * lerpSpeed
+    } else {
+      compassTiltRef.current.x *= 0.95
+      compassTiltRef.current.z *= 0.95
+    }
+
+    // ── Rotation: fixed X-tilt + compass lean + slow Z-spin ──
     zRotRef.current += Z_ROT_SPEED * delta
-    groupRef.current.rotation.set(X_TILT, 0, zRotRef.current)
+    groupRef.current.rotation.set(
+      X_TILT + compassTiltRef.current.x,
+      0,
+      zRotRef.current + compassTiltRef.current.z,
+    )
 
     // ── Scale: entrance + compound breathing (harmonicwaves.app pattern) ──
     const breath = 0.93 + Math.sin(time * 0.3) * 0.07

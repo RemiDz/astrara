@@ -1,72 +1,94 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
-import type { PlanetPosition } from '@/lib/astronomy'
-import { getDominantElement } from './CrystallineCore'
+import type { PlanetPosition, AspectData, MoonData } from '@/lib/astronomy'
+import type { EarthData } from '@/lib/earth-data'
 import Modal from '@/components/ui/Modal'
-
-type Element = 'fire' | 'earth' | 'air' | 'water' | 'neutral'
-
-const QUALITIES: Record<Element, Record<string, string>> = {
-  fire:    { en: 'courage and directed will',        lt: 'drąsos ir nukreiptos valios' },
-  earth:   { en: 'stability and grounded presence',  lt: 'stabilumo ir įžemintos buvimo būsenos' },
-  air:     { en: 'clarity and open communication',   lt: 'aiškumo ir atviro bendravimo' },
-  water:   { en: 'depth and emotional attunement',   lt: 'gelmės ir emocinio suderinimo' },
-  neutral: { en: 'balanced cosmic presence',          lt: 'subalansuotos kosminės būsenos' },
-}
-
-const GUIDANCE: Record<Element, Record<string, string>> = {
-  fire:    { en: 'act decisively and trust your instincts',          lt: 'veikti ryžtingai ir pasitikėti savo instinktais' },
-  earth:   { en: 'ground your vision into practical steps',          lt: 'įžeminti savo viziją praktiniais žingsniais' },
-  air:     { en: 'speak your truth and stay curious',                lt: 'kalbėti savo tiesą ir likti smalsiems' },
-  water:   { en: 'honour your feelings and deepen your connections', lt: 'gerbti savo jausmus ir gilinti ryšius' },
-  neutral: { en: 'stay open and observe the cosmic balance',         lt: 'likti atviriems ir stebėti kosminę pusiausvyrą' },
-}
+import { getKeyPlanet } from './getKeyPlanet'
+import ElementBalance from './kpis/ElementBalance'
+import KeyPlayer from './kpis/KeyPlayer'
+import CosmicIntensity from './kpis/CosmicIntensity'
+import KpIndex from './kpis/KpIndex'
+import SchumannResonance from './kpis/SchumannResonance'
+import SolarActivity from './kpis/SolarActivity'
+import AspectMap from './kpis/AspectMap'
 
 interface CrystalMessageProps {
   isOpen: boolean
   onClose: () => void
   planets: PlanetPosition[]
+  aspects: AspectData[]
+  notableAspects: AspectData[]
+  moon: MoonData
   date: Date
+  earthData: EarthData | null
+  earthLoading: boolean
 }
 
-export default function CrystalMessage({ isOpen, onClose, planets, date }: CrystalMessageProps) {
-  const { t, lang } = useTranslation()
+export default function CrystalMessage({
+  isOpen,
+  onClose,
+  planets,
+  aspects,
+  notableAspects,
+  moon,
+  date,
+  earthData,
+  earthLoading,
+}: CrystalMessageProps) {
+  const { lang } = useTranslation()
 
-  const element = getDominantElement(planets)
-  const elementName = t(`element.${element === 'neutral' ? 'air' : element}`)
-  const quality = QUALITIES[element][lang] ?? QUALITIES[element].en
-  const guidance = GUIDANCE[element][lang] ?? GUIDANCE[element].en
+  const keyPlanet = useMemo(
+    () => getKeyPlanet(planets, aspects, moon),
+    [planets, aspects, moon],
+  )
 
   const dateStr = date.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   })
-
-  const title = lang === 'lt' ? 'Kosminė Kristalizacija' : 'Cosmic Crystallisation'
-
-  const subtitle = lang === 'lt'
-    ? `${elementName} energija dominuoja danguje šiandien`
-    : `${elementName} energy dominates today's sky`
-
-  const body = lang === 'lt'
-    ? `${planets.length} dangaus kūnai nukreipia savo šviesą per ${elementName.toLowerCase()} ženklus šiandien, kristalizuodami ${quality} lauką. Kosmosas kviečia jus ${guidance}.`
-    : `${planets.length} celestial bodies channel their light through ${elementName} signs today, crystallising a field of ${quality}. The cosmos invites you to ${guidance}.`
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="text-center">
+      {/* Header */}
+      <div className="text-center mb-5">
         <h2 className="font-[family-name:var(--font-display)] text-lg text-white/90 mb-1">
-          {title}
+          {lang === 'lt' ? 'Kosminis Pulsas' : 'Cosmic Pulse'}
         </h2>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-5">
-          {subtitle}
-        </p>
-        <p className="text-sm text-white/60 leading-relaxed mb-6">
-          {body}
-        </p>
-        <p className="text-[10px] text-white/20">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">
           {dateStr}
         </p>
+      </div>
+
+      {/* KPI Cards — stacked with 12px gap */}
+      <div className="flex flex-col gap-3">
+        {/* KPI 1: Element Balance */}
+        <ElementBalance planets={planets} />
+
+        {/* KPI 2: Key Player */}
+        <KeyPlayer keyPlanet={keyPlanet} planets={planets} />
+
+        {/* KPI 3: Cosmic Intensity */}
+        <CosmicIntensity planets={planets} aspects={aspects} moon={moon} />
+
+        {/* KPI 4: Kp Index */}
+        <KpIndex kpIndex={earthData?.kpIndex ?? null} loading={earthLoading} />
+
+        {/* KPI 5: Schumann Resonance */}
+        <SchumannResonance />
+
+        {/* KPI 6: Solar Activity */}
+        <SolarActivity
+          solarWindSpeed={earthData?.solarWindSpeed ?? null}
+          solarFlareClass={earthData?.solarFlareClass ?? null}
+          bzComponent={earthData?.bzComponent ?? null}
+          loading={earthLoading}
+        />
+
+        {/* KPI 7: Aspect Map */}
+        <AspectMap aspects={notableAspects} />
       </div>
     </Modal>
   )

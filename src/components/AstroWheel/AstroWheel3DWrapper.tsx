@@ -45,6 +45,7 @@ interface Props {
   }
   crystalEnabled?: boolean
   onCrystalTap?: () => void
+  keyPlanetLongitude?: number
 }
 
 interface ErrorBoundaryState {

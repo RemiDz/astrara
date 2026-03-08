@@ -58,6 +58,7 @@ interface AstroWheel3DProps {
   }
   crystalEnabled?: boolean
   onCrystalTap?: () => void
+  keyPlanetLongitude?: number
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -1642,7 +1643,7 @@ function WheelScene({
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
   sunLabel, showHelioLabels = true, readingAnimation,
-  crystalEnabled = true, onCrystalTap,
+  crystalEnabled = true, onCrystalTap, keyPlanetLongitude,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1860,6 +1861,7 @@ function WheelScene({
             readingActive={readingAnimation?.isActive ?? false}
             entranceComplete={entranceComplete}
             onCrystalTap={onCrystalTap}
+            keyPlanetLongitude={keyPlanetLongitude}
           />
         )}
       </group>

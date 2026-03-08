@@ -26,6 +26,7 @@ import EarthPanel from '@/components/EarthPanel/EarthPanel'
 import AboutModal from '@/components/AboutModal/AboutModal'
 import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
 import CrystalMessage from '@/components/CrystallineCore/CrystalMessage'
+import { getKeyPlanet } from '@/components/CrystallineCore/getKeyPlanet'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -124,6 +125,14 @@ function HomePage() {
 
   // Helio data for static rendering (initial positions / when autoplay stopped)
   const helioData = useMemo(() => calculateAllHelioData(targetDate), [targetDate])
+
+  // Key planet longitude for Crystalline Core compass tilt
+  const keyPlanetLongitude = useMemo(() => {
+    if (!astroData) return undefined
+    const kp = getKeyPlanet(astroData.planets, astroData.aspects, astroData.moon)
+    const planet = astroData.planets.find(p => p.id === kp.planet)
+    return planet?.eclipticLongitude
+  }, [astroData])
 
   // Header date display ref — updated by rAF during autoplay, avoids re-renders
   const headerDateRef = useRef<HTMLSpanElement>(null)
@@ -383,6 +392,7 @@ function HomePage() {
                   showHelioLabels={showHelioLabels}
                   crystalEnabled={settings.crystalEnabled}
                   onCrystalTap={() => setShowCrystalOverlay(true)}
+                  keyPlanetLongitude={keyPlanetLongitude}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -654,13 +664,18 @@ function HomePage() {
         }}
       />
 
-      {/* Crystal Tap Message */}
+      {/* Cosmic Pulse Dashboard */}
       {astroData && (
         <CrystalMessage
           isOpen={showCrystalOverlay}
           onClose={() => setShowCrystalOverlay(false)}
           planets={astroData.planets}
+          aspects={astroData.aspects}
+          notableAspects={astroData.notableAspects}
+          moon={astroData.moon}
           date={targetDate}
+          earthData={earthData}
+          earthLoading={earthLoading}
         />
       )}
 

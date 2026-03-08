@@ -577,8 +577,10 @@ An ethereal sacred geometry mandala made of light, faithfully recreating the har
 
 ### Component Structure
 
-- `CrystallineCore.tsx` — Full mandala: 3-layer seed circles, emanation rings, frequency waves, core glow, particles, all animation, visibility, tap handling, `getDominantElement()` utility
-- `CrystalMessage.tsx` — Bottom sheet overlay with placeholder cosmic crystallisation message (EN + LT)
+- `CrystallineCore.tsx` — Full mandala: 3-layer seed circles, emanation rings, frequency waves, core glow, particles, all animation, visibility, tap handling, compass tilt, `getDominantElement()` utility
+- `CrystalMessage.tsx` — Cosmic Pulse dashboard modal with 7 visual KPI widgets (EN + LT)
+- `getKeyPlanet.ts` — Determines today's most significant planet (sign ingress → tightest aspect → Moon)
+- `kpis/` — 7 KPI components: ElementBalance, KeyPlayer, CosmicIntensity, KpIndex, SchumannResonance, SolarActivity, AspectMap
 
 ### Rendering Layers (from harmonicwaves.app HarmonicLogo)
 
@@ -627,11 +629,76 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 | Emanation lifecycle | 0.2 Hz, staggered phases | Triangle-wave opacity: fade in → fade out as ring expands |
 | Particle opacity | 0.12 + 0.06×sin(t×1.5) | Gentle shimmer |
 
+### Daily Compass Behaviour
+
+The Crystalline Core subtly tilts toward the day's most significant planet, acting as a visual compass.
+
+**Key Planet Determination** (`getKeyPlanet.ts`):
+1. Any planet that just changed sign today (degreeInSign < 1°) — highest priority
+2. Planet involved in the tightest aspect (smallest orb < 5°)
+3. Moon fallback — if nothing else is remarkable
+
+Returns `{ planet, reason, reasonLt }` used in both the compass tilt and the Key Player KPI card.
+
+**Compass Tilt Implementation**:
+- `keyPlanetLongitude` prop (ecliptic longitude in degrees) passed from page.tsx → wrapper → AstroWheel3D → CrystallineCore
+- Converts longitude to XZ tilt angles: `sin(angle) × 0.15` for X, `-cos(angle) × 0.15` for Z (max ~8.5° tilt)
+- Smoothly animated via lerp (speed: `delta × 2`, capped at 0.1)
+- Layered on top of existing Z-rotation and X-tilt — does not replace them
+- Decays to 0 when keyPlanetLongitude is undefined
+
+### Cosmic Pulse Dashboard Modal
+
+Tapping the Crystalline Core opens a visual KPI dashboard with 7 data widgets. Replaces the previous simple crystallisation message.
+
+**Component Structure**:
+```
+CrystallineCore/
+  ├── CrystallineCore.tsx    — sacred geometry + compass tilt + tap trigger
+  ├── CrystalMessage.tsx     — Cosmic Pulse modal container (7 KPIs)
+  ├── getKeyPlanet.ts        — key planet determination logic
+  └── kpis/
+      ├── ElementBalance.tsx  — SVG donut chart (element distribution)
+      ├── KeyPlayer.tsx       — highlighted planet card (glyph, sign, frequency, chakra)
+      ├── CosmicIntensity.tsx — semi-circular gauge (1-10 score)
+      ├── KpIndex.tsx         — horizontal Kp bar (0-9 segments)
+      ├── SchumannResonance.tsx — SVG sine wave display (7.83 Hz + harmonics)
+      ├── SolarActivity.tsx   — three mini gauges (wind, flare, Bz)
+      └── AspectMap.tsx       — compact aspect list (max 5)
+```
+
+**Data Flow**:
+- `page.tsx` passes `planets, aspects, notableAspects, moon, date, earthData, earthLoading` to CrystalMessage
+- `getKeyPlanet()` computed in page.tsx for compass tilt, and in CrystalMessage for KPI display
+- All KPI visuals rendered as inline SVG — no charting libraries
+- Each KPI card styled as glass-card: `bg-white/[0.03] border-white/[0.06]`
+
+**KPI Details**:
+
+| KPI | Data Source | Visual |
+|-----|-------------|--------|
+| Element Balance | planets → zodiac sign → element mapping | SVG donut (4 coloured segments) |
+| Key Player | getKeyPlanet() + PLANETARY_FREQUENCIES | Planet card with glyph, position, reason, Hz, chakra |
+| Cosmic Intensity | aspects (orb<5°) + retrogrades + moon phase | Semi-circular gauge with gradient arc |
+| Kp Index | useEarthData().kpIndex | Horizontal bar (10 segments, colour-coded) |
+| Schumann Resonance | Static (7.83 Hz + 4 harmonics) | SVG sine waves with Gaussian envelope |
+| Solar Activity | useEarthData() wind/flare/Bz | 3 mini value displays with colour coding |
+| Aspect Map | notableAspects (max 5) | Glyph → symbol → glyph rows with orb |
+
+**Intensity Score Calculation**:
+```
+raw = count(aspects with orb < 5°)
+    + 2 × count(aspects with orb < 1°)
+    + 2 × count(retrograde planets)
+    + 1 if Full Moon or New Moon
+normalised to 1-10 (raw × 10 / 20, capped)
+```
+
 ### Tap Interaction
 
 - Invisible sphere tap target (r=0.3) using `useTapVsDrag` hook
 - On tap: all opacities spike ×2.5 then fade back over 600ms
-- Opens `CrystalMessage` bottom sheet modal
+- Opens Cosmic Pulse dashboard modal (CrystalMessage)
 
 ### Visibility Rules
 
