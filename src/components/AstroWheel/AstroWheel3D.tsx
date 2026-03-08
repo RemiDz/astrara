@@ -12,6 +12,8 @@ import { useTranslation } from '@/i18n/useTranslation'
 import PlanetGlow from '@/features/cosmic-reading/animation/PlanetGlow'
 import AspectBeam from '@/features/cosmic-reading/animation/AspectBeam'
 import { useTapVsDrag } from '@/hooks/useTapVsDrag'
+import type { CrystalFormOverride } from '@/components/SettingsPanel/SettingsPanel'
+import CrystallineCore from '@/components/CrystallineCore/CrystallineCore'
 
 interface PhaseValues {
   zodiacOpacity: number
@@ -55,6 +57,9 @@ interface AstroWheel3DProps {
     } | null
     aspectType?: string | null
   }
+  crystalEnabled?: boolean
+  crystalForm?: CrystalFormOverride
+  onCrystalTap?: () => void
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -1639,6 +1644,7 @@ function WheelScene({
   viewMode = 'geocentric', isTransitioning = false, helioData, onTransitionComplete,
   animationTimeRef, animationSpeedRef,
   sunLabel, showHelioLabels = true, readingAnimation,
+  crystalEnabled = true, crystalForm = 'auto', onCrystalTap,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1847,6 +1853,17 @@ function WheelScene({
 
         {/* Sun centre label — appears in helio view */}
         <SunCentreLabel phaseValuesRef={phaseValuesRef} label={sunLabel} labelOpacityRef={labelOpacityRef} />
+
+        {/* Crystalline Core — living energy focal point above wheel centre */}
+        {crystalEnabled && onCrystalTap && (
+          <CrystallineCore
+            planets={planets}
+            formOverride={crystalForm}
+            viewMode={viewMode ?? 'geocentric'}
+            readingActive={readingAnimation?.isActive ?? false}
+            onCrystalTap={onCrystalTap}
+          />
+        )}
       </group>
 
       {/* Subtle reading glow — only when reading is active */}

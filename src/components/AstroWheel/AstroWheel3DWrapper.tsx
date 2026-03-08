@@ -3,6 +3,7 @@
 import React, { Component, Suspense, lazy, type ReactNode } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
 import type { HelioData } from '@/lib/heliocentric'
+import type { CrystalFormOverride } from '@/components/SettingsPanel/SettingsPanel'
 import AstroWheel from './AstroWheel'
 import Shimmer from '@/components/ui/Shimmer'
 
@@ -43,6 +44,9 @@ interface Props {
     } | null
     aspectType?: string | null
   }
+  crystalEnabled?: boolean
+  crystalForm?: CrystalFormOverride
+  onCrystalTap?: () => void
 }
 
 interface ErrorBoundaryState {

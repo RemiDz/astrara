@@ -25,6 +25,7 @@ import CosmicWeather from '@/components/CosmicWeather/CosmicWeather'
 import EarthPanel from '@/components/EarthPanel/EarthPanel'
 import AboutModal from '@/components/AboutModal/AboutModal'
 import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
+import CrystalTapOverlay from '@/components/CrystallineCore/CrystalTapOverlay'
 import Shimmer from '@/components/ui/Shimmer'
 
 function HomePage() {
@@ -40,6 +41,7 @@ function HomePage() {
   const [showEarthPanel, setShowEarthPanel] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showCrystalOverlay, setShowCrystalOverlay] = useState(false)
   const [settings, setSettings] = useState<AstraraSettings>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -379,6 +381,9 @@ function HomePage() {
                   animationTimeRef={animationTimeRef}
                   animationSpeedRef={animationSpeedRef}
                   showHelioLabels={showHelioLabels}
+                  crystalEnabled={settings.crystalEnabled}
+                  crystalForm={settings.crystalForm}
+                  onCrystalTap={() => setShowCrystalOverlay(true)}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -649,6 +654,16 @@ function HomePage() {
           trackEvent('location-change', { city: loc.city })
         }}
       />
+
+      {/* Crystal Tap Overlay */}
+      {astroData && (
+        <CrystalTapOverlay
+          isOpen={showCrystalOverlay}
+          onClose={() => setShowCrystalOverlay(false)}
+          planets={astroData.planets}
+          date={targetDate}
+        />
+      )}
 
       {/* Headphones hint toast */}
       {showHeadphoneHint && (
