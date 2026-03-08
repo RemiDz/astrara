@@ -1,6 +1,7 @@
 import type { AspectType, ZodiacSign } from '../../types'
 import { getHouseForTransit } from '../../utils/zodiacHelpers'
 import { HOUSE_THEMES } from './houseTemplates'
+import { PLANET_DECLENSIONS_LT, ASPECT_ACCUSATIVE_LT } from './planetDeclensions'
 
 // === ASPECT TYPE DESCRIPTIONS ===
 
@@ -150,7 +151,7 @@ export function generateAspectReading(
 
   if (!p1 || !p2 || !aspect) {
     return lang === 'lt'
-      ? `Ryškus aspektas formuojasi danguje tarp ${planet1Id} ir ${planet2Id}, atnešdamas energijos pokytį, vertą dėmesio.`
+      ? `Ryškus aspektas formuojasi danguje tarp ${PLANET_DECLENSIONS_LT[planet1Id]?.genitive ?? planet1Id} ir ${PLANET_DECLENSIONS_LT[planet2Id]?.genitive ?? planet2Id}, atnešdamas energijos pokytį, vertą dėmesio.`
       : `A notable aspect is forming in the sky between ${planet1Id} and ${planet2Id}, bringing a shift in energy worth paying attention to.`
   }
 
@@ -184,7 +185,7 @@ export function generateAspectReading(
   }
 
   return lang === 'lt'
-    ? `Šiandien ${p1.name[lang]} formuoja ${aspect.name[lang].toLowerCase()} su ${p2.name[lang]}. ${aspect.energy[lang]}. Kai ${p1.domain[lang]} planeta sutinka ${p2.domain[lang]} planetą, rezultatas yra dinamiška sąveika, liečianti ${p1.keywords[lang][0]}, ${p2.keywords[lang][0]} ir erdvę tarp jų. ${guidance[aspectType][lang]}${potency}`
+    ? `Šiandien ${p1.name[lang]} formuoja ${ASPECT_ACCUSATIVE_LT[aspectType] ?? aspect.name[lang].toLowerCase()} su ${PLANET_DECLENSIONS_LT[planet2Id]?.instrumental ?? p2.name[lang]}. ${aspect.energy[lang]}. Kai ${p1.domain[lang]} planeta sutinka ${p2.domain[lang]} planetą, rezultatas yra dinamiška sąveika, liečianti ${p1.keywords[lang][0]}, ${p2.keywords[lang][0]} ir erdvę tarp jų. ${guidance[aspectType][lang]}${potency}`
     : `Today, ${p1.name[lang]} forms a ${aspect.name[lang].toLowerCase()} with ${p2.name[lang]}. ${aspect.energy[lang]}. When the planet of ${p1.domain[lang]} meets the planet of ${p2.domain[lang]}, the result is a dynamic interplay that touches ${p1.keywords[lang][0]}, ${p2.keywords[lang][0]}, and the space between them. ${guidance[aspectType][lang]}${potency}`
 }
 
