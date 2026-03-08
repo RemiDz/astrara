@@ -1175,7 +1175,6 @@ function RotationVelocityTracker({
 }) {
   const { camera } = useThree()
   useFrame((_, delta) => {
-    if (readingActive) return
     if (!onRotationVelocity) return
     const azimuth = Math.atan2(camera.position.x, camera.position.z)
     const velocity = (azimuth - prevAzimuth.current) / Math.max(delta, 0.001)
@@ -1877,7 +1876,7 @@ function WheelScene({
         enableRotate
         enableZoom={false}
         enablePan={false}
-        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning && !(readingAnimation?.isActive)}
+        autoRotate={tiltDone && rotationSpeed > 0 && !isTransitioning}
         autoRotateSpeed={viewMode === 'heliocentric' ? 0.08 : 0.3 * rotationSpeed}
         enabled
         enableDamping
