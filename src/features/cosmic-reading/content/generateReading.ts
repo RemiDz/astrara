@@ -10,7 +10,7 @@ import type {
 } from '../types'
 import { MOON_PHASES, MOON_IN_SIGN } from './templates/moonTemplates'
 import { SUN_IN_SIGN } from './templates/sunTemplates'
-import { generateAspectReading, ASPECT_DESCRIPTIONS, generatePersonalAspectReading } from './templates/aspectTemplates'
+import { generateAspectReading, ASPECT_DESCRIPTIONS, PLANET_ENERGIES, generatePersonalAspectReading } from './templates/aspectTemplates'
 import { RETROGRADE_READINGS, generateRetrogradeSummary } from './templates/retrogradeTemplates'
 import { PLANETARY_FREQUENCIES } from './templates/frequencyTemplates'
 import { HOUSE_THEMES } from './templates/houseTemplates'
@@ -47,11 +47,11 @@ const MOON_PHASE_PLAIN_NAMES: Record<string, { en: string; lt: string }> = {
 // === ASPECT PLAIN NAMES (Change 4B) ===
 
 const ASPECT_PLAIN_NAMES: Record<string, { en: string; lt: string }> = {
-  conjunction: { en: 'Merging Energies',       lt: 'Susijungimas' },
+  conjunction: { en: 'Merging Energies',       lt: 'Susijungiančios Energijos' },
   sextile:     { en: 'Supportive Connection',  lt: 'Palaikantis Ryšys' },
   square:      { en: 'Creative Tension',       lt: 'Kūrybinė Įtampa' },
   trine:       { en: 'Natural Flow',           lt: 'Natūralus Srautas' },
-  opposition:  { en: 'Balancing Act',          lt: 'Pusiausvyra' },
+  opposition:  { en: 'Balancing Act',          lt: 'Pusiausvyros Ieškojimas' },
 }
 
 function capitalize(s: string): string {
@@ -259,7 +259,7 @@ export function generateCosmicReading(
     phases.push({
       id: `aspect-${aspect.planet1}-${aspectType}-${aspect.planet2}`,
       type: 'planetary-aspect',
-      title: `${aspectDesc.name[lang]}`,
+      title: `${PLANET_ENERGIES[aspect.planet1]?.name[lang] ?? aspect.planet1} ✦ ${PLANET_ENERGIES[aspect.planet2]?.name[lang] ?? aspect.planet2}`,
       subtitle: `${aspect.planet1Glyph} ${aspect.symbol} ${aspect.planet2Glyph} · ${aspect.orb}° ${lang === 'lt' ? 'orbita' : 'orb'}`,
       icon: aspect.symbol,
       generalReading: reading,

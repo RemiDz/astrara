@@ -28,9 +28,13 @@ export default function AspectHighlight({ aspect, index, onClick }: AspectHighli
         <span style={{ color: aspect.colour }} className="text-sm">{aspect.symbol}</span>
         <span style={{ color: aspect.colour }} className="text-lg">{aspect.planet2Glyph}</span>
         <span className="text-sm text-white/85 ml-1">
-          {t(`planet.${aspect.planet1}`)} {t(`aspect.${aspect.type}`).toLowerCase()} {t(`planet.${aspect.planet2}`)}
+          {t(`planet.${aspect.planet1}`)} ✦ {t(`planet.${aspect.planet2}`)}
         </span>
       </div>
+
+      <p className="text-[11px] text-white/45 mb-1">
+        {t(`aspect.${aspect.type}.plain`)}
+      </p>
 
       <p className="text-[13px] text-white/40 leading-relaxed">
         {specificInsight || generalInsight?.generalMeaning || ''}
