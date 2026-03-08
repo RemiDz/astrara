@@ -573,18 +573,25 @@ Provides via React Context:
 
 ### Overview
 
-A single, elegant glass icosahedron floating well above the wheel centre (Y=1.6). Its inner glow colour shifts based on the dominant astrological element. Minimal and hypnotic — no wireframes, no particles, no energy streams.
+A single, elegant glass icosahedron floating well above the wheel centre (Y=1.6). Its inner glow colour shifts based on the dominant astrological element. Minimal and hypnotic — uses a three-layer rendering technique for reliable glass appearance across all devices.
 
 ### Component Structure
 
-- `CrystallineCore.tsx` — Single component: mesh, material, all animation, tap handling, `getDominantElement()` utility
+- `CrystallineCore.tsx` — Single component: three-layer mesh, all animation, tap handling, `getDominantElement()` utility
 - `CrystalMessage.tsx` — Bottom sheet overlay with placeholder cosmic crystallisation message (EN + LT)
 
-### Geometry & Material
+### Three-Layer Rendering
 
-- `IcosahedronGeometry(0.18, 0)` — 20-face platonic solid, detail level 0
-- `MeshPhysicalMaterial`: transmission=0.85, thickness=0.5, roughness=0.05, metalness=0.05, ior=2.0, clearcoat=1.0, envMapIntensity=1.5
-- Relies on existing `<Environment preset="night">` for reflections
+| Layer | Geometry | Material | Purpose |
+|-------|----------|----------|---------|
+| 1 — Inner core | IcosahedronGeometry(0.12, 0) | MeshBasicMaterial, AdditiveBlending | Soft coloured inner glow |
+| 2 — Glass shell | IcosahedronGeometry(0.18, 0) | MeshStandardMaterial, metalness=0.8, roughness=0.05, envMapIntensity=2.0, color=#ffffff | Reflective faceted surface |
+| 3 — Wireframe | IcosahedronGeometry(0.181, 0) | MeshBasicMaterial, wireframe=true | Geometric edge definition |
+
+- Layer 1 colour = element colour, additive blending for luminous glow against dark background
+- Layer 2 colour = white, relies on `<Environment preset="night">` for reflections; emissive set to element colour for inner glow pulse
+- Layer 3 colour = element colour, slightly larger than shell to avoid z-fighting
+- All three layers rotate together inside a shared group
 
 ### Element Colour Mapping
 
@@ -610,7 +617,9 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 | Y position | 1.6 + 0.025×sin(t×0.6) | Gentle hover float |
 | Rotation | Y-axis, 0.12 rad/s | ~52s per revolution |
 | Scale breathe | 1.0 + 0.02×sin(t×0.8) | Barely perceptible |
-| Emissive intensity | 0.15 + 0.1×sin(t×1.0) | Soft inner glow pulse |
+| Inner core opacity | 0.2 + 0.1×sin(t×1.0) | Breathing glow pulse |
+| Shell emissive | 0.15 + 0.1×sin(t×1.0) | Soft inner glow on shell |
+| Wireframe opacity | 0.15 + 0.08×sin(t×1.2) | Subtle edge breathing |
 
 ### Tap Interaction
 
@@ -625,7 +634,7 @@ Colour transitions smoothly via `THREE.Color.lerp()` over ~1.5s.
 | Before entrance complete | Hidden — fades in with scale 0.5→1 over 800ms after phase 6 |
 | Geocentric view | Fully visible (opacity 0.9) |
 | Heliocentric view | Faded out to 0 over ~500ms |
-| Cosmic Reading active | Opacity reduced to 40%, emissive dimmed to 0.05 |
+| Cosmic Reading active | All layers to 50% of normal opacity, shell emissive dimmed to 0.05 |
 | Disabled in settings | Completely unmounted from scene |
 
 ### Lighting

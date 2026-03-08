@@ -57,14 +57,16 @@ export default function CrystallineCore({
   entranceComplete,
   onCrystalTap,
 }: CrystallineCoreProps) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const matRef = useRef<THREE.MeshPhysicalMaterial>(null)
-  const lightRef = useRef<THREE.PointLight>(null)
   const groupRef = useRef<THREE.Group>(null)
+  const rotateRef = useRef<THREE.Group>(null)
+  const innerMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  const shellMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const wireMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  const lightRef = useRef<THREE.PointLight>(null)
 
   // Entrance + visibility animation refs
   const entranceFadeRef = useRef(0) // 0→1 during entrance
-  const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0) // 1=geo, 0=helio
+  const helioFadeRef = useRef(viewMode === 'geocentric' ? 1 : 0)
 
   // Tap pulse state
   const pulseRef = useRef({ active: false, time: 0, emissivePeak: false })
@@ -87,12 +89,12 @@ export default function CrystallineCore({
   const tapHandlers = useTapVsDrag({ onTap: handleTap })
 
   useFrame((_, delta) => {
-    if (!groupRef.current || !meshRef.current || !matRef.current) return
+    if (!groupRef.current || !rotateRef.current) return
 
     const time = (groupRef.current.userData.t ?? 0) + delta
     groupRef.current.userData.t = time
 
-    // ── Entrance fade (scale 0.5→1, opacity 0→0.9 over 800ms) ──
+    // ── Entrance fade (scale 0.5→1 over 800ms) ──
     if (entranceComplete && entranceFadeRef.current < 1) {
       entranceFadeRef.current = Math.min(entranceFadeRef.current + delta / 0.8, 1)
     }
@@ -102,8 +104,8 @@ export default function CrystallineCore({
     const helioTarget = isGeo ? 1 : 0
     helioFadeRef.current += (helioTarget - helioFadeRef.current) * Math.min(delta * 4, 0.2)
 
-    // ── Reading dimming ──
-    const readingMul = readingActive ? 0.4 : 1
+    // ── Reading dimming (50% of normal opacity for all layers) ──
+    const readingMul = readingActive ? 0.5 : 1
 
     // ── Combined visibility ──
     const vis = entranceT * helioFadeRef.current * readingMul
@@ -113,7 +115,7 @@ export default function CrystallineCore({
     groupRef.current.position.y = CRYSTAL_Y + 0.025 * Math.sin(time * 0.6)
 
     // ── Rotation (Y-axis only) ──
-    meshRef.current.rotation.y += ROTATION_SPEED * delta
+    rotateRef.current.rotation.y += ROTATION_SPEED * delta
 
     // ── Scale: entrance + breathing + tap pulse ──
     const entranceScale = 0.5 + 0.5 * entranceT
@@ -133,10 +135,8 @@ export default function CrystallineCore({
 
     // ── Colour lerp ──
     currentColourRef.current.lerp(targetColour, Math.min(delta / 1.5, 0.05))
-    matRef.current.color.copy(currentColourRef.current)
-    matRef.current.emissive.copy(currentColourRef.current)
 
-    // ── Emissive intensity: breathing + tap spike ──
+    // ── Emissive intensity on shell: breathing + tap spike ──
     let emissiveI = 0.15 + 0.1 * Math.sin(time * 1.0)
     if (readingActive) emissiveI = 0.05
     if (pulseRef.current.emissivePeak) {
@@ -147,10 +147,27 @@ export default function CrystallineCore({
         pulseRef.current.emissivePeak = false
       }
     }
-    matRef.current.emissiveIntensity = emissiveI
 
-    // ── Opacity ──
-    matRef.current.opacity = 0.9 * vis
+    // ── Layer 1: Inner core — additive glow ──
+    if (innerMatRef.current) {
+      innerMatRef.current.color.copy(currentColourRef.current)
+      const innerBase = 0.2 + 0.1 * Math.sin(time * 1.0)
+      innerMatRef.current.opacity = innerBase * vis
+    }
+
+    // ── Layer 2: Glass shell — reflective facets ──
+    if (shellMatRef.current) {
+      shellMatRef.current.emissive.copy(currentColourRef.current)
+      shellMatRef.current.emissiveIntensity = emissiveI
+      shellMatRef.current.opacity = 0.12 * vis
+    }
+
+    // ── Layer 3: Wireframe edges ──
+    if (wireMatRef.current) {
+      wireMatRef.current.color.copy(currentColourRef.current)
+      const wireBase = 0.15 + 0.08 * Math.sin(time * 1.2)
+      wireMatRef.current.opacity = wireBase * vis
+    }
 
     // ── Point light ──
     if (lightRef.current) {
@@ -161,31 +178,51 @@ export default function CrystallineCore({
 
   return (
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
-      {/* Glass icosahedron */}
-      <mesh
-        ref={meshRef}
-        {...tapHandlers}
-      >
-        <icosahedronGeometry args={[0.18, 0]} />
-        <meshPhysicalMaterial
-          ref={matRef}
-          color={ELEMENT_COLOURS[dominantElement]}
-          transmission={0.85}
-          thickness={0.5}
-          roughness={0.05}
-          metalness={0.05}
-          ior={2.0}
-          clearcoat={1.0}
-          clearcoatRoughness={0.05}
-          envMapIntensity={1.5}
-          transparent
-          opacity={0}
-          side={THREE.DoubleSide}
-          emissive={ELEMENT_COLOURS[dominantElement]}
-          emissiveIntensity={0.15}
-          depthWrite={false}
-        />
-      </mesh>
+      <group ref={rotateRef}>
+        {/* Layer 1: Inner glow core */}
+        <mesh>
+          <icosahedronGeometry args={[0.12, 0]} />
+          <meshBasicMaterial
+            ref={innerMatRef}
+            color={ELEMENT_COLOURS[dominantElement]}
+            transparent
+            opacity={0}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Layer 2: Glass shell */}
+        <mesh>
+          <icosahedronGeometry args={[0.18, 0]} />
+          <meshStandardMaterial
+            ref={shellMatRef}
+            color="#ffffff"
+            transparent
+            opacity={0}
+            metalness={0.8}
+            roughness={0.05}
+            envMapIntensity={2.0}
+            side={THREE.DoubleSide}
+            emissive={ELEMENT_COLOURS[dominantElement]}
+            emissiveIntensity={0.15}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Layer 3: Wireframe edge highlight */}
+        <mesh>
+          <icosahedronGeometry args={[0.181, 0]} />
+          <meshBasicMaterial
+            ref={wireMatRef}
+            color={ELEMENT_COLOURS[dominantElement]}
+            wireframe
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
 
       {/* Tap target — larger invisible hitbox */}
       <mesh {...tapHandlers}>
