@@ -5,6 +5,7 @@ import { calculateDistance } from '@/lib/distance'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useContent } from '@/i18n/useContent'
 import GlassCard from '@/components/ui/GlassCard'
+import { PLANET_DOMAINS } from '@/features/cosmic-reading/content/templates/planetDomains'
 
 interface PlanetCardProps {
   planet: PlanetPosition
@@ -13,10 +14,11 @@ interface PlanetCardProps {
 }
 
 export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
   const content = useContent()
   const insight = content?.planetMeanings?.[planet.id]?.[planet.zodiacSign]
   const dist = calculateDistance(planet.distanceAU)
+  const domain = PLANET_DOMAINS[planet.id]
 
   return (
     <GlassCard onClick={onClick}>
@@ -25,7 +27,7 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
           {planet.glyph}
         </span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-0.5">
             <h3 className="text-base font-serif text-white/85">
               {t(`planet.${planet.id}`)} in {t(`zodiac.${planet.zodiacSign}`)}
             </h3>
@@ -35,6 +37,11 @@ export default function PlanetCard({ planet, index, onClick }: PlanetCardProps) 
               </span>
             )}
           </div>
+          {domain && (
+            <p className="text-[11px] mb-1" style={{ color: planet.colour, opacity: 0.6 }}>
+              {domain[lang as 'en' | 'lt'] ?? domain.en}
+            </p>
+          )}
           <p className="text-xs text-white/25 mb-1">
             {planet.signGlyph} {planet.degreeInSign}°
           </p>

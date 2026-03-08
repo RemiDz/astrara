@@ -3,14 +3,16 @@
 import { useRef, useEffect } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useReadingContext } from '../ReadingContext'
-import type { ReadingPhase, CosmicReading } from '../types'
+import type { ReadingPhase } from '../types'
 import ZodiacSelector from './ZodiacSelector'
 import PhaseNavigation from './PhaseNavigation'
+import PhaseProgressBar from './PhaseProgressBar'
+import { PLANET_DOMAINS } from '../content/templates/planetDomains'
 
 const SIGN_NAMES_LT: Record<string, string> = {
-  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vėžys',
-  leo: 'Liūtas', virgo: 'Mergelė', libra: 'Svarstyklės', scorpio: 'Skorpionas',
-  sagittarius: 'Šaulys', capricorn: 'Ožiaragis', aquarius: 'Vandenis', pisces: 'Žuvys',
+  aries: 'Avinas', taurus: 'Jautis', gemini: 'Dvyniai', cancer: 'Vezys',
+  leo: 'Liutas', virgo: 'Mergele', libra: 'Svarstykles', scorpio: 'Skorpionas',
+  sagittarius: 'Saulys', capricorn: 'Oziaragis', aquarius: 'Vandenis', pisces: 'Zuvys',
 }
 
 export default function ReadingOverlay() {
@@ -26,6 +28,7 @@ export default function ReadingOverlay() {
     completeOnboarding,
     dismissOnboarding,
     nextPhase,
+    jumpToPhase,
     exitReading,
   } = useReadingContext()
 
@@ -33,7 +36,7 @@ export default function ReadingOverlay() {
 
   // Scroll to top on phase change
   useEffect(() => {
-    if (contentRef.current && (state.status === 'PHASE_READING' || state.status === 'SUMMARY')) {
+    if (contentRef.current && state.status === 'PHASE_READING') {
       contentRef.current.scrollTop = 0
     }
   }, [state.status, currentPhaseIndex])
@@ -53,14 +56,12 @@ export default function ReadingOverlay() {
   if (!isReadingActive) return null
 
   const showCard = state.status === 'PHASE_ANIMATING' || state.status === 'PHASE_READING' || state.status === 'PHASE_TRANSITIONING'
-  const showSummary = state.status === 'SUMMARY'
-  const showContent = showCard || showSummary
-  const contentOpacity = state.status === 'PHASE_READING' || state.status === 'SUMMARY' ? 1
+  const showContent = showCard
+  const contentOpacity = state.status === 'PHASE_READING' ? 1
     : state.status === 'PHASE_ANIMATING' ? 0.7
     : state.status === 'PHASE_TRANSITIONING' ? 0.3
     : 0
   const isLastPhase = currentPhaseIndex >= totalPhases - 1
-  const frequencyPhase = currentReading?.phases.find(p => p.type === 'frequency-recommendation')
   const isExiting = state.status === 'EXITING'
 
   const signName = zodiacProfile?.sunSign
@@ -101,6 +102,15 @@ export default function ReadingOverlay() {
             boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
           }}
         >
+          {/* Phase progress icons */}
+          {showContent && currentReading && (
+            <PhaseProgressBar
+              phases={currentReading.phases}
+              currentIndex={currentPhaseIndex}
+              onJump={jumpToPhase}
+            />
+          )}
+
           {/* Scrollable content area — fades between phases, sheet stays open */}
           <div
             ref={contentRef}
@@ -116,15 +126,7 @@ export default function ReadingOverlay() {
               <span className="text-xs leading-none">&#x2715;</span>
             </button>
 
-            {showSummary && currentReading ? (
-              <SummaryContent
-                summary={currentReading.summary}
-                frequencyPhase={frequencyPhase}
-                t={t}
-                lang={lang}
-                signName={signName}
-              />
-            ) : currentPhase ? (
+            {currentPhase ? (
               <PhaseContent
                 phase={currentPhase}
                 phaseIndex={currentPhaseIndex}
@@ -132,6 +134,7 @@ export default function ReadingOverlay() {
                 t={t}
                 lang={lang}
                 signName={signName}
+                keywords={currentPhase.type === 'summary' ? currentReading?.summary.keywords : undefined}
               />
             ) : null}
           </div>
@@ -145,7 +148,6 @@ export default function ReadingOverlay() {
                 onNext={nextPhase}
                 onExit={exitReading}
                 isLastPhase={isLastPhase}
-                isSummary={showSummary}
               />
             </div>
           )}
@@ -159,36 +161,61 @@ export default function ReadingOverlay() {
   )
 }
 
-/* ── Inline phase content ─────────────────────────────────────────── */
+/* -- Inline phase content ------------------------------------------------- */
 
-function PhaseContent({ phase, phaseIndex, totalPhases, t, lang, signName }: {
+function PhaseContent({ phase, phaseIndex, totalPhases, t, lang, signName, keywords }: {
   phase: ReadingPhase
   phaseIndex: number
   totalPhases: number
   t: (key: string) => string
   lang: string
   signName: string | null
+  keywords?: string[]
 }) {
+  const bodies = phase.celestialData.bodies ?? []
+
   return (
     <>
-      {/* Progress dots */}
-      <div className="flex items-center gap-1.5 mb-3 pr-8">
-        {Array.from({ length: totalPhases }).map((_, i) => (
-          <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-            i === phaseIndex ? 'bg-white/80 scale-125' : i < phaseIndex ? 'bg-white/25' : 'bg-white/10'
-          }`} />
-        ))}
-      </div>
-
       {/* Title */}
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center gap-2 mb-1 pr-8">
         {phase.icon && <span className="text-lg">{phase.icon}</span>}
         <h3 className="text-base font-medium text-white/90">{phase.title}</h3>
       </div>
 
+      {/* Plain name subtitle (Change 4A/4B) */}
+      {phase.plainName && (
+        <p className="text-xs text-white/50 mb-1 ml-7">{phase.plainName}</p>
+      )}
+
       {/* Subtitle */}
       {phase.subtitle && (
         <p className="text-xs text-white/40 mb-3">{phase.subtitle}</p>
+      )}
+
+      {/* Keywords (summary phase only) */}
+      {keywords && keywords.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {keywords.map(kw => (
+            <span key={kw} className="px-2.5 py-0.5 rounded-full text-[10px] bg-white/5 border border-white/10 text-white/40">
+              {kw}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Planet domains (Change 4C) — show for all detail phases with celestial bodies */}
+      {phase.type !== 'summary' && bodies.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-3">
+          {bodies.map(bodyId => {
+            const domain = PLANET_DOMAINS[bodyId]
+            if (!domain) return null
+            return (
+              <span key={bodyId} className="text-[11px] text-white/40">
+                {domain[lang as 'en' | 'lt'] ?? domain.en}
+              </span>
+            )
+          })}
+        </div>
       )}
 
       {/* General reading */}
@@ -225,75 +252,6 @@ function PhaseContent({ phase, phaseIndex, totalPhases, t, lang, signName }: {
             </a>
           )}
         </div>
-      )}
-    </>
-  )
-}
-
-/* ── Inline summary content ───────────────────────────────────────── */
-
-function SummaryContent({ summary, frequencyPhase, t, lang, signName }: {
-  summary: CosmicReading['summary']
-  frequencyPhase?: ReadingPhase
-  t: (key: string) => string
-  lang: string
-  signName: string | null
-}) {
-  const freq = frequencyPhase?.frequencyRecommendation
-
-  return (
-    <>
-      <div className="text-center mb-3 pr-6">
-        <div className="text-white/30 text-[10px] uppercase tracking-widest mb-1">
-          ✦ {t('reading.summaryTitle')}
-        </div>
-        <h3 className="text-lg font-[family-name:var(--font-display)] text-white/90">{summary.theme}</h3>
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-1.5 mb-3">
-        {summary.keywords.map(kw => (
-          <span key={kw} className="px-2.5 py-0.5 rounded-full text-[10px] bg-white/5 border border-white/10 text-white/40">
-            {kw}
-          </span>
-        ))}
-      </div>
-
-      <p className="text-sm text-white/60 leading-relaxed text-center">{summary.generalSummary}</p>
-
-      {summary.personalSummary && (
-        <>
-          <div className="flex items-center gap-2 my-3">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-[9px] uppercase tracking-widest text-white/25">
-              {signName ? `${t('reading.forYou')} (${signName})` : t('reading.forYou')}
-            </span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-          <p className="text-sm text-white/45 leading-relaxed italic text-center">{summary.personalSummary}</p>
-        </>
-      )}
-
-      {freq && (
-        <>
-          <div className="flex items-center gap-2 my-3">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-[9px] uppercase tracking-widest text-white/25">{t('reading.yourFrequency')}</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-          <div className="p-3 rounded-xl text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <span className="text-sm">🔔</span>
-              <span className="text-sm text-white/60">{freq.hz} Hz — {freq.name}</span>
-            </div>
-            <p className="text-[10px] text-white/30">{freq.description}</p>
-            {freq.appLink && (
-              <a href={freq.appLink} target="_blank" rel="noopener noreferrer"
-                className="text-[10px] text-purple-300/50 hover:text-purple-300/80 mt-1 inline-block">
-                {t('reading.openInBinara')} →
-              </a>
-            )}
-          </div>
-        </>
       )}
     </>
   )

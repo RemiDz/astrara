@@ -38,6 +38,7 @@ interface ReadingContextValue {
   completeOnboarding: (profile: ZodiacProfile) => void
   dismissOnboarding: () => void
   nextPhase: () => void
+  jumpToPhase: (phaseIndex: number) => void
   exitReading: () => void
   onAnimationComplete: () => void
 }
@@ -134,6 +135,10 @@ export function ReadingProvider({
     dispatch({ type: 'NEXT_PHASE', totalPhases: total })
   }, [currentReading, dispatch])
 
+  const jumpToPhase = useCallback((phaseIndex: number) => {
+    dispatch({ type: 'JUMP_TO_PHASE', phaseIndex })
+  }, [dispatch])
+
   const exitReading = useCallback(() => {
     dispatch({ type: 'EXIT_READING' })
   }, [dispatch])
@@ -212,6 +217,7 @@ export function ReadingProvider({
         completeOnboarding,
         dismissOnboarding,
         nextPhase,
+        jumpToPhase,
         exitReading,
         onAnimationComplete,
       }}

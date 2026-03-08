@@ -6,13 +6,12 @@ interface PhaseNavigationProps {
   onNext: () => void
   onExit: () => void
   isLastPhase: boolean
-  isSummary: boolean
 }
 
-export default function PhaseNavigation({ onNext, onExit, isLastPhase, isSummary }: PhaseNavigationProps) {
+export default function PhaseNavigation({ onNext, onExit, isLastPhase }: PhaseNavigationProps) {
   const { t } = useTranslation()
 
-  if (isSummary) {
+  if (isLastPhase) {
     return (
       <button
         type="button"
@@ -30,7 +29,7 @@ export default function PhaseNavigation({ onNext, onExit, isLastPhase, isSummary
       onClick={onNext}
       className="w-full py-3.5 rounded-xl font-medium text-sm bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] transition-all duration-200 select-none"
     >
-      {isLastPhase ? `${t('reading.summary')} ✦` : t('reading.next')}
+      {t('reading.next')}
     </button>
   )
 }

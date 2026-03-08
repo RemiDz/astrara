@@ -9,7 +9,6 @@ export type ReadingState =
   | { status: 'PHASE_ANIMATING'; phaseIndex: number }
   | { status: 'PHASE_READING'; phaseIndex: number }
   | { status: 'PHASE_TRANSITIONING'; phaseIndex: number }
-  | { status: 'SUMMARY' }
   | { status: 'EXITING' }
 
 // === ACTIONS ===
@@ -22,6 +21,7 @@ export type ReadingAction =
   | { type: 'PREPARING_COMPLETE' }
   | { type: 'ANIMATION_COMPLETE' }
   | { type: 'NEXT_PHASE'; totalPhases: number }
+  | { type: 'JUMP_TO_PHASE'; phaseIndex: number }
   | { type: 'EXIT_READING' }
   | { type: 'EXIT_COMPLETE' }
 
@@ -54,17 +54,18 @@ function readingReducer(state: ReadingState, action: ReadingAction): ReadingStat
 
     case 'PHASE_READING':
       if (action.type === 'NEXT_PHASE') {
-        if (state.phaseIndex >= action.totalPhases - 1) return { status: 'SUMMARY' }
+        if (state.phaseIndex >= action.totalPhases - 1) return { status: 'EXITING' }
         return { status: 'PHASE_TRANSITIONING', phaseIndex: state.phaseIndex }
+      }
+      if (action.type === 'JUMP_TO_PHASE') {
+        if (action.phaseIndex === state.phaseIndex) return state
+        // Set phaseIndex to target - 1 because PHASE_TRANSITIONING → ANIMATION_COMPLETE advances +1
+        return { status: 'PHASE_TRANSITIONING', phaseIndex: action.phaseIndex - 1 }
       }
       return state
 
     case 'PHASE_TRANSITIONING':
       if (action.type === 'ANIMATION_COMPLETE') return { status: 'PHASE_ANIMATING', phaseIndex: state.phaseIndex + 1 }
-      return state
-
-    case 'SUMMARY':
-      // EXIT_READING handled by escape hatch above
       return state
 
     case 'EXITING':

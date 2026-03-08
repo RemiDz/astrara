@@ -79,6 +79,7 @@ export interface ReadingPhase {
   // Content
   generalReading: string         // Universal reading text (always shown)
   personalReading?: string       // Sign-specific reading (shown if zodiac profile exists)
+  plainName?: string             // Plain-English subtitle for jargon terms (e.g. "Sharing & Teaching" for Waning Gibbous)
 
   // Animation directives — consumed by Three.js scene in Phase D
   animation: PhaseAnimation
