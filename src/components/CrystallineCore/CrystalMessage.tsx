@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useTranslation } from '@/i18n/useTranslation'
 import type { PlanetPosition, AspectData, MoonData } from '@/lib/astronomy'
 import type { EarthData } from '@/lib/earth-data'
@@ -13,6 +13,36 @@ import KpIndex from './kpis/KpIndex'
 import SchumannResonance from './kpis/SchumannResonance'
 import SolarActivity from './kpis/SolarActivity'
 import AspectMap from './kpis/AspectMap'
+
+// ── Collapsible explanation wrapper ──
+
+function KpiExplanation({ i18nKey, t }: { i18nKey: string; t: (k: string) => string }) {
+  const [open, setOpen] = useState(false)
+  const toggle = useCallback(() => setOpen(v => !v), [])
+
+  return (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+      <button
+        type="button"
+        onClick={toggle}
+        className="text-[10px] text-white/25 hover:text-white/40 transition-colors select-none"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+      >
+        {t('pulse.explain')} {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <p
+          className="text-xs leading-relaxed mt-2"
+          style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-body)' }}
+        >
+          {t(i18nKey)}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ──
 
 interface CrystalMessageProps {
   isOpen: boolean
@@ -37,7 +67,7 @@ export default function CrystalMessage({
   earthData,
   earthLoading,
 }: CrystalMessageProps) {
-  const { lang } = useTranslation()
+  const { t, lang } = useTranslation()
 
   const keyPlanet = useMemo(
     () => getKeyPlanet(planets, aspects, moon),
@@ -65,30 +95,51 @@ export default function CrystalMessage({
       {/* KPI Cards — stacked with 12px gap */}
       <div className="flex flex-col gap-3">
         {/* KPI 1: Element Balance */}
-        <ElementBalance planets={planets} />
+        <div>
+          <ElementBalance planets={planets} />
+          <KpiExplanation i18nKey="pulse.explain.elementBalance" t={t} />
+        </div>
 
         {/* KPI 2: Key Player */}
-        <KeyPlayer keyPlanet={keyPlanet} planets={planets} />
+        <div>
+          <KeyPlayer keyPlanet={keyPlanet} planets={planets} />
+          <KpiExplanation i18nKey="pulse.explain.keyPlayer" t={t} />
+        </div>
 
         {/* KPI 3: Cosmic Intensity */}
-        <CosmicIntensity planets={planets} aspects={aspects} moon={moon} />
+        <div>
+          <CosmicIntensity planets={planets} aspects={aspects} moon={moon} />
+          <KpiExplanation i18nKey="pulse.explain.cosmicIntensity" t={t} />
+        </div>
 
         {/* KPI 4: Kp Index */}
-        <KpIndex kpIndex={earthData?.kpIndex ?? null} loading={earthLoading} />
+        <div>
+          <KpIndex kpIndex={earthData?.kpIndex ?? null} loading={earthLoading} />
+          <KpiExplanation i18nKey="pulse.explain.kpIndex" t={t} />
+        </div>
 
         {/* KPI 5: Schumann Resonance */}
-        <SchumannResonance />
+        <div>
+          <SchumannResonance />
+          <KpiExplanation i18nKey="pulse.explain.schumann" t={t} />
+        </div>
 
         {/* KPI 6: Solar Activity */}
-        <SolarActivity
-          solarWindSpeed={earthData?.solarWindSpeed ?? null}
-          solarFlareClass={earthData?.solarFlareClass ?? null}
-          bzComponent={earthData?.bzComponent ?? null}
-          loading={earthLoading}
-        />
+        <div>
+          <SolarActivity
+            solarWindSpeed={earthData?.solarWindSpeed ?? null}
+            solarFlareClass={earthData?.solarFlareClass ?? null}
+            bzComponent={earthData?.bzComponent ?? null}
+            loading={earthLoading}
+          />
+          <KpiExplanation i18nKey="pulse.explain.solarActivity" t={t} />
+        </div>
 
         {/* KPI 7: Aspect Map */}
-        <AspectMap aspects={notableAspects} />
+        <div>
+          <AspectMap aspects={notableAspects} />
+          <KpiExplanation i18nKey="pulse.explain.aspects" t={t} />
+        </div>
       </div>
     </Modal>
   )

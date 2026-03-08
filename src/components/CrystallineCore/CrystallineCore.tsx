@@ -2,9 +2,11 @@
 
 import { useRef, useMemo, useCallback, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import type { PlanetPosition } from '@/lib/astronomy'
+import type { PlanetPosition, AspectData, MoonData } from '@/lib/astronomy'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
+import { useTranslation } from '@/i18n/useTranslation'
 import { useTapVsDrag } from '@/hooks/useTapVsDrag'
 
 // ─── Element dominance ──────────────────────────────────────────────
@@ -120,10 +122,70 @@ function makeLineMat(): THREE.LineBasicMaterial {
   return mat
 }
 
+// ─── Cosmic label generator ─────────────────────────────────────────
+
+const ELEMENT_LABEL_KEYS: Record<string, string> = {
+  fire: 'label.fireShapes',
+  earth: 'label.earthGrounds',
+  air: 'label.airMoves',
+  water: 'label.waterFlows',
+}
+
+const ASPECT_VERB_KEYS: Record<string, string> = {
+  conjunction: 'label.meets',
+  opposition: 'label.faces',
+  trine: 'label.flowsWith',
+  square: 'label.challenges',
+  sextile: 'label.supports',
+}
+
+function getCosmicLabel(
+  planets: PlanetPosition[],
+  aspects: AspectData[],
+  moon: MoonData | undefined,
+  t: (key: string) => string,
+): string {
+  // Priority 1: Full / New Moon
+  if (moon) {
+    if (moon.phase === 'Full Moon') return t('label.fullMoon')
+    if (moon.phase === 'New Moon') return t('label.newMoon')
+  }
+
+  // Priority 1: Sign ingress (planet just entered a new sign — degree < 1°)
+  const ingress = planets.find(p => p.degreeInSign < 1 && p.id !== 'moon')
+  if (ingress) {
+    const pName = t(`planet.${ingress.id}`)
+    const sName = t(`zodiac.${ingress.zodiacSign}`)
+    return `✦ ${pName} ${t('label.enters')} ${sName}`
+  }
+
+  // Priority 2: Dominant element
+  const dominant = getDominantElement(planets)
+  if (dominant !== 'neutral') {
+    return t(ELEMENT_LABEL_KEYS[dominant])
+  }
+
+  // Priority 3: Tightest aspect
+  if (aspects.length > 0) {
+    const tightest = [...aspects].sort((a, b) => a.orb - b.orb)[0]
+    const verbKey = ASPECT_VERB_KEYS[tightest.type]
+    if (verbKey) {
+      const p1 = t(`planet.${tightest.planet1}`)
+      const p2 = t(`planet.${tightest.planet2}`)
+      return `✦ ${p1} ${t(verbKey)} ${p2}`
+    }
+  }
+
+  // Priority 4: Fallback
+  return t('label.cosmicSpeaks')
+}
+
 // ─── Component ──────────────────────────────────────────────────────
 
 interface CrystallineCoreProps {
   planets: PlanetPosition[]
+  aspects: AspectData[]
+  moon?: MoonData
   viewMode: 'geocentric' | 'heliocentric'
   readingActive: boolean
   entranceComplete: boolean
@@ -133,12 +195,15 @@ interface CrystallineCoreProps {
 
 export default function CrystallineCore({
   planets,
+  aspects,
+  moon,
   viewMode,
   readingActive,
   entranceComplete,
   onCrystalTap,
   keyPlanetLongitude,
 }: CrystallineCoreProps) {
+  const { t } = useTranslation()
   const groupRef = useRef<THREE.Group>(null)
   const yRotRef = useRef(0)
   const entranceFadeRef = useRef(0)
@@ -146,6 +211,14 @@ export default function CrystallineCore({
   const pulseRef = useRef({ active: false, time: 0 })
   // Compass tilt: smoothly animated tilt toward key planet
   const compassTiltRef = useRef({ x: 0, z: 0 })
+
+  // ── Floating label state ──
+  const labelDivRef = useRef<HTMLDivElement>(null)
+  const labelStateRef = useRef({ displayText: '', crossfade: 1, fadingOut: false })
+  const labelText = useMemo(
+    () => getCosmicLabel(planets, aspects, moon, t),
+    [planets, aspects, moon, t],
+  )
 
   const dominantElement = getDominantElement(planets)
   const targetColour = useMemo(() => new THREE.Color(ELEMENT_COLOURS[dominantElement]), [dominantElement])
@@ -303,6 +376,36 @@ export default function CrystallineCore({
       compassTiltRef.current.z *= 0.95
     }
 
+    // ── Floating label animation ──
+    {
+      const ls = labelStateRef.current
+      // Detect text change → crossfade
+      if (labelText !== ls.displayText && !ls.fadingOut) {
+        if (ls.displayText === '') {
+          ls.displayText = labelText
+        } else {
+          ls.fadingOut = true
+        }
+      }
+      if (ls.fadingOut) {
+        ls.crossfade = Math.max(0, ls.crossfade - delta / 0.4)
+        if (ls.crossfade <= 0.01) {
+          ls.displayText = labelText
+          ls.fadingOut = false
+          ls.crossfade = 0
+        }
+      } else if (ls.crossfade < 1) {
+        ls.crossfade = Math.min(1, ls.crossfade + delta / 0.4)
+      }
+      if (labelDivRef.current) {
+        const baseOp = readingActive ? 0.15 : (0.3 + 0.08 * Math.sin(time * 0.6))
+        const labelVis = eT * helioFadeRef.current
+        const finalOp = baseOp * labelVis * ls.crossfade
+        labelDivRef.current.style.opacity = String(Math.max(0, finalOp))
+        labelDivRef.current.textContent = ls.displayText
+      }
+    }
+
     // ── Rotation: independent Y-spin (0.03 rad/s) + X-tilt + compass lean ──
     yRotRef.current += Y_ROT_SPEED * delta
     groupRef.current.rotation.set(
@@ -419,6 +522,7 @@ export default function CrystallineCore({
   })
 
   return (
+    <>
     <group ref={groupRef} position={[0, CRYSTAL_Y, 0]} visible={false}>
       {/* 5 gyroscope-distributed Seed of Life layers — no flat planes */}
       {seeds.map((layer, li) => (
@@ -451,5 +555,30 @@ export default function CrystallineCore({
         <meshBasicMaterial visible={false} />
       </mesh>
     </group>
+
+    {/* Floating cosmic label — positioned above mother shape, outside rotating group */}
+    <Html
+      center
+      position={[0, 2.05, 0]}
+      zIndexRange={[1, 0]}
+    >
+      <div
+        ref={labelDivRef}
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '11px',
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+          color: 'rgba(255, 255, 255, 0.35)',
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          opacity: 0,
+          textShadow: `0 0 12px ${ELEMENT_COLOURS[getDominantElement(planets)]}4D`,
+        }}
+      />
+    </Html>
+    </>
   )
 }

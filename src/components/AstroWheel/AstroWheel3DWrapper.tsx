@@ -1,7 +1,7 @@
 'use client'
 
 import React, { Component, Suspense, lazy, type ReactNode } from 'react'
-import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import type { PlanetPosition, AspectData, MoonData } from '@/lib/astronomy'
 import type { HelioData } from '@/lib/heliocentric'
 import type { ConnectionTarget } from '@/components/CrystallineCore/EnergyLinks'
 import AstroWheel from './AstroWheel'
@@ -48,6 +48,7 @@ interface Props {
   onCrystalTap?: () => void
   keyPlanetLongitude?: number
   connectionTargets?: ConnectionTarget[]
+  moon?: MoonData
 }
 
 interface ErrorBoundaryState {

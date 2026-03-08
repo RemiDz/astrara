@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Html, Line, Environment, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import type { PlanetPosition, AspectData, MoonData } from '@/lib/astronomy'
 import { HELIO_RING_RADII, MOON_ORBIT_OFFSET, calculateAllHelioData, type HelioData } from '@/lib/heliocentric'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -61,6 +61,7 @@ interface AstroWheel3DProps {
   onCrystalTap?: () => void
   keyPlanetLongitude?: number
   connectionTargets?: ConnectionTarget[]
+  moon?: MoonData
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -1649,6 +1650,7 @@ function WheelScene({
   animationTimeRef, animationSpeedRef,
   sunLabel, showHelioLabels = true, readingAnimation,
   crystalEnabled = true, onCrystalTap, keyPlanetLongitude, connectionTargets = [],
+  moon,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1863,6 +1865,8 @@ function WheelScene({
         {crystalEnabled && onCrystalTap && (
           <CrystallineCore
             planets={planets}
+            aspects={aspects}
+            moon={moon}
             viewMode={viewMode ?? 'geocentric'}
             readingActive={readingAnimation?.isActive ?? false}
             entranceComplete={entranceComplete}

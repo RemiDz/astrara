@@ -729,6 +729,35 @@ Animated curved arcs flowing from the mother shape (Y=1.6) down to significant p
 
 **Data Flow**: `page.tsx` computes `ConnectionTarget[]` → wrapper → AstroWheel3D → EnergyLinks + PlanetOrb
 
+### Floating Cosmic Label
+
+Ethereal text above the mother shape describing the current cosmic situation. Rendered via `<Html center>` from drei at position `[0, 2.05, 0]` — outside the rotating group to prevent rotation.
+
+**Priority-Based Text Generation** (`getCosmicLabel` in CrystallineCore.tsx):
+1. **Full/New Moon** — "✦ Full Moon illumination" / "✦ New Moon inception"
+2. **Sign Ingress** — "✦ [Planet] enters [Sign]" (detected via `degreeInSign < 1°`)
+3. **Dominant Element** — "✦ Fire shapes this moment" / Earth grounds / Air moves / Water flows
+4. **Tightest Aspect** — "✦ [Planet A] meets/faces/flows with/challenges/supports [Planet B]"
+5. **Fallback** — "✦ The cosmos speaks"
+
+**Animation**:
+- Breathing opacity: `0.3 + 0.08 × sin(time × 0.6)` — oscillates between 0.22 and 0.38
+- During reading: flat 0.15 opacity
+- During heliocentric: fades to 0 with crystal
+- Text change: crossfade (400ms out, 400ms in) via `labelStateRef` tracking
+
+**Styling**: Cormorant Garamond 11px, uppercase, tracking 2px, `rgba(255,255,255,0.35)`, text-shadow in element colour, `pointer-events: none`
+
+**Data Flow**: `page.tsx` passes `moon` → wrapper → AstroWheel3D → CrystallineCore. `aspects` already available. Label text computed via `useMemo([planets, aspects, moon, t])`.
+
+### KPI Card Explanations
+
+Each of the 7 KPI cards in the Cosmic Pulse modal has a collapsible "What does this mean?" / "Ką tai reiškia?" section. Default state: collapsed.
+
+- `KpiExplanation` component in `CrystalMessage.tsx` — toggle button + expandable paragraph
+- Explanation text in both EN and LT stored in i18n keys: `pulse.explain.{elementBalance,keyPlayer,cosmicIntensity,kpIndex,schumann,solarActivity,aspects}`
+- Styling: DM Sans 12px, line-height 1.6, `rgba(255,255,255,0.4)`, faint border-top separator
+
 ### Visibility Rules
 
 | Context | Behaviour |
@@ -736,7 +765,7 @@ Animated curved arcs flowing from the mother shape (Y=1.6) down to significant p
 | Before entrance complete | Hidden — fades in with scale 0.5→1 over 800ms after phase 6 |
 | Geocentric view | Fully visible |
 | Heliocentric view | Faded out to 0 over ~500ms |
-| Cosmic Reading active | All opacities to 40% of normal values |
+| Cosmic Reading active | All opacities to 40% of normal values; floating label dims to 0.15 |
 | Disabled in settings | Completely unmounted from scene |
 
 ### Settings

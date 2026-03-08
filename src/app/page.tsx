@@ -409,6 +409,7 @@ function HomePage() {
                   onCrystalTap={() => setShowCrystalOverlay(true)}
                   keyPlanetLongitude={keyPlanetLongitude}
                   connectionTargets={connectionTargets}
+                  moon={astroData.moon}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
