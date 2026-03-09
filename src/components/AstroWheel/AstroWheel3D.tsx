@@ -208,7 +208,7 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
           fontSize: '20px',
           color: ELEMENT_COLOURS[sign.element],
           opacity: sceneReady ? 0.5 : 0,
-          textShadow: `0 0 10px ${ELEMENT_COLOURS[sign.element]}50, 0 0 20px ${ELEMENT_COLOURS[sign.element]}25, 0 0 40px ${ELEMENT_COLOURS[sign.element]}10`,
+          textShadow: 'none',
           fontFamily: 'serif',
           lineHeight: 1,
           transform: sceneReady ? 'scale(1)' : 'scale(0.5)',
@@ -288,11 +288,11 @@ function OuterZodiacRing({
               opacity={0.12}
               roughness={0.05}
               metalness={0.6}
-              clearcoat={1.0}
+              clearcoat={0.3}
               clearcoatRoughness={0.05}
               side={THREE.DoubleSide}
               emissive={new THREE.Color(ELEMENT_COLOURS[sign.element])}
-              emissiveIntensity={0.08}
+              emissiveIntensity={0.02}
             />
           </mesh>
           <ZodiacSignButton
