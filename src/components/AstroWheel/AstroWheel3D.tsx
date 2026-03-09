@@ -224,7 +224,7 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
         }}
         aria-label={`View ${sign.name} details`}
       >
-        {sign.glyph}
+        {sign.glyph + '\uFE0E'}
       </button>
     </Html>
   )
