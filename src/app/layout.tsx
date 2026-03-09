@@ -52,16 +52,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <Script
-          defer
-          data-domain="astrara.app"
-          src="https://plausible.io/js/script.js"
-          strategy="afterInteractive"
-        />
-      </head>
       <body className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable} font-[family-name:var(--font-body)] antialiased`}>
         {children}
+        {/* Plausible Analytics */}
+        <Script
+          src="https://plausible.io/js/pa-kP7NC2980l34MzdHVVVhR.js"
+          strategy="afterInteractive"
+        />
+        <Script id="plausible-init" strategy="afterInteractive">
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init();`}
+        </Script>
       </body>
     </html>
   )
