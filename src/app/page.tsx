@@ -644,6 +644,15 @@ function HomePage() {
 
           {/* Footer */}
           <footer className="text-center py-6 border-t border-white/5">
+            <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
+              <a
+                href="/learn"
+                className="hover:text-white transition-colors"
+                style={{ color: 'var(--accent-purple)' }}
+              >
+                {t('learn.nav')}
+              </a>
+            </p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {t('footer.partOf')}{' '}
               <a
