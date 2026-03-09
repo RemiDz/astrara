@@ -27,6 +27,7 @@ import AboutModal from '@/components/AboutModal/AboutModal'
 import SettingsPanel, { type AstraraSettings, DEFAULT_SETTINGS } from '@/components/SettingsPanel/SettingsPanel'
 import CrystalMessage from '@/components/CrystallineCore/CrystalMessage'
 import { getKeyPlanet } from '@/components/CrystallineCore/getKeyPlanet'
+import { calculateZodiacImpact } from '@/lib/zodiac-impact'
 import type { ConnectionTarget } from '@/components/CrystallineCore/EnergyLinks'
 import Shimmer from '@/components/ui/Shimmer'
 
@@ -148,6 +149,12 @@ function HomePage() {
     }
     return targets.slice(0, 3)
   }, [astroData])
+
+  // Zodiac impact scores for heat map badges
+  const zodiacImpact = useMemo(
+    () => astroData ? calculateZodiacImpact(astroData.planets, astroData.aspects) : {},
+    [astroData],
+  )
 
   // Header date display ref — updated by rAF during autoplay, avoids re-renders
   const headerDateRef = useRef<HTMLSpanElement>(null)
@@ -410,6 +417,7 @@ function HomePage() {
                   keyPlanetLongitude={keyPlanetLongitude}
                   connectionTargets={connectionTargets}
                   moon={astroData.moon}
+                  zodiacImpact={zodiacImpact}
                 />
               ) : (
                 <div className="relative w-full flex items-center justify-center" style={{ height: '95vw', maxHeight: '550px' }}>
@@ -656,6 +664,8 @@ function HomePage() {
       <WheelTooltip
         tooltip={tooltip}
         planets={astroData?.planets ?? []}
+        aspects={astroData?.aspects ?? []}
+        zodiacImpact={zodiacImpact}
         onClose={handleCloseTooltip}
         solarFlareClass={earthData?.solarFlareClass ?? null}
         solarFluxValue={earthData?.solarFluxValue ?? null}

@@ -18,6 +18,14 @@ ZODIAC_SIGNS.forEach((s) => { SIGN_TO_ELEMENT[s.id] = s.element as DominantEleme
 
 const LUMINARIES = new Set(['sun', 'moon'])
 
+// Lithuanian accusative case for zodiac signs (after "į")
+const ZODIAC_ACCUSATIVE_LT: Record<string, string> = {
+  aries: 'Aviną', taurus: 'Jautį', gemini: 'Dvynius',
+  cancer: 'Vėžį', leo: 'Liūtą', virgo: 'Mergelę',
+  libra: 'Svarstykles', scorpio: 'Skorpioną', sagittarius: 'Šaulį',
+  capricorn: 'Ožiaragį', aquarius: 'Vandenį', pisces: 'Žuvis',
+}
+
 export function getDominantElement(planets: PlanetPosition[]): DominantElement {
   const counts = { fire: 0, earth: 0, air: 0, water: 0 }
   for (const p of planets) {
@@ -144,6 +152,7 @@ function getCosmicLabel(
   aspects: AspectData[],
   moon: MoonData | undefined,
   t: (key: string) => string,
+  lang: string,
 ): string {
   // Priority 1: Full / New Moon
   if (moon) {
@@ -155,7 +164,9 @@ function getCosmicLabel(
   const ingress = planets.find(p => p.degreeInSign < 1 && p.id !== 'moon')
   if (ingress) {
     const pName = t(`planet.${ingress.id}`)
-    const sName = t(`zodiac.${ingress.zodiacSign}`)
+    const sName = lang === 'lt'
+      ? (ZODIAC_ACCUSATIVE_LT[ingress.zodiacSign] ?? t(`zodiac.${ingress.zodiacSign}`))
+      : t(`zodiac.${ingress.zodiacSign}`)
     return `✦ ${pName} ${t('label.enters')} ${sName}`
   }
 
@@ -203,7 +214,7 @@ export default function CrystallineCore({
   onCrystalTap,
   keyPlanetLongitude,
 }: CrystallineCoreProps) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
   const groupRef = useRef<THREE.Group>(null)
   const yRotRef = useRef(0)
   const entranceFadeRef = useRef(0)
@@ -216,8 +227,8 @@ export default function CrystallineCore({
   const labelDivRef = useRef<HTMLDivElement>(null)
   const labelStateRef = useRef({ displayText: '', crossfade: 1, fadingOut: false })
   const labelText = useMemo(
-    () => getCosmicLabel(planets, aspects, moon, t),
-    [planets, aspects, moon, t],
+    () => getCosmicLabel(planets, aspects, moon, t, lang),
+    [planets, aspects, moon, t, lang],
   )
 
   const dominantElement = getDominantElement(planets)

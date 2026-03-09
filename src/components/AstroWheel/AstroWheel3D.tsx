@@ -62,6 +62,7 @@ interface AstroWheel3DProps {
   keyPlanetLongitude?: number
   connectionTargets?: ConnectionTarget[]
   moon?: MoonData
+  zodiacImpact?: Record<string, number>
 }
 
 const HELIO_SCALE_MULTIPLIERS: Record<string, number> = {
@@ -172,7 +173,7 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
 })
 
 // ─── Outer Zodiac Ring (Ring 1) ─────────────────────────────────────
-function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRefs }: {
+function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRefs, impactScore }: {
   sign: typeof ZODIAC_SIGNS[number]
   gx: number
   gz: number
@@ -180,6 +181,7 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
   sceneReady: boolean
   onSignTap: (signId: string) => void
   glyphRefs: React.MutableRefObject<(HTMLButtonElement | null)[]>
+  impactScore: number
 }) {
   const tapHandlers = useTapVsDrag({
     onTap: () => onSignTap(sign.id),
@@ -204,6 +206,13 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
                    active:scale-90 transition-transform duration-150"
         style={{
           background: 'transparent',
+          backgroundColor: impactScore >= 0.7
+            ? 'rgba(220, 50, 50, 0.35)'
+            : impactScore >= 0.4
+              ? 'rgba(220, 140, 0, 0.30)'
+              : impactScore >= 0.2
+                ? 'rgba(200, 175, 50, 0.25)'
+                : 'transparent',
           border: 'none',
           fontSize: '20px',
           color: ELEMENT_COLOURS[sign.element],
@@ -229,10 +238,12 @@ function OuterZodiacRing({
   onSignTap,
   sceneReady,
   phaseValuesRef,
+  zodiacImpact,
 }: {
   onSignTap: (signId: string) => void
   sceneReady: boolean
   phaseValuesRef?: React.MutableRefObject<PhaseValues>
+  zodiacImpact: Record<string, number>
 }) {
   // Direct DOM refs for per-frame opacity updates on zodiac glyph buttons
   const glyphRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -303,6 +314,7 @@ function OuterZodiacRing({
             sceneReady={sceneReady}
             onSignTap={onSignTap}
             glyphRefs={glyphRefs}
+            impactScore={zodiacImpact[sign.id] ?? 0}
           />
         </group>
       ))}
@@ -1650,7 +1662,7 @@ function WheelScene({
   animationTimeRef, animationSpeedRef,
   sunLabel, showHelioLabels = true, readingAnimation,
   crystalEnabled = true, onCrystalTap, keyPlanetLongitude, connectionTargets = [],
-  moon,
+  moon, zodiacImpact,
 }: AstroWheel3DProps & { sceneReady: boolean; sunLabel?: string }) {
   const [entranceComplete, setEntranceComplete] = useState(false)
   const [tiltStarted, setTiltStarted] = useState(false)
@@ -1803,7 +1815,7 @@ function WheelScene({
 
           {/* Phase 3: Outer zodiac ring (800ms) */}
           <AnimatedScaleGroup sceneReady={sceneReady} delay={600}>
-            <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} />
+            <OuterZodiacRing onSignTap={onSignTap} sceneReady={sceneReady} phaseValuesRef={phaseValuesRef} zodiacImpact={zodiacImpact ?? {}} />
           </AnimatedScaleGroup>
         </GeoFadeGroup>
 

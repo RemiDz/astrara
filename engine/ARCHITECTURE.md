@@ -57,7 +57,7 @@ astrara.app/
 │   │   │   ├── AstroWheel3DWrapper.tsx  # Error boundary + Suspense
 │   │   │   ├── AstroWheel.tsx           # 2D SVG fallback wheel
 │   │   │   ├── PlanetMarker.tsx         # 2D planet marker (SVG)
-│   │   │   ├── WheelTooltip.tsx         # Detail panel for tapped items
+│   │   │   ├── WheelTooltip.tsx         # Detail panel for tapped items (sign: impact bar, transit cards, active aspects)
 │   │   │   └── ZodiacRing.tsx           # 2D zodiac ring (SVG)
 │   │   ├── CosmicWeather/
 │   │   │   ├── CosmicWeather.tsx        # Weather container
@@ -137,6 +137,7 @@ astrara.app/
 │   │   ├── distance.ts              # AU → km/miles/light-travel
 │   │   ├── insights.ts              # Insight accessor functions
 │   │   ├── earth-data.ts            # NOAA API data fetcher
+│   │   ├── zodiac-impact.ts         # calculateZodiacImpact() — per-sign heat map scores (0–1)
 │   │   ├── earth-insights.ts        # Kp-based guidance text
 │   │   ├── dateTitle.ts             # Date formatting (EN/LT)
 │   │   └── location.ts             # Geolocation + Nominatim geocoding
@@ -299,7 +300,7 @@ astronomy-engine (client-side)
 - **UI strings:** `src/i18n/translations/{en,lt}.json` — accessed via `useTranslation().t(key)`
 - **Content data:** `src/i18n/content/{en,lt}/*.ts` — accessed via `useContent()` hook
 - **Switching:** `LanguageToggle` component → `useLanguage().setLang()` → persisted in localStorage `astrara-lang`
-- **Lithuanian grammar:** Planet declensions (5 cases) in `planetDeclensions.ts`; locative case zodiac names in translation files
+- **Lithuanian grammar:** Planet declensions (5 cases) in `planetDeclensions.ts`; locative case zodiac names in translation files; accusative case zodiac names in `CrystallineCore.tsx` (`ZODIAC_ACCUSATIVE_LT`) for ingress labels ("į Aviną")
 - **Detection:** Browser language checked on first visit (`navigator.language.startsWith('lt')`)
 
 ### User Location

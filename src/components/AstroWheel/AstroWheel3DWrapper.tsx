@@ -49,6 +49,7 @@ interface Props {
   keyPlanetLongitude?: number
   connectionTargets?: ConnectionTarget[]
   moon?: MoonData
+  zodiacImpact?: Record<string, number>
 }
 
 interface ErrorBoundaryState {

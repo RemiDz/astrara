@@ -16,13 +16,15 @@ type TooltipData =
 interface WheelTooltipProps {
   tooltip: TooltipData
   planets: PlanetPosition[]
+  aspects?: AspectData[]
+  zodiacImpact?: Record<string, number>
   onClose: () => void
   solarFlareClass?: string | null
   solarFluxValue?: number | null
 }
 
-export default function WheelTooltip({ tooltip, planets, onClose, solarFlareClass, solarFluxValue }: WheelTooltipProps) {
-  const { t } = useTranslation()
+export default function WheelTooltip({ tooltip, planets, aspects = [], zodiacImpact = {}, onClose, solarFlareClass, solarFluxValue }: WheelTooltipProps) {
+  const { t, lang } = useTranslation()
   const content = useContent()
 
   if (!tooltip) return null
@@ -33,7 +35,7 @@ export default function WheelTooltip({ tooltip, planets, onClose, solarFlareClas
         <PlanetDetail planet={tooltip.data} t={t} content={content} solarFlareClass={solarFlareClass} solarFluxValue={solarFluxValue} />
       )}
       {tooltip.type === 'sign' && (
-        <SignDetail signId={tooltip.data} planets={planets} t={t} content={content} />
+        <SignDetail signId={tooltip.data} planets={planets} aspects={aspects} zodiacImpact={zodiacImpact} t={t} lang={lang} content={content} />
       )}
       {tooltip.type === 'aspect' && (
         <AspectDetail aspect={tooltip.data} t={t} content={content} />
@@ -198,10 +200,48 @@ function PlanetDetail({ planet, t, content, solarFlareClass, solarFluxValue }: {
   )
 }
 
-function SignDetail({ signId, planets, t, content }: { signId: string; planets: PlanetPosition[]; t: (k: string) => string; content: ReturnType<typeof useContent> }) {
+const ASPECT_COLOURS: Record<string, string> = {
+  conjunction: '#FFD700', square: '#FF4444', trine: '#60A5FA',
+  opposition: '#A78BFA', sextile: '#4DCCB0',
+}
+
+function ImpactScoreBar({ score, t, lang }: { score: number; t: (k: string) => string; lang: string }) {
+  const display = Math.round(score * 10)
+  const colour = display >= 8 ? '#FF4444' : display >= 6 ? '#FF8C00' : display >= 4 ? '#FFD700' : '#4ADE80'
+  const qualEN = ['Quiet', 'Quiet', 'Mild', 'Mild', 'Active', 'Active', 'Strong', 'Strong', 'Intense', 'Intense']
+  const qualLT = ['Ramu', 'Ramu', 'Švelnu', 'Švelnu', 'Aktyvu', 'Aktyvu', 'Stipru', 'Stipru', 'Intensyvu', 'Intensyvu']
+  const label = (lang === 'lt' ? qualLT : qualEN)[Math.min(display, 9)]
+
+  return (
+    <div className="mb-4">
+      <h3 className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
+        {lang === 'lt' ? 'Šiandienos Poveikis' : "Today's Impact"}
+      </h3>
+      <div className="glass-card p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium" style={{ color: colour }}>{display}/10</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
+        </div>
+        <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)' }}>
+          <div style={{ height: 6, borderRadius: 3, width: `${display * 10}%`, background: colour, transition: 'width 0.3s' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SignDetail({ signId, planets, aspects, zodiacImpact, t, lang, content }: {
+  signId: string; planets: PlanetPosition[]; aspects: AspectData[]; zodiacImpact: Record<string, number>
+  t: (k: string) => string; lang: string; content: ReturnType<typeof useContent>
+}) {
   const sign = ZODIAC_SIGNS.find(s => s.id === signId)
   const planetsInSign = planets.filter(p => p.zodiacSign === signId)
   const signInsight = content?.signMeanings?.[signId]
+  const impactScore = zodiacImpact[signId] ?? 0
+
+  // Aspects involving planets in this sign
+  const signPlanetIds = new Set(planetsInSign.map(p => p.id))
+  const activeAspects = aspects.filter(a => a.orb <= 5 && (signPlanetIds.has(a.planet1) || signPlanetIds.has(a.planet2)))
 
   if (!sign) return null
 
@@ -221,6 +261,59 @@ function SignDetail({ signId, planets, t, content }: { signId: string; planets: 
         </p>
       </div>
 
+      {/* Impact Score Bar */}
+      <ImpactScoreBar score={impactScore} t={t} lang={lang} />
+
+      {/* Planets currently in this sign — transit cards */}
+      {planetsInSign.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+            {lang === 'lt' ? `Dabar ${t(`zodiac.${signId}.loc`) || t(`zodiac.${signId}`)}` : `Currently in ${t(`zodiac.${signId}`)}`}
+          </h3>
+          <div className="space-y-2.5">
+            {planetsInSign.map(p => {
+              const insight = content?.planetMeanings?.[p.id]?.[signId]
+              return (
+                <div key={p.id} className="glass-card p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg" style={{ color: p.colour }}>{p.glyph}</span>
+                    <span className="text-sm font-medium text-white">{t(`planet.${p.id}`)}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.degreeInSign}°</span>
+                    {p.isRetrograde && <span className="text-xs text-red-400">Rx</span>}
+                  </div>
+                  {insight?.oneLiner && (
+                    <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      &ldquo;{insight.oneLiner}&rdquo;
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Active Aspects in this sign */}
+      {activeAspects.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+            {lang === 'lt' ? 'Aktyvūs Aspektai' : 'Active Aspects'}
+          </h3>
+          <div className="space-y-1.5">
+            {activeAspects.map((a, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <span style={{ color: ASPECT_COLOURS[a.type] || '#888' }}>
+                  {a.planet1Glyph} {a.symbol} {a.planet2Glyph}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {t(`aspect.${a.type}`)} · {a.orb.toFixed(1)}°
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="w-full h-px bg-white/8 mb-4" />
 
       {/* Energy description */}
@@ -237,27 +330,16 @@ function SignDetail({ signId, planets, t, content }: { signId: string; planets: 
         </>
       )}
 
-      {/* Planets currently in this sign */}
-      <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
-        {t('sign.planetsHere')}
-      </h3>
-      {planetsInSign.length > 0 ? (
-        <div className="space-y-2.5 mb-5">
-          {planetsInSign.map(p => (
-            <div key={p.id} className="flex items-start gap-3">
-              <span className="text-lg" style={{ color: p.colour }}>{p.glyph}</span>
-              <div>
-                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {t(`planet.${p.id}`)} at {p.degreeInSign}°
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm italic mb-5" style={{ color: 'var(--text-muted)' }}>
-          {signInsight?.noPlanetsMessage}
-        </p>
+      {/* Planets list (original) — only show if no transit cards above */}
+      {planetsInSign.length === 0 && (
+        <>
+          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+            {t('sign.planetsHere')}
+          </h3>
+          <p className="text-sm italic mb-5" style={{ color: 'var(--text-muted)' }}>
+            {signInsight?.noPlanetsMessage}
+          </p>
+        </>
       )}
 
       {signInsight && (
