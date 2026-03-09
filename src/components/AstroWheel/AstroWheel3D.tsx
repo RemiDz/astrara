@@ -206,16 +206,12 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
                    active:scale-90 transition-transform duration-150"
         style={{
           background: 'transparent',
-          backgroundColor: impactScore >= 0.7
-            ? 'rgba(220, 50, 50, 0.35)'
-            : impactScore >= 0.4
-              ? 'rgba(220, 140, 0, 0.30)'
-              : impactScore >= 0.2
-                ? 'rgba(200, 175, 50, 0.25)'
-                : 'transparent',
           border: 'none',
           fontSize: '20px',
-          color: ELEMENT_COLOURS[sign.element],
+          color: impactScore >= 0.7 ? '#FF4444'
+            : impactScore >= 0.4 ? '#FF8C00'
+            : impactScore >= 0.2 ? '#FFD700'
+            : ELEMENT_COLOURS[sign.element],
           opacity: sceneReady ? 0.5 : 0,
           textShadow: 'none',
           fontFamily: 'serif',
