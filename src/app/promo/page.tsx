@@ -1,64 +1,32 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import * as Astronomy from 'astronomy-engine'
-import { getPlanetPositions, getMoonData, type PlanetPosition, type MoonData } from '@/lib/astronomy'
-import { fetchEarthData, type EarthData } from '@/lib/earth-data'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { getPlanetPositions, getMoonData } from '@/lib/astronomy'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { LanguageProvider } from '@/i18n/LanguageContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { useTranslation } from '@/i18n/useTranslation'
 import LanguageToggle from '@/components/LanguageToggle'
+import ClientDetailsForm, { type NatalInfo } from '@/components/ReadingStudio/ClientDetailsForm'
+import ScopeSelector, { type ScopeState } from '@/components/ReadingStudio/ScopeSelector'
+import StyleSelector, { type ReadingStyle } from '@/components/ReadingStudio/StyleSelector'
+import ReadingOutput from '@/components/ReadingStudio/ReadingOutput'
+import ReadingHistory, { type ReadingHistoryEntry } from '@/components/ReadingStudio/ReadingHistory'
 
-const markdownComponents = {
-  h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="text-white/80 text-base font-medium mt-6 mb-2 uppercase tracking-wide">
-      {children}
-    </h2>
-  ),
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="text-white/70 text-sm leading-relaxed mb-3">
-      {children}
-    </p>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="text-white/90 font-medium">{children}</strong>
-  ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="space-y-2 my-3">{children}</ul>
-  ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="text-white/70 text-sm leading-relaxed flex gap-2">
-      <span className="text-white/30 mt-0.5">{'\u2192'}</span>
-      <span>{children}</span>
-    </li>
-  ),
-}
+const HISTORY_KEY = 'astrara_reading_history'
+const MAX_HISTORY = 10
 
 export default function Page() {
   return (
     <LanguageProvider>
-      <PromoPage />
+      <ReadingStudioPage />
     </LanguageProvider>
   )
 }
 
-function PromoPage() {
+function ReadingStudioPage() {
   const { t, lang } = useTranslation()
-  const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [selectedSign, setSelectedSign] = useState<string>('Aries')
-  const [earthData, setEarthData] = useState<EarthData | null>(null)
-  const [earthLoading, setEarthLoading] = useState(true)
-  const [copiedField, setCopiedField] = useState<string | null>(null)
-  const [horoscope, setHoroscope] = useState<string>('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generationError, setGenerationError] = useState<string | null>(null)
-  const [weeklyHoroscope, setWeeklyHoroscope] = useState('')
-  const [isGeneratingWeekly, setIsGeneratingWeekly] = useState(false)
-  const [dailyReading, setDailyReading] = useState('')
-  const [isGeneratingDaily, setIsGeneratingDaily] = useState(false)
-  const lastGenerationTime = useRef(0)
-  const MIN_GENERATION_INTERVAL = 5000
+  const { lang: uiLang } = useLanguage()
 
   // Enable text selection on this page
   useEffect(() => {
@@ -66,931 +34,339 @@ function PromoPage() {
     return () => { document.body.classList.remove('allow-select') }
   }, [])
 
-  // Fetch NOAA data
+  // --- Client Details State ---
+  const [clientName, setClientName] = useState('')
+  const [inputMode, setInputMode] = useState<'zodiac' | 'birthdate'>('zodiac')
+  const [zodiacSign, setZodiacSign] = useState('aries')
+  const [birthDate, setBirthDate] = useState('')
+  const [birthTime, setBirthTime] = useState('')
+  const [birthCity, setBirthCity] = useState('')
+
+  // --- Scope State ---
+  const [scope, setScope] = useState<ScopeState>({
+    currentSituation: true,
+    thisMonth: true,
+    nextThreeMonths: true,
+    thisYear: true,
+    nextYear: false,
+    relationship: false,
+  })
+
+  // --- Style State ---
+  const [style, setStyle] = useState<ReadingStyle>('accessible')
+  const [readingLanguage, setReadingLanguage] = useState<'en' | 'lt'>(uiLang)
+
+  // Sync reading language with UI language on mount
+  useEffect(() => { setReadingLanguage(uiLang) }, [uiLang])
+
+  // --- Output State ---
+  const [reading, setReading] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // --- History State ---
+  const [history, setHistory] = useState<ReadingHistoryEntry[]>([])
+
+  // Load history from localStorage
   useEffect(() => {
-    setEarthLoading(true)
-    fetchEarthData().then(data => {
-      setEarthData(data)
-      setEarthLoading(false)
-    }).catch(() => setEarthLoading(false))
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY)
+      if (saved) setHistory(JSON.parse(saved))
+    } catch { /* ignore */ }
   }, [])
 
-  // Calculate planet positions (no observer needed for ecliptic longitudes — use 0,0)
-  const positions = useMemo(() => getPlanetPositions(selectedDate, 0, 0), [selectedDate])
+  function saveHistory(entries: ReadingHistoryEntry[]) {
+    setHistory(entries)
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries))
+  }
 
-  // Calculate moon data
-  const moonData = useMemo(() => getMoonData(selectedDate), [selectedDate])
-
-  // Calculate zodiac impacts
-  const impacts = useMemo(() => {
-    const kp = earthData?.kpIndex ?? 0
-    const solar = earthData?.solarFlareClass ?? 'A0.0'
-    return calculateZodiacImpacts(positions, moonData, kp, solar)
-  }, [positions, moonData, earthData])
-
-  // Calculate overall impact
-  const overallImpact = useMemo(() => {
-    const kp = earthData?.kpIndex ?? 0
-    const solar = earthData?.solarFlareClass ?? 'A0.0'
-    return calculateOverallImpact(positions, moonData, kp, solar)
-  }, [positions, moonData, earthData])
-
-  // Auto-select highest impact sign
-  useEffect(() => {
-    if (impacts.length > 0) {
-      setSelectedSign(impacts[0].sign)
+  // --- Astronomy Calculations ---
+  const currentTransits = useMemo(() => {
+    const now = new Date()
+    const positions = getPlanetPositions(now, 0, 0)
+    const moon = getMoonData(now)
+    return {
+      positions: positions.map(p => ({
+        glyph: p.glyph,
+        name: p.name,
+        sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
+        degree: p.degreeInSign,
+        retrograde: p.isRetrograde,
+      })),
+      moonPhase: moon.phase,
+      moonIllumination: Math.round(moon.illumination * 100),
     }
-  }, [impacts])
+  }, [])
 
-  const selectedImpact = impacts.find(i => i.sign === selectedSign) ?? impacts[0]
+  // Natal chart calculations from birth date
+  const natalInfo: NatalInfo | null = useMemo(() => {
+    if (inputMode !== 'birthdate' || !birthDate) return null
+    const date = birthTime
+      ? new Date(`${birthDate}T${birthTime}:00`)
+      : new Date(`${birthDate}T12:00:00`)
+    if (isNaN(date.getTime())) return null
 
-  // Weekly data
-  const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
-  const weekData = useMemo(() => calculateWeekData(weekStart), [weekStart])
+    const positions = getPlanetPositions(date, 0, 0)
+    const sun = positions.find(p => p.id === 'sun')
+    const moon = positions.find(p => p.id === 'moon')
 
-  // Horoscope generation
-  const generateHoroscope = useCallback(async (sign: string) => {
+    const sunSign = sun ? ZODIAC_SIGNS.find(z => z.id === sun.zodiacSign) : null
+    const moonSign = moon ? ZODIAC_SIGNS.find(z => z.id === moon.zodiacSign) : null
+
+    return {
+      sunSign: sunSign?.name ?? '',
+      sunGlyph: sunSign?.glyph ?? '',
+      moonSign: moonSign?.name ?? '',
+      moonGlyph: moonSign?.glyph ?? '',
+    }
+  }, [inputMode, birthDate, birthTime])
+
+  // --- Sign/DOB label for output ---
+  const signOrDob = useMemo(() => {
+    if (inputMode === 'zodiac') {
+      const sign = ZODIAC_SIGNS.find(z => z.id === zodiacSign)
+      return sign ? `${sign.glyph} ${sign.name}` : zodiacSign
+    }
+    if (natalInfo) {
+      return `Sun in ${natalInfo.sunSign}, Moon in ${natalInfo.moonSign}`
+    }
+    return birthDate || ''
+  }, [inputMode, zodiacSign, natalInfo, birthDate])
+
+  // --- Generate Reading ---
+  const topRef = useRef<HTMLDivElement>(null)
+  const lastGenTime = useRef(0)
+
+  const generateReading = useCallback(async () => {
     const now = Date.now()
-    if (now - lastGenerationTime.current < MIN_GENERATION_INTERVAL) return
-    lastGenerationTime.current = now
+    if (now - lastGenTime.current < 5000) return
+    lastGenTime.current = now
+
+    // Validation
+    if (inputMode === 'zodiac' && !zodiacSign) return
+    if (inputMode === 'birthdate' && !birthDate) return
 
     setIsGenerating(true)
-    setGenerationError(null)
-    setHoroscope('')
+    setError(null)
+    setReading('')
 
     try {
-      const impact = impacts.find(i => i.sign === sign)
-      const response = await fetch('/api/horoscope', {
+      const zodiacSignName = inputMode === 'zodiac'
+        ? ZODIAC_SIGNS.find(z => z.id === zodiacSign)?.name ?? zodiacSign
+        : undefined
+
+      const response = await fetch('/api/client-reading', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sign,
-          positions: positions.map(p => ({
-            glyph: p.glyph,
-            name: p.name,
-            sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
-            degree: p.degreeInSign,
-            isRetrograde: p.isRetrograde,
-          })),
-          moonPhase: {
-            name: moonData.phase,
-            illumination: Math.round(moonData.illumination * 100),
-          },
-          kpIndex: earthData?.kpIndex ?? 0,
-          solarClass: earthData?.solarFlareClass ?? 'A0.0',
-          impactScore: impact?.score ?? 5,
-          impactFactors: impact?.factors ?? [],
-          date: selectedDate.toLocaleDateString('en-GB', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-          }),
-          lang,
+          clientName: clientName || undefined,
+          inputMode,
+          zodiacSign: zodiacSignName,
+          birthDate: inputMode === 'birthdate' ? birthDate : undefined,
+          birthTime: inputMode === 'birthdate' ? birthTime || undefined : undefined,
+          birthCity: inputMode === 'birthdate' ? birthCity || undefined : undefined,
+          scope,
+          style,
+          language: readingLanguage,
+          currentTransits,
+          natalPositions: natalInfo ? {
+            sunSign: natalInfo.sunSign,
+            moonSign: natalInfo.moonSign,
+          } : undefined,
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to generate horoscope')
+      if (!response.ok) throw new Error('Failed to generate reading')
       const data = await response.json()
-      setHoroscope(data.horoscope)
+      const readingText = data.reading
+
+      setReading(readingText)
+
+      // Save to history
+      const scopeLabels = Object.entries(scope)
+        .filter(([, v]) => v)
+        .map(([k]) => k)
+
+      const entry: ReadingHistoryEntry = {
+        id: String(Date.now()),
+        timestamp: new Date().toISOString(),
+        clientName: clientName || undefined,
+        inputMode,
+        zodiacSign: inputMode === 'zodiac' ? zodiacSignName : undefined,
+        birthDate: inputMode === 'birthdate' ? birthDate : undefined,
+        scope: scopeLabels,
+        style,
+        language: readingLanguage,
+        readingText,
+      }
+
+      const updated = [entry, ...history].slice(0, MAX_HISTORY)
+      saveHistory(updated)
+
     } catch {
-      setGenerationError(t('promo.failedGenerate'))
+      setError(t('studio.failedGenerate'))
     } finally {
       setIsGenerating(false)
     }
-  }, [impacts, positions, moonData, earthData, selectedDate, lang, t])
+  }, [
+    inputMode, zodiacSign, birthDate, birthTime, birthCity,
+    clientName, scope, style, readingLanguage,
+    currentTransits, natalInfo, history, t,
+  ])
 
-  // Weekly horoscope generation
-  const generateWeeklyHoroscope = useCallback(async (sign: string) => {
-    setIsGeneratingWeekly(true)
-    setWeeklyHoroscope('')
-
-    try {
-      const response = await fetch('/api/horoscope-weekly', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sign,
-          weekPositions: weekData,
-          weekStart: weekData.weekStart,
-          weekEnd: weekData.weekEnd,
-          lang,
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to generate weekly horoscope')
-      const data = await response.json()
-      setWeeklyHoroscope(data.horoscope)
-    } catch {
-      setWeeklyHoroscope('')
-    } finally {
-      setIsGeneratingWeekly(false)
+  // --- Load from history ---
+  function loadFromHistory(entry: ReadingHistoryEntry) {
+    setReading(entry.readingText)
+    if (entry.clientName) setClientName(entry.clientName)
+    if (entry.inputMode) setInputMode(entry.inputMode)
+    if (entry.zodiacSign) {
+      const sign = ZODIAC_SIGNS.find(z => z.name === entry.zodiacSign)
+      if (sign) setZodiacSign(sign.id)
     }
-  }, [weekData, lang])
-
-  // Daily cosmic reading generation
-  const generateDailyReading = useCallback(async () => {
-    setIsGeneratingDaily(true)
-    setDailyReading('')
-
-    try {
-      const response = await fetch('/api/horoscope-daily', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          positions: positions.map(p => ({
-            glyph: p.glyph,
-            name: p.name,
-            sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
-            degree: p.degreeInSign,
-            isRetrograde: p.isRetrograde,
-          })),
-          moonPhase: {
-            name: moonData.phase,
-            illumination: Math.round(moonData.illumination * 100),
-          },
-          kpIndex: earthData?.kpIndex ?? 0,
-          solarClass: earthData?.solarFlareClass ?? 'A0.0',
-          overallImpact,
-          date: selectedDate.toLocaleDateString('en-GB', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-          }),
-          lang,
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to generate daily reading')
-      const data = await response.json()
-      setDailyReading(data.reading)
-    } catch {
-      setDailyReading('')
-    } finally {
-      setIsGeneratingDaily(false)
-    }
-  }, [positions, moonData, earthData, overallImpact, selectedDate, lang])
-
-  // Auto-generate when sign changes
-  const signRef = useRef(selectedSign)
-  useEffect(() => {
-    if (selectedSign !== signRef.current) {
-      signRef.current = selectedSign
-      generateHoroscope(selectedSign)
-    }
-  }, [selectedSign, generateHoroscope])
-
-  // Generate captions
-  const captions = useMemo(() => {
-    if (!selectedImpact) return null
-    const signData = ZODIAC_SIGNS.find(z => z.name === selectedSign)
-    return generateCaptions(
-      selectedSign,
-      signData?.glyph ?? '',
-      positions,
-      moonData,
-      selectedImpact,
-      selectedDate,
-      horoscope || undefined
-    )
-  }, [selectedSign, selectedImpact, positions, moonData, selectedDate, horoscope])
-
-  // Weekly caption
-  const weeklyCaption = useMemo(() => {
-    if (!weeklyHoroscope) return null
-    return generateWeeklyCaption(selectedSign, impacts, weekData, weeklyHoroscope)
-  }, [weeklyHoroscope, selectedSign, impacts, weekData])
-
-  // Daily captions
-  const dailyTikTokCaption = useMemo(() => {
-    if (!dailyReading) return null
-    const dateStr = selectedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-    const sunPos = positions.find(p => p.name === 'Sun')
-    const moonPos = positions.find(p => p.name === 'Moon')
-    const sunSignName = sunPos ? (ZODIAC_SIGNS.find(z => z.id === sunPos.zodiacSign)?.name ?? '') : ''
-    const moonSignName = moonPos ? (ZODIAC_SIGNS.find(z => z.id === moonPos.zodiacSign)?.name ?? '') : ''
-
-    const oneWordMatch = dailyReading.match(/TODAY IN ONE WORD[\s\S]*?\n\n?(.+)/i)
-    const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
-    const inviteMatch = dailyReading.match(/TODAY'S INVITATION[\s\S]*?\n\n?(.+)/i)
-    const invitation = inviteMatch ? inviteMatch[1].trim() : ''
-
-    return `\u2600\uFE0F Cosmic Weather \u00B7 ${dateStr}\n\n` +
-      (oneWord ? `Today in one word: ${oneWord}\n\n` : '') +
-      `${sunPos?.glyph ?? ''} Sun in ${sunSignName} \u00B7 ${moonPos?.glyph ?? ''} Moon in ${moonSignName}\n` +
-      `${moonData.phase} \u00B7 ${Math.round(moonData.illumination * 100)}%\n\n` +
-      (invitation ? `${invitation}\n\n` : '') +
-      `Cosmic impact: ${overallImpact.score}/10\n\n` +
-      `Real planetary data. Real frequencies.\nastrara.app\n\n` +
-      `#cosmicweather #todaysenergy #astrology #dailyhoroscope ` +
-      `#soundhealing #frequencies #astrara #planetaryalignment`
-  }, [dailyReading, selectedDate, positions, moonData, overallImpact])
-
-  const dailyInstagramCaption = useMemo(() => {
-    if (!dailyReading) return null
-    const dateStr = selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-
-    return `\u2600\uFE0F COSMIC WEATHER \u00B7 ${dateStr}\n` +
-      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
-      `Cosmic Impact: ${'\u25CF'.repeat(overallImpact.score)}${'\u25CB'.repeat(10 - overallImpact.score)} ${overallImpact.score}/10\n\n` +
-      `Today's sky:\n` +
-      positions.map(p => {
-        const pSignName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
-        return `${p.glyph} ${p.name} in ${pSignName} ${p.degreeInSign}\u00B0`
-      }).join('\n') +
-      `\n\n` +
-      `${moonData.phase} \u00B7 ${Math.round(moonData.illumination * 100)}% illumination\n\n` +
-      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n` +
-      `Real planetary positions from NASA JPL data.\n` +
-      `Sound frequencies based on Hans Cousto's Cosmic Octave.\n` +
-      `Explore your own cosmic portrait at astrara.app\n\n` +
-      `#cosmicweather #todaysenergy #astrology #dailyhoroscope ` +
-      `#planetaryalignment #moonphase #${moonData.phase.toLowerCase().replace(/\s+/g, '')} ` +
-      `#soundhealing #frequencies #astrara #harmonicwaves`
-  }, [dailyReading, selectedDate, positions, moonData, overallImpact])
-
-  function formatDateForInput(date: Date): string {
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
+    if (entry.birthDate) setBirthDate(entry.birthDate)
   }
 
-  async function handleCopy(field: string, content: string) {
-    await navigator.clipboard.writeText(content)
-    setCopiedField(field)
-    setTimeout(() => setCopiedField(null), 2000)
+  // --- New Reading ---
+  function handleNewReading() {
+    setReading('')
+    setError(null)
+    topRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  // --- Check if generate is possible ---
+  const canGenerate = inputMode === 'zodiac'
+    ? !!zodiacSign
+    : !!birthDate
+
+  const hasScopeSelected = Object.entries(scope).some(([k, v]) => k !== 'relationship' && v)
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }}>
+    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }} ref={topRef}>
       <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="flex items-center justify-between">
             <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-semibold tracking-wide text-white/90">
-              ASTRARA <span className="text-white/30 font-normal">{t('promo.title')}</span>
+              <span className="text-white/25 mr-2">✦</span>
+              ASTRARA{' '}
+              <span className="text-white/30 font-normal">{t('studio.title')}</span>
             </h1>
             <LanguageToggle />
           </div>
-          <div className="mt-4">
-            <input
-              type="date"
-              value={formatDateForInput(selectedDate)}
-              onChange={(e) => {
-                const d = new Date(e.target.value + 'T12:00:00')
-                if (!isNaN(d.getTime())) setSelectedDate(d)
-              }}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white text-sm appearance-none"
-              style={{ colorScheme: 'dark', WebkitAppearance: 'none', fontSize: '16px' }}
-            />
-          </div>
+          <p className="text-white/30 text-sm mt-2">{t('studio.subtitle')}</p>
         </div>
 
-        <Divider />
-
-        {/* Cosmic Weather Summary */}
-        <section className="mb-8">
-          <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
-            <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider">
-              {t('promo.cosmicWeather')}
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1">
-                {Array.from({ length: 10 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="w-2.5 h-2.5 rounded-full transition-colors"
-                    style={{
-                      backgroundColor: i < overallImpact.score ? overallImpact.colour : 'rgba(255,255,255,0.08)',
-                    }}
-                  />
-                ))}
-              </div>
-              <span style={{ color: overallImpact.colour }} className="text-sm font-mono font-medium">
-                {overallImpact.score}/10
-              </span>
-            </div>
-          </div>
-
-          <p className="text-white/40 text-sm mb-4">{overallImpact.level}</p>
-
-          {/* Planetary Positions */}
-          <div className="mb-4">
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-2">{t('promo.planetaryPositions')}</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/60">
-              {positions.map(p => (
-                <span key={p.id}>
-                  {p.glyph} {p.name} in {ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign} {p.degreeInSign}&deg;
-                  {p.isRetrograde && <span className="text-amber-400 ml-0.5">R</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Moon Phase & Space Weather */}
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-white/50">
-            <span>
-              {t('promo.moonPhase')}: {moonData.phase} ({Math.round(moonData.illumination * 100)}%)
-            </span>
-            {earthData && !earthData.fetchError ? (
-              <>
-                <span>{t('promo.kpIndex')}: {earthData.kpIndex} ({earthData.kpLabel})</span>
-                <span>{t('promo.solar')}: {earthData.solarFlareClass}</span>
-              </>
-            ) : earthLoading ? (
-              <span className="text-white/20">{t('promo.loadingWeather')}</span>
-            ) : (
-              <span className="text-white/20">{t('promo.weatherUnavailable')}</span>
-            )}
-          </div>
-        </section>
-
-        {/* Daily Cosmic Reading */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
-              {t('promo.dailyCosmic')}
-            </h2>
-            <button
-              onClick={generateDailyReading}
-              disabled={isGeneratingDaily}
-              className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              {isGeneratingDaily ? t('promo.generating') : dailyReading ? `\u21BB ${t('promo.regenerateDaily')}` : `\u2728 ${t('promo.generateDaily')}`}
-            </button>
-          </div>
-
-          <div className="p-6 rounded-xl border border-white/5 min-h-[150px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            {isGeneratingDaily && (
-              <div className="flex items-center gap-3 text-white/40">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                <span className="text-sm">{t('promo.readingCosmic')}</span>
-              </div>
-            )}
-
-            {dailyReading && !isGeneratingDaily && (
-              <div>
-                <ReactMarkdown components={markdownComponents}>
-                  {dailyReading}
-                </ReactMarkdown>
-                <div className="pt-4">
-                  <button
-                    onClick={() => handleCopy('dailyReading', dailyReading)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
-                  >
-                    {copiedField === 'dailyReading' ? t('promo.copied') : t('promo.copyReading')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!dailyReading && !isGeneratingDaily && (
-              <p className="text-white/30 text-sm italic">
-                {t('promo.clickDaily')}
-              </p>
-            )}
-          </div>
-
-          {dailyTikTokCaption && dailyInstagramCaption && (
-            <div className="mt-4 space-y-3">
-              <CaptionBlock
-                label="Daily TikTok Caption"
-                content={dailyTikTokCaption}
-                copied={copiedField === 'dailyTiktok'}
-                onCopy={() => handleCopy('dailyTiktok', dailyTikTokCaption)}
-              />
-              <CaptionBlock
-                label="Daily Instagram Caption"
-                content={dailyInstagramCaption}
-                copied={copiedField === 'dailyInstagram'}
-                onCopy={() => handleCopy('dailyInstagram', dailyInstagramCaption)}
-              />
-            </div>
-          )}
-        </section>
-
-        <Divider />
-
-        {/* Zodiac Impact Rankings */}
-        <section className="mb-8">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            {t('promo.impactRankings')}
-          </h2>
-          <div className="space-y-1">
-            {impacts.map((impact, i) => (
-              <div
-                key={impact.sign}
-                className={`flex items-center gap-3 py-2 px-3 rounded-lg cursor-pointer transition-colors ${
-                  impact.sign === selectedSign ? 'bg-white/8' : 'hover:bg-white/5'
-                }`}
-                onClick={() => setSelectedSign(impact.sign)}
-              >
-                <span className="text-white/30 text-xs w-5 font-mono">{i + 1}.</span>
-                <span className="text-lg w-7">{impact.glyph}</span>
-                <span className="text-white/80 text-sm w-24">{impact.sign}</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${impact.score * 10}%`,
-                      backgroundColor: impact.colour,
-                    }}
-                  />
-                </div>
-                <span
-                  className="text-sm font-mono w-10 text-right"
-                  style={{ color: impact.colour }}
-                >
-                  {impact.score}/10
-                </span>
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: `${impact.colour}15`,
-                    color: impact.colour,
-                  }}
-                >
-                  {t(`promo.${impact.level}`)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <Divider />
-
-        {/* Zodiac Reading */}
-        <section className="mb-8">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            {t('promo.zodiacReading')}
-          </h2>
-          <select
-            value={selectedSign}
-            onChange={(e) => setSelectedSign(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm appearance-none cursor-pointer w-full sm:w-auto"
-            style={{ colorScheme: 'dark' }}
-          >
-            {impacts.map(impact => (
-              <option key={impact.sign} value={impact.sign}>
-                {impact.glyph} {impact.sign} — {impact.score}/10 ({impact.level})
-              </option>
-            ))}
-          </select>
-
-          {selectedImpact && selectedImpact.factors.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedImpact.factors.map((factor, i) => (
-                <span
-                  key={i}
-                  className="text-xs px-2 py-1 rounded-full bg-white/5 text-white/60"
-                >
-                  {factor}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-6 p-6 rounded-xl border border-white/5 min-h-[200px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white/80 text-lg font-medium font-[family-name:var(--font-display)]">
-                {selectedImpact?.glyph} {selectedSign} &middot; {t('promo.dailyReading')}
-              </h3>
-              <button
-                onClick={() => generateHoroscope(selectedSign)}
-                disabled={isGenerating}
-                className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                {isGenerating ? t('promo.generating') : `\u21BB ${t('promo.regenerate')}`}
-              </button>
-            </div>
-
-            {isGenerating && (
-              <div className="flex items-center gap-3 text-white/40">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                <span className="text-sm">{t('promo.readingStars')} {selectedSign}...</span>
-              </div>
-            )}
-
-            {generationError && (
-              <div className="text-sm space-y-2">
-                <p className="text-amber-400/80">{t('promo.failedGenerate')}</p>
-                <p className="text-white/30">
-                  {t('promo.apiKeyHint')}
-                </p>
-              </div>
-            )}
-
-            {horoscope && !isGenerating && (
-              <div>
-                <ReactMarkdown components={markdownComponents}>
-                  {horoscope}
-                </ReactMarkdown>
-                <div className="pt-4">
-                  <button
-                    onClick={() => handleCopy('horoscope', horoscope)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
-                  >
-                    {copiedField === 'horoscope' ? t('promo.copied') : t('promo.copyReading')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!horoscope && !isGenerating && !generationError && (
-              <p className="text-white/30 text-sm italic">
-                {t('promo.clickRegenerate')} {selectedSign}.
-              </p>
-            )}
-          </div>
-
-          {/* Weekly Reading */}
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white/60 text-xs font-medium uppercase tracking-wider">
-                {t('promo.weeklyReading')}
-              </h2>
-              <div className="flex items-center gap-3">
-                <span className="text-white/40 text-sm">
-                  {t('promo.weekOf')} {weekData.weekStart}
-                </span>
-                <button
-                  onClick={() => generateWeeklyHoroscope(selectedSign)}
-                  disabled={isGeneratingWeekly}
-                  className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  {isGeneratingWeekly ? t('promo.generating') : `\u21BB ${t('promo.generateWeekly')}`}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 rounded-xl border border-white/5 min-h-[200px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              {isGeneratingWeekly && (
-                <div className="flex items-center gap-3 text-white/40">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                  <span className="text-sm">{t('promo.readingWeekStars')} {selectedSign} {t('promo.weekAhead')}</span>
-                </div>
-              )}
-
-              {weeklyHoroscope && !isGeneratingWeekly && (
-                <div>
-                  <ReactMarkdown components={markdownComponents}>
-                    {weeklyHoroscope}
-                  </ReactMarkdown>
-                  <div className="pt-4">
-                    <button
-                      onClick={() => handleCopy('weekly', weeklyHoroscope)}
-                      className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
-                    >
-                      {copiedField === 'weekly' ? t('promo.copied') : t('promo.copyWeekly')}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!weeklyHoroscope && !isGeneratingWeekly && (
-                <p className="text-white/30 text-sm italic">
-                  {t('promo.clickWeekly')} {selectedSign}.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <Divider />
-
-        {/* Social Captions */}
-        <section className="mb-8">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-white/80 uppercase tracking-wider mb-4">
-            {t('promo.socialCaptions')}
-          </h2>
-          {captions && (
-            <div className="space-y-4">
-              <CaptionBlock
-                label="TikTok Short"
-                content={captions.tiktokShort}
-                copied={copiedField === 'tiktok'}
-                onCopy={() => handleCopy('tiktok', captions.tiktokShort)}
-              />
-              <CaptionBlock
-                label="Instagram Long"
-                content={captions.instagramLong}
-                copied={copiedField === 'instagram'}
-                onCopy={() => handleCopy('instagram', captions.instagramLong)}
-              />
-              <CaptionBlock
-                label="Hashtags"
-                content={captions.hashtags}
-                copied={copiedField === 'hashtags'}
-                onCopy={() => handleCopy('hashtags', captions.hashtags)}
-              />
-              {weeklyCaption && (
-                <CaptionBlock
-                  label="Instagram Weekly"
-                  content={weeklyCaption}
-                  copied={copiedField === 'weeklyCaption'}
-                  onCopy={() => handleCopy('weeklyCaption', weeklyCaption)}
-                />
-              )}
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
-  )
-}
-
-// --- Sub-components ---
-
-function Divider() {
-  return <hr className="border-white/8 mb-8" />
-}
-
-function CaptionBlock({ label, content, copied, onCopy }: {
-  label: string
-  content: string
-  copied: boolean
-  onCopy: () => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="p-4 rounded-xl border border-white/5" style={{ background: 'rgba(255,255,255,0.03)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-white/40 text-xs font-medium uppercase tracking-wider">
-          {label}
-        </span>
-        <button
-          onClick={onCopy}
-          className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+        {/* ── CLIENT DETAILS ── */}
+        <SectionHeader label={t('studio.clientDetails')} />
+        <div
+          className="mb-8 p-5 sm:p-6 rounded-2xl border"
+          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          {copied ? t('promo.copied') : t('promo.copy')}
-        </button>
+          <ClientDetailsForm
+            clientName={clientName}
+            onClientNameChange={setClientName}
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
+            zodiacSign={zodiacSign}
+            onZodiacSignChange={setZodiacSign}
+            birthDate={birthDate}
+            onBirthDateChange={setBirthDate}
+            birthTime={birthTime}
+            onBirthTimeChange={setBirthTime}
+            birthCity={birthCity}
+            onBirthCityChange={setBirthCity}
+            natalInfo={natalInfo}
+          />
+        </div>
+
+        {/* ── READING SCOPE ── */}
+        <SectionHeader label={t('studio.readingScope')} />
+        <div
+          className="mb-8 p-5 sm:p-6 rounded-2xl border"
+          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
+        >
+          <ScopeSelector scope={scope} onChange={setScope} />
+        </div>
+
+        {/* ── READING STYLE ── */}
+        <SectionHeader label={t('studio.readingStyle')} />
+        <div
+          className="mb-8 p-5 sm:p-6 rounded-2xl border"
+          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
+        >
+          <StyleSelector
+            style={style}
+            onStyleChange={setStyle}
+            readingLanguage={readingLanguage}
+            onLanguageChange={setReadingLanguage}
+          />
+        </div>
+
+        {/* Generate Button */}
+        <div className="mb-10">
+          <button
+            onClick={generateReading}
+            disabled={isGenerating || !canGenerate || !hasScopeSelected}
+            className="w-full py-3.5 rounded-xl text-sm font-medium tracking-wide transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: isGenerating
+                ? 'rgba(139,92,246,0.1)'
+                : 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(139,92,246,0.15))',
+              border: '1px solid rgba(139,92,246,0.3)',
+              color: 'rgba(255,255,255,0.85)',
+            }}
+          >
+            {isGenerating ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                {t('studio.generating')}
+              </span>
+            ) : (
+              <span>✦ {t('studio.generate')}</span>
+            )}
+          </button>
+
+          {error && (
+            <p className="text-amber-400/70 text-sm mt-3 text-center">{error}</p>
+          )}
+        </div>
+
+        {/* ── READING OUTPUT ── */}
+        <ReadingOutput
+          reading={reading}
+          isGenerating={isGenerating}
+          clientName={clientName}
+          readingLanguage={readingLanguage}
+          style={style}
+          signOrDob={signOrDob}
+          scope={scope}
+          onNewReading={handleNewReading}
+        />
+
+        {/* Spacing before history */}
+        {(reading || isGenerating) && <div className="h-10" />}
+
+        {/* ── READING HISTORY ── */}
+        <div className="mt-8 mb-12">
+          <ReadingHistory
+            history={history}
+            onLoadReading={loadFromHistory}
+            onClearHistory={() => saveHistory([])}
+          />
+        </div>
+
       </div>
-      <pre className="text-white/70 text-sm whitespace-pre-wrap font-[family-name:var(--font-body)] leading-relaxed">
-        {content}
-      </pre>
     </div>
   )
 }
 
-// --- Weekly Helpers ---
-
-function getWeekStart(fromDate: Date): Date {
-  const d = new Date(fromDate)
-  const day = d.getDay()
-  const daysUntilMonday = day === 0 ? 1 : (8 - day)
-  d.setDate(d.getDate() + daysUntilMonday)
-  return d
-}
-
-function calculateWeekData(startDate: Date) {
-  const endDate = new Date(startDate)
-  endDate.setDate(endDate.getDate() + 6)
-
-  const startPositions = getPlanetPositions(startDate, 0, 0)
-  const endPositions = getPlanetPositions(endDate, 0, 0)
-
-  const movements: string[] = []
-  for (let i = 0; i < startPositions.length; i++) {
-    const start = startPositions[i]
-    const end = endPositions[i]
-    const startSignName = ZODIAC_SIGNS.find(z => z.id === start.zodiacSign)?.name ?? start.zodiacSign
-    const endSignName = ZODIAC_SIGNS.find(z => z.id === end.zodiacSign)?.name ?? end.zodiacSign
-    if (startSignName !== endSignName) {
-      movements.push(`${start.glyph} ${start.name} moves from ${startSignName} into ${endSignName}`)
-    }
-  }
-
-  for (let d = 0; d <= 6; d++) {
-    const checkDate = new Date(startDate)
-    checkDate.setDate(checkDate.getDate() + d)
-    const phase = Astronomy.MoonPhase(checkDate)
-    if (phase < 5 || phase > 355) {
-      const dayName = checkDate.toLocaleDateString('en-GB', { weekday: 'long' })
-      movements.push(`New Moon on ${dayName}`)
-    }
-    if (phase > 175 && phase < 185) {
-      const dayName = checkDate.toLocaleDateString('en-GB', { weekday: 'long' })
-      movements.push(`Full Moon on ${dayName}`)
-    }
-  }
-
-  if (movements.length === 0) {
-    movements.push('A relatively stable week \u2014 planets hold their positions')
-  }
-
-  return {
-    start: startPositions.map(p => ({
-      glyph: p.glyph,
-      name: p.name,
-      sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
-      degree: p.degreeInSign,
-    })),
-    end: endPositions.map(p => ({
-      glyph: p.glyph,
-      name: p.name,
-      sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
-      degree: p.degreeInSign,
-    })),
-    movements,
-    weekStart: startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-    weekEnd: endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-  }
-}
-
-// --- Scoring Logic ---
-
-interface ZodiacImpact {
-  sign: string
-  glyph: string
-  score: number
-  level: 'quiet' | 'active' | 'intense'
-  colour: string
-  factors: string[]
-}
-
-function calculateZodiacImpacts(
-  positions: PlanetPosition[],
-  moonData: MoonData,
-  kpIndex: number,
-  solarClass: string
-): ZodiacImpact[] {
-  return ZODIAC_SIGNS.map((sign, signIndex) => {
-    let score = 0
-    const factors: string[] = []
-    const signStart = signIndex * 30
-    const signEnd = signStart + 30
-    const oppositeStart = ((signIndex + 6) % 12) * 30
-    const squareStart1 = ((signIndex + 3) % 12) * 30
-    const squareStart2 = ((signIndex + 9) % 12) * 30
-
-    for (const planet of positions) {
-      const pLong = planet.eclipticLongitude
-
-      // Planet IN this sign
-      if (pLong >= signStart && pLong < signEnd) {
-        if (planet.name === 'Sun') { score += 3; factors.push(`Sun in ${sign.name}`) }
-        else if (planet.name === 'Moon') { score += 2; factors.push(`Moon in ${sign.name}`) }
-        else { score += 1; factors.push(`${planet.name} in ${sign.name}`) }
-      }
-
-      // Planet in OPPOSITION (180)
-      if (pLong >= oppositeStart && pLong < oppositeStart + 30) {
-        if (planet.name === 'Sun' || planet.name === 'Moon') {
-          score += 2; factors.push(`${planet.name} opposing ${sign.name}`)
-        } else {
-          score += 1; factors.push(`${planet.name} opposing ${sign.name}`)
-        }
-      }
-
-      // Planet in SQUARE (90)
-      if ((pLong >= squareStart1 && pLong < squareStart1 + 30) ||
-          (pLong >= squareStart2 && pLong < squareStart2 + 30)) {
-        score += 0.5
-      }
-    }
-
-    // Moon phase bonus
-    const moonSignName = ZODIAC_SIGNS.find(z => z.id === moonData.zodiacSign)?.name
-    if (moonData.phase === 'Full Moon' && moonSignName === sign.name) { score += 3; factors.push('Full Moon in sign') }
-    if (moonData.phase === 'New Moon' && moonSignName === sign.name) { score += 2; factors.push('New Moon in sign') }
-
-    // Geomagnetic bonus
-    if (kpIndex >= 5) { score += 1; factors.push(`Geomagnetic storm (Kp ${kpIndex})`) }
-
-    // Solar flare bonus
-    if (solarClass.startsWith('M') || solarClass.startsWith('X')) {
-      score += 1; factors.push(`Solar flare: ${solarClass}`)
-    }
-
-    score = Math.max(1, Math.min(10, Math.round(score)))
-
-    let colour: string
-    let level: 'quiet' | 'active' | 'intense'
-    if (score <= 3) { colour = '#22c55e'; level = 'quiet' }
-    else if (score <= 6) { colour = '#f59e0b'; level = 'active' }
-    else { colour = '#ef4444'; level = 'intense' }
-
-    return { sign: sign.name, glyph: sign.glyph, score, level, colour, factors }
-  })
-  .sort((a, b) => b.score - a.score)
-}
-
-function calculateOverallImpact(
-  positions: PlanetPosition[],
-  moonData: MoonData,
-  kpIndex: number,
-  solarClass: string
-): { score: number; colour: string; level: string } {
-  let score = 3
-
-  // Count planets in same sign (conjunction clusters)
-  const signCounts: Record<string, number> = {}
-  positions.forEach(p => {
-    const signName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
-    signCounts[signName] = (signCounts[signName] || 0) + 1
-  })
-  const maxCluster = Math.max(...Object.values(signCounts))
-  if (maxCluster >= 4) { score += 3 }
-  else if (maxCluster >= 3) { score += 2 }
-
-  // Full/New Moon
-  if (moonData.phase === 'Full Moon') score += 2
-  if (moonData.phase === 'New Moon') score += 1.5
-
-  // Geomagnetic
-  if (kpIndex >= 7) score += 2
-  else if (kpIndex >= 5) score += 1
-
-  // Solar
-  if (solarClass.startsWith('X')) score += 2
-  else if (solarClass.startsWith('M')) score += 1
-
-  score = Math.max(1, Math.min(10, Math.round(score)))
-
-  let colour: string, level: string
-  if (score <= 3) { colour = '#22c55e'; level = 'Quiet cosmic day' }
-  else if (score <= 6) { colour = '#f59e0b'; level = 'Active cosmic energy' }
-  else { colour = '#ef4444'; level = 'Intense cosmic weather' }
-
-  return { score, colour, level }
-}
-
-// --- Caption Generation ---
-
-function generateCaptions(
-  sign: string,
-  glyph: string,
-  positions: PlanetPosition[],
-  moonData: MoonData,
-  impact: ZodiacImpact,
-  date: Date,
-  horoscope?: string
-): { tiktokShort: string; instagramLong: string; hashtags: string } {
-  const sunPos = positions.find(p => p.name === 'Sun')
-  const moonPos = positions.find(p => p.name === 'Moon')
-  const sunSignName = ZODIAC_SIGNS.find(z => z.id === sunPos?.zodiacSign)?.name ?? ''
-  const moonSignName = ZODIAC_SIGNS.find(z => z.id === moonPos?.zodiacSign)?.name ?? ''
-
-  const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-
-  // Extract horoscope sections if available
-  const oneWordMatch = horoscope?.match(/TODAY IN ONE WORD[:\s]*(.+)/i)
-  const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
-  const energyMatch = horoscope?.match(/TODAY'S ENERGY[:\s]*\n?([\s\S]*?)(?=\n\n[A-Z]|\n\nWHAT)/i)
-  const energySummary = energyMatch ? energyMatch[1].trim() : ''
-
-  const levelEmoji = impact.level === 'intense' ? '\uD83D\uDD25' : impact.level === 'active' ? '\u2728' : '\uD83C\uDF3F'
-
-  const tiktokShort = `${glyph} ${sign} \u2014 ${dateStr}\n\n` +
-    (oneWord ? `Today in one word: ${oneWord}\n\n` : '') +
-    (energySummary ? `${energySummary}\n\n` : '') +
-    `Cosmic impact: ${impact.score}/10 ${levelEmoji}\n\n` +
-    `${sunPos?.glyph ?? ''} Sun in ${sunSignName} ${sunPos?.degreeInSign ?? 0}\u00B0\n` +
-    `${moonPos?.glyph ?? ''} Moon in ${moonSignName} ${moonPos?.degreeInSign ?? 0}\u00B0 \u2014 ${moonData.phase}\n\n` +
-    `Real planetary data. Real frequencies.\nastrara.app`
-
-  const instagramLong = `${glyph} ${sign.toUpperCase()} \u00B7 ${dateStr}\n` +
-    `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
-    `Cosmic Impact: ${'\u25CF'.repeat(impact.score)}${'\u25CB'.repeat(10 - impact.score)} ${impact.score}/10\n\n` +
-    `Today's sky:\n` +
-    positions.map(p => {
-      const pSignName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
-      return `${p.glyph} ${p.name} in ${pSignName} ${p.degreeInSign}\u00B0`
-    }).join('\n') +
-    `\n\n` +
-    `${moonData.phase} \u00B7 ${Math.round(moonData.illumination * 100)}% illumination\n\n` +
-    `What this means for ${sign}:\n` +
-    impact.factors.map(f => `\u2192 ${f}`).join('\n') +
-    `\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n` +
-    `Real planetary positions calculated from NASA JPL data.\n` +
-    `Explore your own cosmic portrait at astrara.app`
-
-  const hashtags = `#${sign.toLowerCase()} #horoscope #astrology #cosmicweather #zodiac ` +
-    `#${sign.toLowerCase()}horoscope #todayshoroscope #planetaryalignment ` +
-    `#${moonData.phase.toLowerCase().replace(/\s+/g, '')} #soundhealing ` +
-    `#astrara #cosmicportrait #harmonicwaves ` +
-    `#${sunSignName.toLowerCase()}season`
-
-  return { tiktokShort, instagramLong, hashtags }
-}
-
-function generateWeeklyCaption(
-  sign: string,
-  impacts: ZodiacImpact[],
-  weekData: ReturnType<typeof calculateWeekData>,
-  horoscope: string
-): string {
-  const glyph = impacts.find(i => i.sign === sign)?.glyph || ''
-
-  const oneWordMatch = horoscope.match(/WEEK IN ONE WORD[\s\S]*?\n\n?(.+)/i)
-  const oneWord = oneWordMatch ? oneWordMatch[1].trim() : ''
-
-  return `${glyph} ${sign.toUpperCase()} \u00B7 WEEKLY FORECAST\n` +
-    `${weekData.weekStart} \u2014 ${weekData.weekEnd}\n` +
-    `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
-    (oneWord ? `Week in one word: ${oneWord}\n\n` : '') +
-    (weekData.movements.length > 0
-      ? `Key cosmic shifts:\n${weekData.movements.map((m: string) => `\u2192 ${m}`).join('\n')}\n\n`
-      : '') +
-    `Real planetary data from NASA JPL algorithms.\n` +
-    `Your cosmic portrait at astrara.app\n\n` +
-    `#${sign.toLowerCase()} #weeklyhoroscope #astrology #cosmicweather ` +
-    `#zodiac #weekahead #soundhealing #astrara`
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-white/15 text-xs">——</span>
+      <span className="text-white/30 text-xs font-medium uppercase tracking-widest">{label}</span>
+      <span className="text-white/15 text-xs">——</span>
+    </div>
+  )
 }
