@@ -60,6 +60,16 @@ ${lang}
 Return JSON: {"categories":{"finance":{"impact_score":<1-10>,"year_trend":"<3-5 sentences>","peak_months":["<months>"],"trajectory":"<improving/challenging/stable/transformative>","key_events":"<text>","full_reading":"<3-5 sentences>"},"relationships":{same},"career":{same},"health":{same},"spiritual":{same},"grand_summary":{"impact_score":<1-10>,"dominant_theme":"<theme>","full_reading":"<5-7 sentences>","key_players":["<planets>"],"peak_months":["<months>"],"trajectory":"<trajectory>"}}}`
 }
 
+const DEBUG = process.env.NODE_ENV === 'development'
+
+function stripJsonFences(raw: string): string {
+  let s = raw.trim()
+  if (s.startsWith('```json')) s = s.slice(7)
+  else if (s.startsWith('```')) s = s.slice(3)
+  if (s.endsWith('```')) s = s.slice(0, -3)
+  return s.trim()
+}
+
 async function callAnthropicWithRetry(
   apiKey: string,
   system: string,
@@ -103,13 +113,20 @@ async function callAnthropicWithRetry(
       throw new Error('Unexpected API response structure')
     }
 
-    const text = data.content
+    const rawText = data.content
       .filter((block: { type: string }) => block.type === 'text')
       .map((block: { text: string }) => block.text)
       .join('')
 
-    console.log(`[transit-grid] Response tokens: input=${data.usage?.input_tokens ?? '?'} output=${data.usage?.output_tokens ?? '?'}`)
-    return text
+    const stopReason = data.stop_reason
+    console.log(`[transit-grid] Response tokens: input=${data.usage?.input_tokens ?? '?'} output=${data.usage?.output_tokens ?? '?'} stop=${stopReason}`)
+
+    // Warn if response was truncated (hit token limit)
+    if (stopReason === 'max_tokens') {
+      console.warn(`[transit-grid] WARNING: Response truncated at max_tokens (${maxTokens}). Increase max_tokens.`)
+    }
+
+    return rawText
   }
 
   throw new Error('Exhausted retries')
@@ -128,13 +145,21 @@ export async function POST(req: NextRequest) {
     if (type === 'month') {
       console.log(`[transit-grid] Generating month: ${year}-${month + 1}`)
       const userPrompt = buildCompactMonthPrompt(year, month, language || 'en', birthData)
-      console.log(`[transit-grid] Prompt length: ${userPrompt.length} chars`)
+      if (DEBUG) console.log(`[transit-grid] Prompt length: ${userPrompt.length} chars`)
 
       try {
-        const text = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 1500)
-        const parsed = JSON.parse(text)
-        console.log(`[transit-grid] Month ${year}-${month + 1}: OK`)
-        return NextResponse.json({ data: parsed })
+        const rawText = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 3000)
+        const cleaned = stripJsonFences(rawText)
+
+        try {
+          const parsed = JSON.parse(cleaned)
+          console.log(`[transit-grid] Month ${year}-${month + 1}: OK`)
+          return NextResponse.json({ data: parsed })
+        } catch (parseErr) {
+          console.error(`[transit-grid] Month ${year}-${month + 1} JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
+          console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
+          return NextResponse.json({ error: 'JSON parse error — response may be truncated' }, { status: 500 })
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
         console.error(`[transit-grid] Month ${year}-${month + 1} failed:`, msg)
@@ -150,10 +175,18 @@ export async function POST(req: NextRequest) {
       const userPrompt = buildOverviewPrompt(monthSummaries, language || 'en')
 
       try {
-        const text = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 1500)
-        const parsed = JSON.parse(text)
-        console.log(`[transit-grid] Overview: OK`)
-        return NextResponse.json({ data: parsed })
+        const rawText = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 3000)
+        const cleaned = stripJsonFences(rawText)
+
+        try {
+          const parsed = JSON.parse(cleaned)
+          console.log(`[transit-grid] Overview: OK`)
+          return NextResponse.json({ data: parsed })
+        } catch (parseErr) {
+          console.error(`[transit-grid] Overview JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
+          console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
+          return NextResponse.json({ error: 'JSON parse error — overview response may be truncated' }, { status: 500 })
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
         console.error(`[transit-grid] Overview failed:`, msg)
