@@ -7,6 +7,7 @@ import type {
 } from '@/types/cosmic-blueprint'
 import { BLUEPRINT_CATEGORY_KEYS, PLANET_FREQUENCIES } from '@/types/cosmic-blueprint'
 import { getPlanetPositions } from './astronomy'
+import { calculateAspects } from './aspects'
 import { ZODIAC_SIGNS } from './zodiac'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -81,6 +82,37 @@ function getImpactRGB(score: number): RGB {
   }
   // 9-10
   return [196, 69, 54]
+}
+
+// Element colours for zodiac wheel segments (Fire, Earth, Air, Water)
+const ELEMENT_RGB: RGB[] = [
+  [200, 80, 60],   // Fire (Aries, Leo, Sagittarius)
+  [120, 140, 80],  // Earth (Taurus, Virgo, Capricorn)
+  [100, 150, 200], // Air (Gemini, Libra, Aquarius)
+  [80, 100, 180],  // Water (Cancer, Scorpio, Pisces)
+]
+
+// Planet colours for natal wheel
+const PLANET_RGB: Record<string, RGB> = {
+  Sun: [196, 162, 101], Moon: [140, 140, 175], Mercury: [0, 160, 180],
+  Venus: [200, 100, 140], Mars: [200, 70, 50], Jupiter: [200, 150, 40],
+  Saturn: [90, 90, 140], Uranus: [60, 160, 145], Neptune: [100, 80, 170], Pluto: [140, 60, 80],
+}
+
+const PLANET_ABBREV: Record<string, string> = {
+  Sun: 'Su', Moon: 'Mo', Mercury: 'Me', Venus: 'Ve', Mars: 'Ma',
+  Jupiter: 'Ju', Saturn: 'Sa', Uranus: 'Ur', Neptune: 'Ne', Pluto: 'Pl',
+}
+
+const ASPECT_LINE_RGB: Record<string, RGB> = {
+  trine: [60, 100, 200], sextile: [60, 160, 80],
+  square: [200, 60, 60], opposition: [200, 60, 60], conjunction: [200, 180, 60],
+}
+
+// Cover wheel natal data
+interface CoverWheelData {
+  planets: { name: string; eclipticLon: number }[]
+  aspects: { lon1: number; lon2: number; type: string }[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -327,17 +359,46 @@ function drawImpactDot(doc: jsPDF, f: FontSet, x: number, y: number, score: numb
   doc.text(txt, x - tw / 2, y + fs * 0.12)
 }
 
+function drawScoreBar(doc: jsPDF, f: FontSet, x: number, y: number, score: number, barW: number = 50) {
+  const segW = barW / 10
+  const segH = 3
+  const gap = 0.4
+  const color = getImpactRGB(score)
+
+  for (let i = 0; i < 10; i++) {
+    if (i < score) {
+      doc.setFillColor(...color)
+      doc.setGState(doc.GState({ opacity: 0.8 }))
+    } else {
+      doc.setFillColor(...P.mutedGrey)
+      doc.setGState(doc.GState({ opacity: 0.15 }))
+    }
+    doc.roundedRect(x + i * segW, y, segW - gap, segH, 0.4, 0.4, 'F')
+  }
+  doc.setGState(doc.GState({ opacity: 1 }))
+
+  // Score number to the right
+  doc.setTextColor(...color)
+  setBody(doc, f, 8.5, true)
+  doc.text(String(score), x + barW + 2, y + segH - 0.3)
+}
+
 function pageFooter(doc: jsPDF, f: FontSet, pageNum: number, clientName: string, _lang: Lang) {
-  // Running header (pages 2+, except cover)
   if (pageNum >= 2) {
+    // Thin decorative line above footer
+    doc.setDrawColor(...P.mutedGrey)
+    doc.setLineWidth(0.2)
+    doc.setGState(doc.GState({ opacity: 0.3 }))
+    doc.line(ML, PH - 17, PW - MR, PH - 17)
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    // Running header — left
     doc.setTextColor(160, 160, 168) // #A0A0A8
     setBody(doc, f, 8)
     const header = `Cosmic Blueprint  ·  ${clientName || ''}`
     doc.text(header, ML, 12)
-  }
 
-  // Page number — centred at bottom
-  if (pageNum >= 2) {
+    // Page number — centred at bottom
     doc.setTextColor(160, 160, 168)
     setBody(doc, f, 8)
     const pn = `— ${pageNum} —`
@@ -357,13 +418,17 @@ function needsNewPage(doc: jsPDF, y: number, needed: number): boolean {
 function drawCover(
   doc: jsPDF, f: FontSet, clientName: string, birthDate: string,
   birthTime: string, dateRange: string, lang: Lang,
+  wheelData?: CoverWheelData | null,
 ) {
   // Warm cream background
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
 
-  // Zodiac wheel — thin gold lines, elegant
-  const cx = PW / 2, cy = 90, wr = 36
+  // Zodiac wheel — personalised natal chart
+  const cx = PW / 2, cy = 90, wr = 38
+  const planetR = wr - 18 // radius for planet dots
+
+  // Outer ring
   doc.setDrawColor(...P.gold)
   doc.setGState(doc.GState({ opacity: 0.4 }))
   doc.setLineWidth(0.5)
@@ -374,10 +439,12 @@ function drawCover(
   doc.setGState(doc.GState({ opacity: 0.2 }))
   doc.circle(cx, cy, wr - 14, 'S')
 
-  // 12 spoke lines
-  doc.setGState(doc.GState({ opacity: 0.25 }))
-  doc.setLineWidth(0.2)
+  // 12 spoke lines coloured by element
+  doc.setLineWidth(0.3)
   for (let i = 0; i < 12; i++) {
+    const elemColor = ELEMENT_RGB[i % 4]
+    doc.setDrawColor(...elemColor)
+    doc.setGState(doc.GState({ opacity: 0.3 }))
     const angle = (i * 30 - 90) * Math.PI / 180
     const x1 = cx + (wr - 7) * Math.cos(angle)
     const y1 = cy + (wr - 7) * Math.sin(angle)
@@ -386,36 +453,85 @@ function drawCover(
     doc.line(x1, y1, x2, y2)
   }
 
-  // 3-letter zodiac abbreviations
+  // 3-letter zodiac abbreviations coloured by element
   const signs = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
-  doc.setGState(doc.GState({ opacity: 0.5 }))
-  setBody(doc, f, 5.5)
+  setBody(doc, f, 5)
   for (let i = 0; i < 12; i++) {
+    const elemColor = ELEMENT_RGB[i % 4]
+    doc.setGState(doc.GState({ opacity: 0.6 }))
     const angle = ((i * 30) + 15 - 90) * Math.PI / 180
     const lr = wr - 3.5
     const lx = cx + lr * Math.cos(angle)
     const ly = cy + lr * Math.sin(angle)
-    doc.setTextColor(...P.gold)
+    doc.setTextColor(...elemColor)
     const ltw = doc.getTextWidth(signs[i])
     doc.text(signs[i], lx - ltw / 2, ly + 1.2)
   }
 
-  // Decorative planet dots
-  doc.setGState(doc.GState({ opacity: 0.2 }))
-  doc.setFillColor(...P.gold)
-  const rng = (seed: number) => {
-    const x = Math.sin(seed) * 10000
-    return x - Math.floor(x)
-  }
-  const planetAngles = [15, 67, 112, 148, 195, 238, 280, 320]
-  for (let i = 0; i < planetAngles.length; i++) {
-    const ang = planetAngles[i] * Math.PI / 180
-    const pr = (wr - 14) * (0.3 + rng(i * 73 + 11) * 0.6)
-    doc.circle(cx + pr * Math.cos(ang), cy + pr * Math.sin(ang), 0.6 + rng(i * 37) * 0.5, 'F')
+  // Small element-coloured indicator dots in zodiac band
+  doc.setLineWidth(0)
+  for (let i = 0; i < 12; i++) {
+    const elemColor = ELEMENT_RGB[i % 4]
+    doc.setFillColor(...elemColor)
+    doc.setGState(doc.GState({ opacity: 0.2 }))
+    const angle = ((i * 30) + 15 - 90) * Math.PI / 180
+    const ir = wr - 10.5
+    doc.circle(cx + ir * Math.cos(angle), cy + ir * Math.sin(angle), 1.2, 'F')
   }
 
-  // Centre dot
-  doc.setGState(doc.GState({ opacity: 0.3 }))
+  if (wheelData && wheelData.planets.length > 0) {
+    // ─── Aspect lines between natal planets ───
+    doc.setLineWidth(0.3)
+    for (const asp of wheelData.aspects) {
+      const aspColor = ASPECT_LINE_RGB[asp.type] || P.gold
+      doc.setDrawColor(...aspColor)
+      const opacity = asp.type === 'conjunction' ? 0.4 : 0.2
+      doc.setGState(doc.GState({ opacity }))
+      const a1 = (asp.lon1 - 90) * Math.PI / 180
+      const a2 = (asp.lon2 - 90) * Math.PI / 180
+      const r = planetR - 1
+      doc.line(cx + r * Math.cos(a1), cy + r * Math.sin(a1), cx + r * Math.cos(a2), cy + r * Math.sin(a2))
+    }
+
+    // ─── Natal planet dots + labels ───
+    for (const planet of wheelData.planets) {
+      const ang = (planet.eclipticLon - 90) * Math.PI / 180
+      const px = cx + planetR * Math.cos(ang)
+      const py = cy + planetR * Math.sin(ang)
+      const pColor = PLANET_RGB[planet.name] || P.gold
+      const abbr = PLANET_ABBREV[planet.name] || planet.name.substring(0, 2)
+
+      // Planet dot
+      doc.setFillColor(...pColor)
+      doc.setGState(doc.GState({ opacity: 0.85 }))
+      doc.circle(px, py, 1.3, 'F')
+
+      // Label (offset outward slightly)
+      const labelR = planetR + 3
+      const lx = cx + labelR * Math.cos(ang)
+      const ly = cy + labelR * Math.sin(ang)
+      doc.setTextColor(...pColor)
+      doc.setGState(doc.GState({ opacity: 0.7 }))
+      setBody(doc, f, 4.5, true)
+      const tw = doc.getTextWidth(abbr)
+      doc.text(abbr, lx - tw / 2, ly + 1)
+    }
+  } else {
+    // Fallback: decorative dots when no birth data
+    doc.setGState(doc.GState({ opacity: 0.2 }))
+    doc.setFillColor(...P.gold)
+    const rng = (seed: number) => { const x = Math.sin(seed) * 10000; return x - Math.floor(x) }
+    const planetAngles = [15, 67, 112, 148, 195, 238, 280, 320]
+    for (let i = 0; i < planetAngles.length; i++) {
+      const ang = planetAngles[i] * Math.PI / 180
+      const pr = (wr - 14) * (0.3 + rng(i * 73 + 11) * 0.6)
+      doc.circle(cx + pr * Math.cos(ang), cy + pr * Math.sin(ang), 0.6 + rng(i * 37) * 0.5, 'F')
+    }
+  }
+
+  // Centre label
+  doc.setGState(doc.GState({ opacity: 0.35 }))
+  doc.setFillColor(...P.gold)
   doc.circle(cx, cy, 1.2, 'F')
   doc.setGState(doc.GState({ opacity: 1 }))
 
@@ -706,21 +822,8 @@ function drawYearGlance(
     setBody(doc, f, 9, true)
     doc.text(catLabel(cat, lang), ML + 9, y + 2)
 
-    // Score bar (mini)
-    const barStartX = ML + 65
-    const barMaxW = 60
-    const scoreBarW = (avg / 10) * barMaxW
-    doc.setFillColor(...rgb)
-    doc.setGState(doc.GState({ opacity: 0.2 }))
-    doc.roundedRect(barStartX, y - 1.5, barMaxW, 4, 1, 1, 'F')
-    doc.setGState(doc.GState({ opacity: 0.7 }))
-    doc.roundedRect(barStartX, y - 1.5, scoreBarW, 4, 1, 1, 'F')
-    doc.setGState(doc.GState({ opacity: 1 }))
-
-    // Score text
-    doc.setTextColor(...P.navy)
-    setBody(doc, f, 8, true)
-    doc.text(`${avg}`, barStartX + barMaxW + 4, y + 1.5)
+    // Score bar (segmented, using impact gradient)
+    drawScoreBar(doc, f, ML + 65, y - 1, Math.round(avg), 55)
 
     y += 8
   }
@@ -790,21 +893,29 @@ function drawMonthPage(
   goldLineFull(doc, y)
   y += 8
 
-  // Opening atmosphere (italic, larger)
+  // Opening atmosphere — with subtle left border for distinction
   if (month.opening) {
+    doc.setDrawColor(...P.gold)
+    doc.setLineWidth(0.8)
+    doc.setGState(doc.GState({ opacity: 0.25 }))
+    const openingLines = doc.splitTextToSize(sanitizeForPDF(month.opening), CW - 8)
+    const openingH = openingLines.length * 5.5 + 2
+    doc.line(ML, y - 1, ML, y + openingH)
+    doc.setGState(doc.GState({ opacity: 1 }))
+
     doc.setTextColor(...P.grey)
     setDisplayItalic(doc, f, 11)
-    y = wrapDraw(doc, month.opening, ML, y, CW, 5.5)
-    y += 6
+    y = wrapDraw(doc, month.opening, ML + 5, y, CW - 5, 5.5)
+    y += 8
   }
 
-  // 5 categories
+  // 5 life area categories
   for (const cat of BLUEPRINT_CATEGORY_KEYS) {
     const reading = month[cat]
     if (!reading) continue
 
     // Check if we need a new page
-    if (needsNewPage(doc, y, 40)) {
+    if (needsNewPage(doc, y, 45)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -813,31 +924,35 @@ function drawMonthPage(
 
     const rgb = CAT_RGB[cat]
 
-    // Category name line with score
-    doc.setTextColor(...rgb)
-    setBody(doc, f, 8.5, true)
-    const catText = catLabel(cat, lang).toUpperCase()
-    doc.text(catText, ML, y + 2)
-
-    // Thin colored line extending right from category name
-    const catTW = doc.getTextWidth(catText)
-    doc.setDrawColor(...rgb)
-    doc.setLineWidth(0.3)
-    doc.setGState(doc.GState({ opacity: 0.4 }))
-    doc.line(ML + catTW + 3, y + 1, ML + catTW + 35, y + 1)
+    // ── Divider line before each category ──
+    doc.setDrawColor(...P.mutedGrey)
+    doc.setLineWidth(0.2)
+    doc.setGState(doc.GState({ opacity: 0.3 }))
+    doc.line(ML, y, PW - MR, y)
     doc.setGState(doc.GState({ opacity: 1 }))
+    y += 5
 
-    // Score dot
-    drawImpactDot(doc, f, PW - MR - 5, y, reading.score, 3.5)
+    // Category header: [dot] LABEL [score bar + number]
+    doc.setFillColor(...rgb)
+    doc.circle(ML + 2, y + 1, 1.5, 'F')
 
-    y += 6
+    doc.setTextColor(...rgb)
+    setBody(doc, f, 10.5, true)
+    const catText = catLabel(cat, lang).toUpperCase()
+    doc.text(catText, ML + 7, y + 2.5)
+
+    // Score bar (right-aligned)
+    const barX = PW - MR - 60
+    drawScoreBar(doc, f, barX, y - 0.5, reading.score, 48)
+
+    y += 8
 
     // Narrative
     doc.setTextColor(...P.navy)
     setBody(doc, f, 10)
     y = wrapDraw(doc, reading.narrative, ML, y, CW, 4.8)
 
-    y += 8 // spacing between categories
+    y += 10 // breathing room between categories
   }
 
   // ─── Sonic Prescription Section ───
@@ -852,14 +967,20 @@ function drawMonthPage(
       y = MT
     }
 
-    // Gold accent line
-    goldLineFull(doc, y)
+    // Decorative separator before sonic section
+    doc.setDrawColor(...P.gold)
+    doc.setLineWidth(0.3)
+    doc.setGState(doc.GState({ opacity: 0.4 }))
+    doc.line(ML, y, ML + 25, y)
+    doc.line(PW - MR - 25, y, PW - MR, y)
+    doc.setGState(doc.GState({ opacity: 1 }))
     y += 6
 
-    // Section header
+    // Section header — Sound Healing Guide
     doc.setTextColor(...P.gold)
     setDisplay(doc, f, 13, 'normal')
-    doc.text(tr('sonicRx', lang), ML, y)
+    const sonicHeader = lang === 'lt' ? 'Garso Terapijos Gidas' : 'Your Sound Healing Guide'
+    doc.text(sonicHeader, ML, y)
     y += 7
 
     // Focus Frequency of the Month — one-liner (replaces the old paragraph summary)
@@ -896,7 +1017,7 @@ function drawMonthPage(
       y += 4
 
       doc.setTextColor(...P.grey)
-      setBody(doc, f, 8.5)
+      setDisplayItalic(doc, f, 9)
       y = wrapDraw(doc, reading.sonic_rx, ML + 4, y, CW - 8, 4)
       y += 3
     }
@@ -939,9 +1060,9 @@ function drawMonthPage(
     doc.setGState(doc.GState({ opacity: 1 }))
   }
 
-  // ─── Monthly Affirmation ───
+  // ─── Monthly Affirmation — centred pull quote ───
   if (month.affirmation) {
-    if (needsNewPage(doc, y, 20)) {
+    if (needsNewPage(doc, y, 30)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -950,18 +1071,27 @@ function drawMonthPage(
       y = MT
     }
 
-    y += 6
-    goldLine(doc, y, 50)
     y += 8
+
+    // Subtle background tint for affirmation
+    setDisplayItalic(doc, f, 12)
+    const affLines = doc.splitTextToSize(sanitizeForPDF(month.affirmation), CW - 24)
+    const affH = Math.min(affLines.length, 2) * 6.5 + 10
+    doc.setFillColor(...P.gold)
+    doc.setGState(doc.GState({ opacity: 0.04 }))
+    doc.roundedRect(ML + 8, y - 4, CW - 16, affH, 3, 3, 'F')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    goldLine(doc, y - 2, 40)
+    y += 4
 
     doc.setTextColor(...P.navy)
     setDisplayItalic(doc, f, 12)
-    const affLines = doc.splitTextToSize(sanitizeForPDF(month.affirmation), CW - 20)
     // Max 2 lines — affirmations should be memorisable
     for (const line of affLines.slice(0, 2)) {
       const lw = doc.getTextWidth(line)
       doc.text(line, PW / 2 - lw / 2, y)
-      y += 6
+      y += 6.5
     }
     y += 2
     goldLine(doc, y, 50)
@@ -1452,6 +1582,39 @@ function drawEclipseSpotlight(
     doc.rect(ML, y - 2, 2.5, cardH, 'F')
     doc.setGState(doc.GState({ opacity: 1 }))
 
+    // Eclipse type diagram (small phase progression)
+    const diagramX = PW - MR - 20
+    if (isEclipse) {
+      const dy = y + 2
+      const cr = 2 // circle radius
+      const spacing = 6
+      if (event.type === 'eclipse_solar') {
+        // Solar: open -> half -> filled
+        doc.setDrawColor(...cardColor); doc.setLineWidth(0.3)
+        doc.setGState(doc.GState({ opacity: 0.5 }))
+        doc.circle(diagramX, dy, cr, 'S')
+        doc.setFillColor(...cardColor)
+        // Half-filled: draw filled half
+        doc.setGState(doc.GState({ opacity: 0.3 }))
+        doc.circle(diagramX + spacing, dy, cr, 'S')
+        doc.rect(diagramX + spacing, dy - cr, cr, cr * 2, 'F')
+        doc.setGState(doc.GState({ opacity: 0.6 }))
+        doc.circle(diagramX + spacing * 2, dy, cr, 'F')
+      } else {
+        // Lunar: filled -> half -> open
+        doc.setFillColor(...cardColor)
+        doc.setGState(doc.GState({ opacity: 0.6 }))
+        doc.circle(diagramX, dy, cr, 'F')
+        doc.setGState(doc.GState({ opacity: 0.3 }))
+        doc.circle(diagramX + spacing, dy, cr, 'S')
+        doc.rect(diagramX + spacing - cr, dy - cr, cr, cr * 2, 'F')
+        doc.setDrawColor(...cardColor); doc.setLineWidth(0.3)
+        doc.setGState(doc.GState({ opacity: 0.5 }))
+        doc.circle(diagramX + spacing * 2, dy, cr, 'S')
+      }
+      doc.setGState(doc.GState({ opacity: 1 }))
+    }
+
     // Event name
     doc.setTextColor(...cardColor)
     setDisplay(doc, f, 12, 'normal')
@@ -1776,6 +1939,72 @@ function drawSonicToolkit(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TABLE OF CONTENTS — drawn after all pages are rendered (uses setPage)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface TocEntry {
+  label: string
+  page: number
+  indent?: boolean
+}
+
+function drawTableOfContents(
+  doc: jsPDF, f: FontSet, tocPageNum: number,
+  entries: TocEntry[], clientName: string, lang: Lang,
+) {
+  doc.setPage(tocPageNum)
+
+  let y = MT + 10
+
+  // Title
+  doc.setTextColor(...P.navy)
+  setDisplay(doc, f, 20, 'normal')
+  doc.text(lang === 'lt' ? 'TURINYS' : 'TABLE OF CONTENTS', ML, y)
+  y += 8
+  goldLineFull(doc, y)
+  y += 12
+
+  for (const entry of entries) {
+    const x = entry.indent ? ML + 8 : ML
+    const maxLabelW = CW - 15 - (entry.indent ? 8 : 0)
+
+    // Label
+    doc.setTextColor(...P.navy)
+    if (entry.indent) {
+      setBody(doc, f, 9.5)
+    } else {
+      setBody(doc, f, 10, true)
+    }
+    doc.text(entry.label, x, y)
+    const labelW = doc.getTextWidth(entry.label)
+
+    // Page number (right-aligned)
+    doc.setTextColor(...P.gold)
+    setBody(doc, f, 10, true)
+    const pageStr = String(entry.page)
+    const pageW = doc.getTextWidth(pageStr)
+    doc.text(pageStr, PW - MR - pageW, y)
+
+    // Dot leaders between label and page number
+    doc.setTextColor(...P.mutedGrey)
+    setBody(doc, f, 8)
+    const dotsStartX = x + labelW + 3
+    const dotsEndX = PW - MR - pageW - 3
+    if (dotsEndX > dotsStartX + 5) {
+      let dx = dotsStartX
+      while (dx < dotsEndX) {
+        doc.text('.', dx, y)
+        dx += 2
+      }
+    }
+
+    y += entry.indent ? 5.5 : 7
+  }
+
+  pageFooter(doc, f, tocPageNum, clientName, lang)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export — Premium Blueprint (narrative-based)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1802,6 +2031,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
 
   const f = initFonts()
   let pageNum = 1
+  const tocEntries: TocEntry[] = []
 
   // Date range
   const firstMonth = months[0].month
@@ -1809,17 +2039,16 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   const dateRange = `${firstMonth} — ${lastMonth}`
   const yearStr = firstMonth.split(' ').pop() || new Date().getFullYear().toString()
 
-  // ─── Page 1: Cover ───
-  drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language)
-
-  // ─── Compute natal placements from birth date ───
+  // ─── Compute natal data from birth date ───
   let natalPlacements: NatalPlacement[] | null = null
+  let coverWheelData: CoverWheelData | null = null
   if (birthDate) {
     try {
       const bd = new Date(birthDate)
       if (!isNaN(bd.getTime())) {
-        // Use lat/lng 0,0 — ecliptic longitudes are location-independent for planet signs
         const positions = getPlanetPositions(bd, 0, 0)
+
+        // Natal placements for intro page (Sun, Moon, Mercury, Venus, Mars)
         const natalNames = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars']
         natalPlacements = positions
           .filter(p => natalNames.includes(p.name))
@@ -1827,49 +2056,89 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
             const signName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
             return { name: p.name, sign: signName, degree: p.degreeInSign }
           })
+
+        // Cover wheel data — all planets with ecliptic longitude
+        const wheelPlanets = positions.map(p => {
+          const signIdx = ZODIAC_SIGNS.findIndex(z => z.id === p.zodiacSign)
+          const eclipticLon = (signIdx >= 0 ? signIdx : 0) * 30 + p.degreeInSign
+          return { name: p.name, eclipticLon }
+        })
+
+        // Compute aspects for cover wheel
+        const aspects = calculateAspects(positions)
+        const wheelAspects = aspects
+          .filter(a => a.orb < 6)
+          .map(a => {
+            const p1 = wheelPlanets.find(p => p.name === a.planet1)
+            const p2 = wheelPlanets.find(p => p.name === a.planet2)
+            return p1 && p2
+              ? { lon1: p1.eclipticLon, lon2: p2.eclipticLon, type: a.type }
+              : null
+          })
+          .filter((a): a is { lon1: number; lon2: number; type: string } => a !== null)
+
+        coverWheelData = { planets: wheelPlanets, aspects: wheelAspects }
       }
     } catch { /* natal calculation failed, continue without */ }
   }
 
-  // ─── Page 2: Introduction ───
+  // ─── Page 1: Cover ───
+  drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language, coverWheelData)
+
+  // ─── Page 2: Table of Contents (blank placeholder — filled after rendering) ───
   doc.addPage()
   pageNum++
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
+  const tocPage = pageNum // remember TOC page number
+
+  // ─── Page 3: Introduction ───
+  doc.addPage()
+  pageNum++
+  doc.setFillColor(...P.paperRGB)
+  doc.rect(0, 0, PW, PH, 'F')
+  tocEntries.push({ label: language === 'lt' ? 'Jusu Kosminiai Metai' : 'Your Cosmic Year Ahead', page: pageNum })
   drawIntroPage(doc, f, clientName, birthDate, birthTime, natalPlacements, language, pageNum)
 
-  // ─── Page 3: Year at a Glance ───
+  // ─── Page 4: Year at a Glance ───
   doc.addPage()
   pageNum++
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
+  tocEntries.push({ label: language === 'lt' ? 'Jusu Metai Vienu Zvilgsniu' : 'Your Year at a Glance', page: pageNum })
   drawYearGlance(doc, f, months, yearOverview, clientName, language, pageNum)
 
-  // ─── Page 4: Ritual Calendar ───
+  // ─── Page 5: Ritual Calendar ───
   if (ritualCalendar && ritualCalendar.length > 0) {
     doc.addPage()
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: language === 'lt' ? 'Jusu Ritualu Kalendorius' : 'Your Ritual Calendar', page: pageNum })
     drawRitualCalendar(doc, f, ritualCalendar, clientName, language, pageNum)
   }
 
-  // ─── Page 5: Eclipse & Retrograde Spotlight ───
+  // ─── Eclipse & Retrograde Spotlight ───
   const eclipseData = eclipseRetroData || yearOverview?.eclipses_and_retrogrades
   if (eclipseData && eclipseData.events && eclipseData.events.length > 0) {
     doc.addPage()
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: language === 'lt' ? 'Kosminiai Kryzkeles' : 'Cosmic Crossroads: Eclipses & Retrogrades', page: pageNum })
     pageNum = drawEclipseSpotlight(doc, f, eclipseData, clientName, language, pageNum)
   }
 
-  // ─── Pages 6–17: Monthly Readings ───
+  // ─── Monthly Readings header in TOC ───
+  tocEntries.push({ label: language === 'lt' ? 'Menesiu Skaitymai' : 'Monthly Readings', page: pageNum + 1 })
+
+  // ─── Monthly Readings ───
   for (const month of months) {
     doc.addPage()
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: month.month, page: pageNum, indent: true })
     pageNum = drawMonthPage(doc, f, month, clientName, language, pageNum)
   }
 
@@ -1879,6 +2148,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: language === 'lt' ? 'Jusu Metai Perspektyvoje' : 'Your Year in Perspective', page: pageNum })
     drawYearSynthesis(doc, f, yearOverview, clientName, language, pageNum)
   }
 
@@ -1888,6 +2158,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: language === 'lt' ? 'Zvelgiant i Prieki' : 'Moving Forward', page: pageNum })
     drawClosingPage(doc, f, yearOverview, months, clientName, language, pageNum)
   }
 
@@ -1898,6 +2169,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     pageNum++
     doc.setFillColor(...P.paperRGB)
     doc.rect(0, 0, PW, PH, 'F')
+    tocEntries.push({ label: language === 'lt' ? 'Jusu Garso Irankiai' : 'Your Sonic Toolkit', page: pageNum })
     drawSonicToolkit(doc, f, toolkit, yearStr, clientName, language, pageNum)
   }
 
@@ -1906,7 +2178,11 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   pageNum++
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
+  tocEntries.push({ label: language === 'lt' ? 'Apie Si Skaityma' : 'About This Reading', page: pageNum })
   drawAboutPage(doc, f, language, pageNum, clientName)
+
+  // ─── Fill in Table of Contents (go back to page 2) ───
+  drawTableOfContents(doc, f, tocPage, tocEntries, clientName, language)
 
   // Save
   const safeName = (clientName || 'cosmic').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
