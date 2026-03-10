@@ -202,12 +202,12 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
         onPointerMove={tapHandlers.onPointerMove}
         onPointerUp={tapHandlers.onPointerUp}
         className="flex items-center justify-center select-none cursor-pointer
-                   w-11 h-11 rounded-full
+                   w-14 h-14 rounded-full
                    active:scale-90 transition-transform duration-150"
         style={{
           background: 'transparent',
           border: 'none',
-          fontSize: '20px',
+          fontSize: '44px',
           color: impactScore >= 0.7 ? '#FF4444'
             : impactScore >= 0.4 ? '#FF8C00'
             : impactScore >= 0.2 ? '#FFD700'
