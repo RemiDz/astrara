@@ -10,6 +10,8 @@ import { CATEGORY_KEYS } from '@/types/transit-grid'
 import { generateBlueprintPdf } from '@/lib/cosmic-blueprint-pdf'
 import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintData, BlueprintEclipseRetroData } from '@/types/cosmic-blueprint'
 import { computeRitualCalendarData } from '@/lib/transit-computation'
+import { getPlanetPositions } from '@/lib/astronomy'
+import { ZODIAC_SIGNS } from '@/lib/zodiac'
 
 const STORAGE_KEY = 'astrara-transit-grid'
 const BLUEPRINT_STORAGE_KEY = 'astrara-cosmic-blueprint'
@@ -384,6 +386,7 @@ function TransitGridPage() {
               yearOverview: data.year_overview,
               eclipseRetroData: data.year_overview?.eclipses_and_retrogrades || null,
               ritualCalendar: cachedRitualCal,
+              natalProfile: data.natalProfile || null,
               clientName: data.clientName,
               birthDate: data.birthDate,
               birthTime: data.birthTime,
@@ -399,17 +402,56 @@ function TransitGridPage() {
     }
 
     try {
-      // Stage 1: Transit data computation + ritual calendar
+      // Stage 1: Transit data computation + ritual calendar + natal positions
       setBlueprintStage('transits')
       const ritualCalendar = computeRitualCalendarData(monthDates)
+
+      // Compute natal planet positions for the natal profile API call
+      let natalPlanetsForApi: { name: string; sign: string; degree: number; isRetrograde: boolean }[] = []
+      if (birthDate) {
+        try {
+          const bd = new Date(birthDate)
+          if (!isNaN(bd.getTime())) {
+            const positions = getPlanetPositions(bd, 0, 0)
+            natalPlanetsForApi = positions.map(p => {
+              const signName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
+              return { name: p.name, sign: signName, degree: p.degreeInSign, isRetrograde: p.isRetrograde }
+            })
+          }
+        } catch { /* natal computation failed, continue without */ }
+      }
+
       await new Promise(r => setTimeout(r, 300)) // Brief visual pause
 
       // Stage 2: Narrative generation (6 month calls + 1 overview = 7 total)
+      // Also fire natal profile call in parallel with first batch
       setBlueprintStage('narrative')
 
       const allMonths: BlueprintMonthNarrative[] = []
       let yearOverview: BlueprintYearOverview | null = null
       let eclipseRetroData: BlueprintEclipseRetroData | null = null
+
+      // Start natal profile API call (runs in parallel with month batches)
+      let natalProfilePromise: Promise<string | null> = Promise.resolve(null)
+      if (natalPlanetsForApi.length > 0) {
+        natalProfilePromise = fetch('/api/natal-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planets: natalPlanetsForApi,
+            clientName,
+            birthDate,
+            birthTime,
+            language: uiLang,
+          }),
+        })
+          .then(res => res.json())
+          .then(json => json.profile || null)
+          .catch(err => {
+            console.warn('[blueprint] Natal profile generation failed (non-critical):', err)
+            return null
+          })
+      }
 
       // 6 batches of 2 months each
       const monthBatches = [
@@ -490,11 +532,15 @@ function TransitGridPage() {
       yearOverview = overviewJson.year_overview || null
       eclipseRetroData = overviewJson.eclipseRetroData || null
 
+      // Await natal profile (should be done by now since it ran in parallel)
+      const natalProfile = await natalProfilePromise
+
       // Cache the data
       const blueprintData: BlueprintData = {
         months: allMonths,
         year_overview: yearOverview,
         ritualCalendar,
+        natalProfile,
         clientName,
         birthDate,
         birthTime,
@@ -513,6 +559,7 @@ function TransitGridPage() {
         yearOverview,
         eclipseRetroData,
         ritualCalendar,
+        natalProfile,
         clientName,
         birthDate,
         birthTime,

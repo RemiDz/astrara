@@ -1890,6 +1890,271 @@ function drawSonicToolkit(
 // TABLE OF CONTENTS — drawn after all pages are rendered (uses setPage)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Natal Profile — Parser & Drawing
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface NatalProfileSection {
+  title: string       // e.g., "THE SUN — YOUR CORE ESSENCE"
+  displayTitle: string // Cleaned for PDF display
+  planetName?: string // e.g., "Sun" — only for planet sections
+  content: string     // Interpretation paragraphs
+  isSynthesis: boolean // true for synthesis sections (no planet orb marker)
+}
+
+// Planet name extraction from section headers
+const PLANET_HEADER_MAP: Record<string, string> = {
+  'SUN': 'Sun',
+  'MOON': 'Moon',
+  'MERCURY': 'Mercury',
+  'VENUS': 'Venus',
+  'MARS': 'Mars',
+  'JUPITER': 'Jupiter',
+  'SATURN': 'Saturn',
+  'URANUS': 'Uranus',
+  'NEPTUNE': 'Neptune',
+  'PLUTO': 'Pluto',
+}
+
+function parseNatalProfile(rawText: string): NatalProfileSection[] {
+  if (!rawText || rawText.trim().length === 0) return []
+
+  const sections: NatalProfileSection[] = []
+
+  // Split by lines that are ALL CAPS (section headers)
+  // Pattern: line that is mostly uppercase letters, spaces, dashes, and common punctuation
+  const lines = rawText.split('\n')
+  let currentTitle = ''
+  let currentContent: string[] = []
+
+  const flushSection = () => {
+    if (currentTitle && currentContent.length > 0) {
+      const content = currentContent.join('\n').trim()
+      if (content.length > 0) {
+        // Determine if this is a planet section or synthesis
+        const upperTitle = currentTitle.toUpperCase()
+        let planetName: string | undefined
+        for (const [key, name] of Object.entries(PLANET_HEADER_MAP)) {
+          if (upperTitle.startsWith(key) || upperTitle.includes(`THE ${key}`)) {
+            planetName = name
+            break
+          }
+        }
+
+        const isSynthesis = !planetName && !upperTitle.includes('COSMIC IDENTITY')
+
+        sections.push({
+          title: currentTitle,
+          displayTitle: currentTitle,
+          planetName,
+          content,
+          isSynthesis,
+        })
+      }
+    }
+    currentContent = []
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed.length === 0) {
+      if (currentContent.length > 0) currentContent.push('')
+      continue
+    }
+
+    // Detect section headers: lines that are mostly uppercase, at least 10 chars,
+    // and don't look like regular sentences
+    const isHeader = trimmed.length >= 10 &&
+      trimmed === trimmed.toUpperCase() &&
+      /^[A-Z\s\u2014\u2013\-—–:,.']+$/.test(trimmed)
+
+    if (isHeader) {
+      flushSection()
+      currentTitle = trimmed
+    } else {
+      currentContent.push(trimmed)
+    }
+  }
+  flushSection()
+
+  return sections
+}
+
+function drawNatalProfileSection(
+  doc: jsPDF, f: FontSet,
+  natalProfile: string,
+  wheelPlanets: { name: string; sign: string; degree: number; isRetrograde: boolean }[],
+  clientName: string, birthDate: string, birthTime: string,
+  lang: Lang, startPageNum: number, tocEntries: TocEntry[],
+): number {
+  const sections = parseNatalProfile(natalProfile)
+  if (sections.length === 0) return startPageNum
+
+  let pageNum = startPageNum
+
+  // ─── Title page ───
+  doc.addPage()
+  pageNum++
+  doc.setFillColor(...P.paperRGB)
+  doc.rect(0, 0, PW, PH, 'F')
+  tocEntries.push({
+    label: lang === 'lt' ? 'Jusu Gimimo Planas' : 'Your Natal Blueprint',
+    page: pageNum,
+  })
+
+  let y = MT + 40
+
+  // Large title
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 26, 'bold')
+  const titleText = lang === 'lt' ? 'JUSU GIMIMO PLANAS' : 'YOUR NATAL BLUEPRINT'
+  const tw = doc.getTextWidth(titleText)
+  doc.text(titleText, PW / 2 - tw / 2, y)
+  y += 10
+
+  goldLine(doc, y, 60)
+  y += 14
+
+  // Subtitle
+  doc.setTextColor(...P.grey)
+  setDisplayItalic(doc, f, 13)
+  const subText = lang === 'lt'
+    ? 'Kosminiai Siulai, Audžiantys Jusu Esybe'
+    : 'The Cosmic Threads That Weave Your Being'
+  const stw = doc.getTextWidth(subText)
+  doc.text(subText, PW / 2 - stw / 2, y)
+  y += 20
+
+  // Client info
+  doc.setTextColor(...P.navy)
+  setDisplay(doc, f, 18, 'normal')
+  const cnw = doc.getTextWidth(clientName)
+  doc.text(clientName, PW / 2 - cnw / 2, y)
+  y += 10
+
+  doc.setTextColor(...P.grey)
+  setBody(doc, f, 10)
+  let bornLine = birthDate || ''
+  if (birthTime) bornLine += `  ·  ${birthTime}`
+  const blw = doc.getTextWidth(bornLine)
+  doc.text(bornLine, PW / 2 - blw / 2, y)
+
+  pageFooter(doc, f, pageNum, clientName, lang)
+
+  // ─── Content pages ───
+  doc.addPage()
+  pageNum++
+  doc.setFillColor(...P.paperRGB)
+  doc.rect(0, 0, PW, PH, 'F')
+  y = MT + 5
+
+  let passedSynthesisDivider = false
+
+  for (const section of sections) {
+    // Estimate space needed for this section
+    const estimatedLines = doc.splitTextToSize(sanitizeForPDF(section.content), CW).length
+    const estimatedHeight = 20 + estimatedLines * 4.5 // header + content
+
+    // Check if we need a new page
+    if (needsNewPage(doc, y, Math.min(estimatedHeight, 60))) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT + 5
+    }
+
+    // Synthesis divider line (once, before the first synthesis section)
+    if (section.isSynthesis && !passedSynthesisDivider) {
+      passedSynthesisDivider = true
+      y += 4
+      goldLine(doc, y, 80)
+      y += 10
+    }
+
+    // Section header with planet orb marker
+    if (section.planetName) {
+      const pColor = PLANET_RGB[section.planetName] || P.navy
+
+      // Planet orb circle
+      doc.setFillColor(...pColor)
+      doc.circle(ML + 3, y - 2, 2.5, 'F')
+
+      // Section title
+      doc.setTextColor(...P.navy)
+      setDisplay(doc, f, 12, 'bold')
+      doc.text(sanitizeForPDF(section.displayTitle), ML + 9, y)
+      y += 5
+
+      // Planet placement subtitle
+      const planet = wheelPlanets.find(p => p.name === section.planetName)
+      if (planet) {
+        doc.setTextColor(...P.grey)
+        setBody(doc, f, 9)
+        const degStr = `${Math.round(planet.degree)}`
+        const subLine = `${planet.name} in ${planet.sign} · ${degStr}°${planet.isRetrograde ? ' (retrograde)' : ''}`
+        doc.text(subLine, ML + 9, y)
+        y += 6
+      }
+    } else {
+      // Synthesis section — no orb marker
+      doc.setTextColor(...P.navy)
+      setDisplay(doc, f, 12, 'bold')
+      doc.text(sanitizeForPDF(section.displayTitle), ML, y)
+      y += 7
+    }
+
+    // Add TOC entry for each section
+    tocEntries.push({
+      label: section.displayTitle.split(' — ').pop()?.trim() || section.displayTitle,
+      page: pageNum,
+      indent: true,
+    })
+
+    // Content paragraphs
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 9.5)
+    const contentLines = doc.splitTextToSize(sanitizeForPDF(section.content), CW)
+    const lineHeight = 4.5
+
+    for (const line of contentLines) {
+      if (needsNewPage(doc, y, 8)) {
+        pageFooter(doc, f, pageNum, clientName, lang)
+        doc.addPage()
+        pageNum++
+        doc.setFillColor(...P.paperRGB)
+        doc.rect(0, 0, PW, PH, 'F')
+        y = MT + 5
+        doc.setTextColor(...P.navy)
+        setBody(doc, f, 9.5)
+      }
+      doc.text(line, ML, y)
+      y += lineHeight
+    }
+
+    // Special treatment for Sound Healing Resonance — last section
+    if (section.displayTitle.toUpperCase().includes('SOUND HEALING')) {
+      // No special background needed — it's already well-separated
+      y += 2
+
+      // Reference to Sonic Toolkit
+      doc.setTextColor(...P.gold)
+      setBody(doc, f, 8)
+      const refText = lang === 'lt'
+        ? 'Zr. Jusu Garso Irankius, esancius sio dokumento gale, del issamiu dazniu ir instrumentu.'
+        : 'See Your Sonic Toolkit at the back of this document for detailed frequencies and instruments.'
+      doc.text(refText, ML, y)
+      y += 6
+    }
+
+    y += 6 // spacing between sections
+  }
+
+  pageFooter(doc, f, pageNum, clientName, lang)
+  return pageNum
+}
+
 interface TocEntry {
   label: string
   page: number
@@ -1961,6 +2226,7 @@ export interface BlueprintPdfParams {
   yearOverview: BlueprintYearOverview | null
   eclipseRetroData?: BlueprintEclipseRetroData | null
   ritualCalendar?: RitualCalendarMonth[]
+  natalProfile?: string | null
   clientName: string
   birthDate: string
   birthTime: string
@@ -1968,7 +2234,7 @@ export interface BlueprintPdfParams {
 }
 
 export async function generateBlueprintPdf(params: BlueprintPdfParams) {
-  const { months, yearOverview, eclipseRetroData, ritualCalendar, clientName, birthDate, birthTime, language } = params
+  const { months, yearOverview, eclipseRetroData, ritualCalendar, natalProfile, clientName, birthDate, birthTime, language } = params
 
   if (months.length === 0) return
 
@@ -1990,6 +2256,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   // ─── Compute natal data from birth date ───
   let natalPlacements: NatalPlacement[] | null = null
   let wheelPngDataUrl: string | null = null
+  let wheelPlanets: { name: string; symbol: string; longitude: number; sign: string; degree: number; isRetrograde: boolean }[] = []
   if (birthDate) {
     try {
       const bd = new Date(birthDate)
@@ -2006,7 +2273,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
           })
 
         // Build planet positions for SVG wheel
-        const wheelPlanets = positions.map(p => {
+        wheelPlanets = positions.map(p => {
           const meta = PLANET_META.find(m => m.id === p.id)
           const signIdx = ZODIAC_SIGNS.findIndex(z => z.id === p.zodiacSign)
           const signObj = ZODIAC_SIGNS[signIdx >= 0 ? signIdx : 0]
@@ -2041,7 +2308,15 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   doc.rect(0, 0, PW, PH, 'F')
   const tocPage = pageNum // remember TOC page number
 
-  // ─── Page 3: Introduction ───
+  // ─── Pages 3+: Natal Blueprint (AI-generated natal profile) ───
+  if (natalProfile && natalProfile.trim().length > 0) {
+    pageNum = drawNatalProfileSection(
+      doc, f, natalProfile, wheelPlanets, clientName, birthDate, birthTime,
+      language, pageNum, tocEntries,
+    )
+  }
+
+  // ─── Introduction (Your Cosmic Year Ahead) ───
   doc.addPage()
   pageNum++
   doc.setFillColor(...P.paperRGB)

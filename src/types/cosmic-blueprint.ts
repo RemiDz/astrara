@@ -62,6 +62,7 @@ export interface BlueprintData {
   months: BlueprintMonthNarrative[]
   year_overview: BlueprintYearOverview | null
   ritualCalendar?: RitualCalendarMonth[]
+  natalProfile?: string | null
   clientName: string
   birthDate: string
   birthTime: string
