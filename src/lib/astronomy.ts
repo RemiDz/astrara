@@ -65,7 +65,14 @@ function getEclipticLongitude(body: Astronomy.Body, date: Date): number {
     const moonPos = Astronomy.EclipticGeoMoon(date)
     return moonPos.lon
   }
-  return Astronomy.EclipticLongitude(body, date)
+  // Use GEOCENTRIC ecliptic longitude for natal astrology (not heliocentric).
+  // Astronomy.EclipticLongitude returns heliocentric which is wrong for inner planets.
+  const geo = Astronomy.GeoVector(body, date, true)
+  const obliq = 23.4393 * Math.PI / 180 // J2000 mean obliquity
+  const yEcl = geo.y * Math.cos(obliq) + geo.z * Math.sin(obliq)
+  let lon = Math.atan2(yEcl, geo.x) * 180 / Math.PI
+  if (lon < 0) lon += 360
+  return lon
 }
 
 function getDistanceAU(body: Astronomy.Body, date: Date): number {
