@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { computeMonthTransitData } from '@/lib/transit-computation'
+import type {
+  CategoryReading, MonthlySummary, MonthData,
+  OverviewCategory, OverviewData,
+  PlanetaryBreakdown, TransitAspect,
+} from '@/types/transit-grid'
 
-const SYSTEM_PROMPT = `You are a professional astrologer providing transit readings for a client consultation.
-You receive exact planetary positions and aspects from NASA JPL-accurate ephemeris.
-Give specific, insightful, actionable interpretations. Reference actual planets and aspects.
-Balance: ~40% positive, ~30% challenging, ~30% practical. Be honest about difficulties.
-Respond ONLY in valid JSON. No markdown, backticks, or code fences.`
+// ---------------------------------------------------------------------------
+// System prompts
+// ---------------------------------------------------------------------------
+
+const SYSTEM_PROMPT = `You are a professional astrologer. You receive NASA JPL ephemeris data.
+Give specific, insightful interpretations. Reference actual planets and aspects.
+Balance: ~40% positive, ~30% challenging, ~30% practical.
+Respond ONLY in valid JSON. No markdown, no backticks, no preamble.
+Be extremely concise — each field is MAX 2 sentences. Total response under 800 tokens.`
 
 const OVERVIEW_SYSTEM_PROMPT = `You are a professional astrologer synthesising a 12-month overview.
-Given monthly summaries from NASA JPL data, identify year-long trends, peak months, trajectory.
-Be honest about difficult periods. Respond ONLY in valid JSON. No markdown, backticks, or code fences.`
+Identify year-long trends, peak months, trajectory. Be honest about difficulties.
+Respond ONLY in valid JSON. No markdown, no backticks, no preamble.
+Be extremely concise. Total response under 800 tokens.`
+
+// ---------------------------------------------------------------------------
+// Prompt builders — compact transit data + minimal JSON schema
+// ---------------------------------------------------------------------------
 
 function buildCompactMonthPrompt(year: number, month: number, language: string, birthData?: string): string {
   const data = computeMonthTransitData(year, month)
 
-  // Compact planet positions: "Sun Ari 15°, Moon Lib 22° Rx"
   const pos1 = data.positions_1st.map(p =>
     `${p.name} ${p.sign.substring(0, 3)} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
   ).join(', ')
@@ -23,7 +36,6 @@ function buildCompactMonthPrompt(year: number, month: number, language: string, 
     `${p.name} ${p.sign.substring(0, 3)} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
   ).join(', ')
 
-  // Compact aspects: "Sun□Saturn(2.1°), Venus△Jupiter(1.3°)"
   const asp1 = data.aspects_1st.map(a =>
     `${a.planet1}${a.symbol}${a.planet2}(${a.orb}°)`
   ).join(', ')
@@ -48,7 +60,9 @@ Aspects 15th: ${asp15 || 'none'}
 ${extras.join('\n')}${birth}
 ${lang}
 
-Return JSON: {"month":"${data.monthLabel}","categories":{"finance":{"impact_score":<1-10>,"key_theme":"<1-2 sentences>","full_reading":"<3-5 sentences>","planetary_breakdown":[{"planet":"<name>","symbol":"<glyph>","position":"<sign deg°>","aspects":[{"type":"<name>","symbol":"<glyph>","target":"<planet>","target_symbol":"<glyph>","interpretation":"<1 sentence>"}],"impact_contribution":<1-5>,"category_effect":"<1 sentence>"}],"practical_guidance":"<advice>","dates_to_watch":["<date — event>"]},"relationships":{same},"career":{same},"health":{same},"spiritual":{same},"monthly_summary":{"impact_score":<1-10>,"dominant_theme":"<1-2 sentences>","full_reading":"<3-5 sentences>","key_players":["<planets>"],"opportunities":"<text>","challenges":"<text>","interrelations":"<text>"}}}`
+Return JSON with this EXACT structure (short keys, max 2 sentences per field):
+{"finance":{"s":<1-10>,"t":"theme","r":"reading","p":["Planet1△Planet2"],"g":"guidance"},"relationships":{"s":0,"t":"","r":"","p":[],"g":""},"career":{"s":0,"t":"","r":"","p":[],"g":""},"health":{"s":0,"t":"","r":"","p":[],"g":""},"spiritual":{"s":0,"t":"","r":"","p":[],"g":""},"summary":{"s":0,"t":"","r":""}}
+Keys: s=impact score 1-10, t=theme, r=reading, p=key planetary aspects, g=guidance. Keep ALL values SHORT.`
 }
 
 function buildOverviewPrompt(monthSummaries: string[], language: string): string {
@@ -57,8 +71,158 @@ function buildOverviewPrompt(monthSummaries: string[], language: string): string
   return `Monthly summaries:\n${monthSummaries.join('\n---\n')}
 ${lang}
 
-Return JSON: {"categories":{"finance":{"impact_score":<1-10>,"year_trend":"<3-5 sentences>","peak_months":["<months>"],"trajectory":"<improving/challenging/stable/transformative>","key_events":"<text>","full_reading":"<3-5 sentences>"},"relationships":{same},"career":{same},"health":{same},"spiritual":{same},"grand_summary":{"impact_score":<1-10>,"dominant_theme":"<theme>","full_reading":"<5-7 sentences>","key_players":["<planets>"],"peak_months":["<months>"],"trajectory":"<trajectory>"}}}`
+Return JSON with this EXACT structure (short keys, concise):
+{"finance":{"s":<1-10>,"t":"year trend","pk":["month"],"tr":"improving|challenging|stable|transformative"},"relationships":{"s":0,"t":"","pk":[],"tr":""},"career":{"s":0,"t":"","pk":[],"tr":""},"health":{"s":0,"t":"","pk":[],"tr":""},"spiritual":{"s":0,"t":"","pk":[],"tr":""},"grand":{"s":0,"t":"theme","r":"reading","pk":[],"tr":""}}
+Keys: s=score 1-10, t=trend/theme, r=reading, pk=peak months, tr=trajectory. Keep ALL values SHORT.`
 }
+
+// ---------------------------------------------------------------------------
+// Planet / aspect helpers for expanding compact responses
+// ---------------------------------------------------------------------------
+
+const PLANET_GLYPHS: Record<string, string> = {
+  Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂',
+  Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇',
+}
+
+const ASPECT_CHARS = ['△', '□', '☍', '☌', '⚹']
+const ASPECT_NAMES: Record<string, string> = {
+  '△': 'trine', '□': 'square', '☍': 'opposition', '☌': 'conjunction', '⚹': 'sextile',
+}
+
+function parseAspectStr(s: string): { p1: string; sym: string; p2: string } | null {
+  for (const ch of ASPECT_CHARS) {
+    const idx = s.indexOf(ch)
+    if (idx > 0) {
+      return { p1: s.substring(0, idx), sym: ch, p2: s.substring(idx + ch.length) }
+    }
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Expand compact month response → full MonthData
+// ---------------------------------------------------------------------------
+
+interface CompactCat { s: number; t: string; r: string; p: string[]; g: string }
+interface CompactSum { s: number; t: string; r: string }
+interface CompactMonth {
+  finance: CompactCat; relationships: CompactCat; career: CompactCat
+  health: CompactCat; spiritual: CompactCat; summary: CompactSum
+}
+
+function expandCategory(c: CompactCat): CategoryReading {
+  const planetMap = new Map<string, TransitAspect[]>()
+
+  for (const raw of (c.p ?? [])) {
+    const parsed = parseAspectStr(raw)
+    if (parsed) {
+      if (!planetMap.has(parsed.p1)) planetMap.set(parsed.p1, [])
+      planetMap.get(parsed.p1)!.push({
+        type: ASPECT_NAMES[parsed.sym] ?? 'aspect',
+        symbol: parsed.sym,
+        target: parsed.p2,
+        target_symbol: PLANET_GLYPHS[parsed.p2] ?? '',
+        interpretation: '',
+      })
+    }
+  }
+
+  const breakdown: PlanetaryBreakdown[] = []
+  for (const [name, aspects] of planetMap) {
+    breakdown.push({
+      planet: name,
+      symbol: PLANET_GLYPHS[name] ?? name.charAt(0),
+      position: '',
+      aspects,
+      impact_contribution: 3,
+      category_effect: '',
+    })
+  }
+
+  return {
+    impact_score: c.s ?? 5,
+    key_theme: c.t ?? '',
+    full_reading: c.r ?? '',
+    planetary_breakdown: breakdown,
+    practical_guidance: c.g ?? '',
+    dates_to_watch: [],
+  }
+}
+
+function expandSummary(c: CompactSum): MonthlySummary {
+  return {
+    impact_score: c.s ?? 5,
+    dominant_theme: c.t ?? '',
+    full_reading: c.r ?? '',
+    key_players: [],
+    opportunities: '',
+    challenges: '',
+    interrelations: '',
+  }
+}
+
+function expandMonth(compact: CompactMonth, monthLabel: string, monthKey: string): MonthData {
+  return {
+    month: monthLabel,
+    monthKey,
+    categories: {
+      finance: expandCategory(compact.finance),
+      relationships: expandCategory(compact.relationships),
+      career: expandCategory(compact.career),
+      health: expandCategory(compact.health),
+      spiritual: expandCategory(compact.spiritual),
+      monthly_summary: expandSummary(compact.summary),
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Expand compact overview response → full OverviewData
+// ---------------------------------------------------------------------------
+
+interface CompactOvCat { s: number; t: string; pk: string[]; tr: string }
+interface CompactGrand { s: number; t: string; r: string; pk: string[]; tr: string }
+interface CompactOverview {
+  finance: CompactOvCat; relationships: CompactOvCat; career: CompactOvCat
+  health: CompactOvCat; spiritual: CompactOvCat; grand: CompactGrand
+}
+
+function expandOverviewCat(c: CompactOvCat): OverviewCategory {
+  return {
+    impact_score: c.s ?? 5,
+    year_trend: c.t ?? '',
+    peak_months: c.pk ?? [],
+    trajectory: c.tr ?? '',
+    key_events: '',
+    full_reading: c.t ?? '', // re-use trend as full reading
+  }
+}
+
+function expandOverview(compact: CompactOverview): OverviewData {
+  const g = compact.grand
+  return {
+    categories: {
+      finance: expandOverviewCat(compact.finance),
+      relationships: expandOverviewCat(compact.relationships),
+      career: expandOverviewCat(compact.career),
+      health: expandOverviewCat(compact.health),
+      spiritual: expandOverviewCat(compact.spiritual),
+      grand_summary: {
+        impact_score: g.s ?? 5,
+        dominant_theme: g.t ?? '',
+        full_reading: g.r ?? '',
+        key_players: [],
+        peak_months: g.pk ?? [],
+        trajectory: g.tr ?? '',
+      },
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// API call with retry
+// ---------------------------------------------------------------------------
 
 const DEBUG = process.env.NODE_ENV === 'development'
 
@@ -120,11 +284,10 @@ async function callAnthropicWithRetry(
       .join('')
 
     const stopReason = data.stop_reason
-    console.log(`[transit-grid] Response tokens: input=${data.usage?.input_tokens ?? '?'} output=${data.usage?.output_tokens ?? '?'} stop=${stopReason}`)
+    console.log(`[transit-grid] Tokens: in=${data.usage?.input_tokens ?? '?'} out=${data.usage?.output_tokens ?? '?'} stop=${stopReason}`)
 
-    // Warn if response was truncated (hit token limit)
     if (stopReason === 'max_tokens') {
-      console.warn(`[transit-grid] WARNING: Response truncated at max_tokens (${maxTokens}). Increase max_tokens.`)
+      console.warn(`[transit-grid] WARNING: Truncated at ${maxTokens} tokens`)
     }
 
     return rawText
@@ -132,6 +295,31 @@ async function callAnthropicWithRetry(
 
   throw new Error('Exhausted retries')
 }
+
+// ---------------------------------------------------------------------------
+// Parse raw API text → JSON with fence stripping + truncation detection
+// ---------------------------------------------------------------------------
+
+function parseResponse(rawText: string, label: string): Record<string, unknown> {
+  const cleaned = stripJsonFences(rawText)
+
+  if (!cleaned.endsWith('}')) {
+    console.error(`[transit-grid] ${label} truncated. Last 100:`, cleaned.slice(-100))
+    throw new Error('Response truncated')
+  }
+
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>
+  } catch {
+    console.error(`[transit-grid] ${label} JSON parse failed. First 500:`, cleaned.substring(0, 500))
+    console.error(`[transit-grid] Last 200:`, cleaned.substring(cleaned.length - 200))
+    throw new Error('JSON parse error')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   try {
@@ -144,31 +332,25 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === 'month') {
-      console.log(`[transit-grid] Generating month: ${year}-${month + 1}`)
+      const monthNum = month + 1
+      console.log(`[transit-grid] Generating month: ${year}-${monthNum}`)
       const userPrompt = buildCompactMonthPrompt(year, month, language || 'en', birthData)
-      if (DEBUG) console.log(`[transit-grid] Prompt length: ${userPrompt.length} chars`)
+      if (DEBUG) console.log(`[transit-grid] Prompt: ${userPrompt.length} chars`)
 
       try {
-        const rawText = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 3000)
-        const cleaned = stripJsonFences(rawText)
+        const rawText = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 1200)
+        const compact = parseResponse(rawText, `Month ${year}-${monthNum}`) as unknown as CompactMonth
 
-        if (!cleaned.endsWith('}')) {
-          console.error(`[transit-grid] Month ${year}-${month + 1} response truncated. Last 100 chars:`, cleaned.slice(-100))
-          return NextResponse.json({ error: 'Response truncated — model hit token limit' }, { status: 500 })
-        }
+        // Expand compact → full MonthData
+        const monthKey = `${year}-${String(monthNum).padStart(2, '0')}`
+        const data = computeMonthTransitData(year, month)
+        const expanded = expandMonth(compact, data.monthLabel, monthKey)
 
-        try {
-          const parsed = JSON.parse(cleaned)
-          console.log(`[transit-grid] Month ${year}-${month + 1}: OK`)
-          return NextResponse.json({ data: parsed })
-        } catch (parseErr) {
-          console.error(`[transit-grid] Month ${year}-${month + 1} JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
-          console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
-          return NextResponse.json({ error: 'JSON parse error' }, { status: 500 })
-        }
+        console.log(`[transit-grid] Month ${year}-${monthNum}: OK`)
+        return NextResponse.json({ data: expanded })
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
-        console.error(`[transit-grid] Month ${year}-${month + 1} failed:`, msg)
+        console.error(`[transit-grid] Month ${year}-${monthNum} failed:`, msg)
         return NextResponse.json({ error: msg }, { status: 500 })
       }
 
@@ -181,23 +363,12 @@ export async function POST(req: NextRequest) {
       const userPrompt = buildOverviewPrompt(monthSummaries, language || 'en')
 
       try {
-        const rawText = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 3000)
-        const cleaned = stripJsonFences(rawText)
+        const rawText = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 1200)
+        const compact = parseResponse(rawText, 'Overview') as unknown as CompactOverview
+        const expanded = expandOverview(compact)
 
-        if (!cleaned.endsWith('}')) {
-          console.error(`[transit-grid] Overview response truncated. Last 100 chars:`, cleaned.slice(-100))
-          return NextResponse.json({ error: 'Overview response truncated — model hit token limit' }, { status: 500 })
-        }
-
-        try {
-          const parsed = JSON.parse(cleaned)
-          console.log(`[transit-grid] Overview: OK`)
-          return NextResponse.json({ data: parsed })
-        } catch (parseErr) {
-          console.error(`[transit-grid] Overview JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
-          console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
-          return NextResponse.json({ error: 'Overview JSON parse error' }, { status: 500 })
-        }
+        console.log(`[transit-grid] Overview: OK`)
+        return NextResponse.json({ data: expanded })
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
         console.error(`[transit-grid] Overview failed:`, msg)

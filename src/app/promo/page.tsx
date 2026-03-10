@@ -151,8 +151,32 @@ function TransitGridPage() {
     const results: (MonthData | null)[] = Array(12).fill(null)
     const errors: (string | null)[] = Array(12).fill(null)
 
-    // Sequential generation — one month at a time with delay
-    for (let i = 0; i < monthDates.length; i++) {
+    // Generate month 1 first as a test — if it fails, stop immediately
+    {
+      const d = monthDates[0]
+      setCurrentMonth(0)
+      const { data, error: err } = await fetchMonth(d.year, d.month, uiLang, birthData)
+      results[0] = data
+      errors[0] = err
+      setCompletedCount(1)
+      setMonths([...results])
+      setMonthErrors([...errors])
+
+      if (err) {
+        console.error('[promo] Month 1 failed — stopping:', err)
+        setError(`First month failed: ${err}. Check API configuration.`)
+        setCurrentMonth(null)
+        setLoading(false)
+        setGenerationDone(true)
+        generatingRef.current = false
+        return
+      }
+    }
+
+    // Month 1 succeeded — continue with months 2–12 sequentially
+    for (let i = 1; i < monthDates.length; i++) {
+      await new Promise(r => setTimeout(r, DELAY_BETWEEN_CALLS))
+
       const d = monthDates[i]
       setCurrentMonth(i)
 
@@ -165,11 +189,6 @@ function TransitGridPage() {
       setCompletedCount(i + 1)
       setMonths([...results])
       setMonthErrors([...errors])
-
-      // Delay between calls to avoid rate limiting
-      if (i < monthDates.length - 1) {
-        await new Promise(r => setTimeout(r, DELAY_BETWEEN_CALLS))
-      }
     }
     setCurrentMonth(null)
 
