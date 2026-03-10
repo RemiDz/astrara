@@ -11,6 +11,7 @@ import { getPlanetPositions } from './astronomy'
 import { ZODIAC_SIGNS } from './zodiac'
 import { PLANETS as PLANET_META } from './planets'
 import { renderNatalWheelPng } from './renderNatalWheel'
+import { renderZodiacBandPng } from './renderZodiacBand'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Colour Palette — Print-Optimised Luxury
@@ -412,13 +413,14 @@ function drawCover(
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
 
-  // ═══ SVG Natal Chart Wheel (rendered as PNG image) ═══
+  // ═══ Zodiac Band Chart (rendered as PNG image) ═══
   if (wheelPngDataUrl) {
-    // Wheel image: centred, 92mm wide (covers most of page width nicely)
-    const wheelSize = 92 // mm
-    const wheelX = PW / 2 - wheelSize / 2
-    const wheelY = 42  // top margin for wheel
-    doc.addImage(wheelPngDataUrl, 'PNG', wheelX, wheelY, wheelSize, wheelSize)
+    // Band chart: 1600×1000 source → 160mm × 100mm on page, centred
+    const chartW = 160 // mm
+    const chartH = 100 // mm
+    const chartX = PW / 2 - chartW / 2
+    const chartY = 30  // top margin for chart
+    doc.addImage(wheelPngDataUrl, 'PNG', chartX, chartY, chartW, chartH)
   }
 
   // ─── Title block ───
@@ -2019,11 +2021,11 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
           }
         })
 
-        // Render SVG natal wheel off-screen and capture as PNG
+        // Render zodiac band chart off-screen and capture as PNG
         try {
-          wheelPngDataUrl = await renderNatalWheelPng(wheelPlanets, birthDate, birthTime, 800)
+          wheelPngDataUrl = await renderZodiacBandPng(wheelPlanets, clientName, birthDate, birthTime, 1600, 1000)
         } catch (err) {
-          console.warn('[blueprint] SVG wheel render failed, cover will have no wheel:', err)
+          console.warn('[blueprint] Zodiac band chart render failed, cover will have no chart:', err)
         }
       }
     } catch { /* natal calculation failed, continue without */ }
