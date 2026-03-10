@@ -1,372 +1,410 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { getPlanetPositions, getMoonData } from '@/lib/astronomy'
-import { ZODIAC_SIGNS } from '@/lib/zodiac'
-import { LanguageProvider } from '@/i18n/LanguageContext'
-import { useLanguage } from '@/i18n/LanguageContext'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { LanguageProvider, useLanguage } from '@/i18n/LanguageContext'
 import { useTranslation } from '@/i18n/useTranslation'
 import LanguageToggle from '@/components/LanguageToggle'
-import ClientDetailsForm, { type NatalInfo } from '@/components/ReadingStudio/ClientDetailsForm'
-import ScopeSelector, { type ScopeState } from '@/components/ReadingStudio/ScopeSelector'
-import StyleSelector, { type ReadingStyle } from '@/components/ReadingStudio/StyleSelector'
-import ReadingOutput from '@/components/ReadingStudio/ReadingOutput'
-import ReadingHistory, { type ReadingHistoryEntry } from '@/components/ReadingStudio/ReadingHistory'
+import TransitGrid from '@/components/TransitGrid/TransitGrid'
+import type { MonthData, OverviewData } from '@/types/transit-grid'
+import { CATEGORY_KEYS } from '@/types/transit-grid'
+import { generateCosmicBlueprint } from '@/lib/cosmic-blueprint-pdf'
 
-const HISTORY_KEY = 'astrara_reading_history'
-const MAX_HISTORY = 10
+const STORAGE_KEY = 'astrara-transit-grid'
+const MAX_CONCURRENT = 4
 
 export default function Page() {
   return (
     <LanguageProvider>
-      <ReadingStudioPage />
+      <TransitGridPage />
     </LanguageProvider>
   )
 }
 
-function ReadingStudioPage() {
-  const { t, lang } = useTranslation()
+function getMonthLabels(): { labels: string[]; dates: { year: number; month: number }[] } {
+  const now = new Date()
+  const labels: string[] = []
+  const dates: { year: number; month: number }[] = []
+
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    labels.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))
+    dates.push({ year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  return { labels, dates }
+}
+
+function TransitGridPage() {
+  const { t } = useTranslation()
   const { lang: uiLang } = useLanguage()
 
-  // Enable text selection on this page
+  const { labels: monthLabels, dates: monthDates } = getMonthLabels()
+
+  // State
+  const [months, setMonths] = useState<(MonthData | null)[]>(Array(12).fill(null))
+  const [overview, setOverview] = useState<OverviewData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [overviewLoading, setOverviewLoading] = useState(false)
+  const [completedCount, setCompletedCount] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [cachedLang, setCachedLang] = useState<string | null>(null)
+
+  // Birth chart data (optional)
+  const [clientName, setClientName] = useState('')
+  const [birthDate, setBirthDate] = useState('')
+  const [birthTime, setBirthTime] = useState('')
+
+  // Ref to track if generation is in progress
+  const generatingRef = useRef(false)
+
+  // Enable text selection
   useEffect(() => {
     document.body.classList.add('allow-select')
     return () => { document.body.classList.remove('allow-select') }
   }, [])
 
-  // --- Client Details State ---
-  const [clientName, setClientName] = useState('')
-  const [inputMode, setInputMode] = useState<'zodiac' | 'birthdate'>('zodiac')
-  const [zodiacSign, setZodiacSign] = useState('aries')
-  const [birthDate, setBirthDate] = useState('')
-  const [birthTime, setBirthTime] = useState('')
-  const [birthCity, setBirthCity] = useState('')
-
-  // --- Scope State ---
-  const [scope, setScope] = useState<ScopeState>({
-    currentSituation: true,
-    thisMonth: true,
-    nextThreeMonths: true,
-    thisYear: true,
-    nextYear: false,
-    relationship: false,
-  })
-
-  // --- Style State ---
-  const [style, setStyle] = useState<ReadingStyle>('accessible')
-  const [readingLanguage, setReadingLanguage] = useState<'en' | 'lt'>(uiLang)
-
-  // Sync reading language with UI language on mount
-  useEffect(() => { setReadingLanguage(uiLang) }, [uiLang])
-
-  // --- Output State ---
-  const [reading, setReading] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // --- History State ---
-  const [history, setHistory] = useState<ReadingHistoryEntry[]>([])
-
-  // Load history from localStorage
+  // Load from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(HISTORY_KEY)
-      if (saved) setHistory(JSON.parse(saved))
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.months && Array.isArray(parsed.months)) {
+          setMonths(parsed.months)
+          setCompletedCount(parsed.months.filter((m: MonthData | null) => m !== null).length)
+        }
+        if (parsed.overview) setOverview(parsed.overview)
+        if (parsed.lang) setCachedLang(parsed.lang)
+      }
     } catch { /* ignore */ }
   }, [])
 
-  function saveHistory(entries: ReadingHistoryEntry[]) {
-    setHistory(entries)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries))
+  // Save to localStorage when data changes
+  useEffect(() => {
+    if (months.some(m => m !== null) || overview) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        months,
+        overview,
+        lang: cachedLang,
+        timestamp: Date.now(),
+      }))
+    }
+  }, [months, overview, cachedLang])
+
+  const buildBirthData = (): string | undefined => {
+    if (!birthDate) return undefined
+    let s = `Born: ${birthDate}`
+    if (birthTime) s += ` at ${birthTime}`
+    return s
   }
 
-  // --- Astronomy Calculations ---
-  const currentTransits = useMemo(() => {
-    const now = new Date()
-    const positions = getPlanetPositions(now, 0, 0)
-    const moon = getMoonData(now)
-    return {
-      positions: positions.map(p => ({
-        glyph: p.glyph,
-        name: p.name,
-        sign: ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign,
-        degree: p.degreeInSign,
-        retrograde: p.isRetrograde,
-      })),
-      moonPhase: moon.phase,
-      moonIllumination: Math.round(moon.illumination * 100),
-    }
-  }, [])
-
-  // Natal chart calculations from birth date
-  const natalInfo: NatalInfo | null = useMemo(() => {
-    if (inputMode !== 'birthdate' || !birthDate) return null
-    const date = birthTime
-      ? new Date(`${birthDate}T${birthTime}:00`)
-      : new Date(`${birthDate}T12:00:00`)
-    if (isNaN(date.getTime())) return null
-
-    const positions = getPlanetPositions(date, 0, 0)
-    const sun = positions.find(p => p.id === 'sun')
-    const moon = positions.find(p => p.id === 'moon')
-
-    const sunSign = sun ? ZODIAC_SIGNS.find(z => z.id === sun.zodiacSign) : null
-    const moonSign = moon ? ZODIAC_SIGNS.find(z => z.id === moon.zodiacSign) : null
-
-    return {
-      sunSign: sunSign?.name ?? '',
-      sunGlyph: sunSign?.glyph ?? '',
-      moonSign: moonSign?.name ?? '',
-      moonGlyph: moonSign?.glyph ?? '',
-    }
-  }, [inputMode, birthDate, birthTime])
-
-  // --- Sign/DOB label for output ---
-  const signOrDob = useMemo(() => {
-    if (inputMode === 'zodiac') {
-      const sign = ZODIAC_SIGNS.find(z => z.id === zodiacSign)
-      return sign ? `${sign.glyph} ${sign.name}` : zodiacSign
-    }
-    if (natalInfo) {
-      return `Sun in ${natalInfo.sunSign}, Moon in ${natalInfo.moonSign}`
-    }
-    return birthDate || ''
-  }, [inputMode, zodiacSign, natalInfo, birthDate])
-
-  // --- Generate Reading ---
-  const topRef = useRef<HTMLDivElement>(null)
-  const lastGenTime = useRef(0)
-
-  const generateReading = useCallback(async () => {
-    const now = Date.now()
-    if (now - lastGenTime.current < 5000) return
-    lastGenTime.current = now
-
-    // Validation
-    if (inputMode === 'zodiac' && !zodiacSign) return
-    if (inputMode === 'birthdate' && !birthDate) return
-
-    setIsGenerating(true)
+  // Generate all readings
+  const generateReadings = useCallback(async () => {
+    if (generatingRef.current) return
+    generatingRef.current = true
+    setLoading(true)
     setError(null)
-    setReading('')
+    setCompletedCount(0)
+    setMonths(Array(12).fill(null))
+    setOverview(null)
+    setCachedLang(uiLang)
 
-    try {
-      const zodiacSignName = inputMode === 'zodiac'
-        ? ZODIAC_SIGNS.find(z => z.id === zodiacSign)?.name ?? zodiacSign
-        : undefined
+    const birthData = buildBirthData()
+    const results: (MonthData | null)[] = Array(12).fill(null)
 
-      const response = await fetch('/api/client-reading', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientName: clientName || undefined,
-          inputMode,
-          zodiacSign: zodiacSignName,
-          birthDate: inputMode === 'birthdate' ? birthDate : undefined,
-          birthTime: inputMode === 'birthdate' ? birthTime || undefined : undefined,
-          birthCity: inputMode === 'birthdate' ? birthCity || undefined : undefined,
-          scope,
-          style,
-          language: readingLanguage,
-          currentTransits,
-          natalPositions: natalInfo ? {
-            sunSign: natalInfo.sunSign,
-            moonSign: natalInfo.moonSign,
-          } : undefined,
-        }),
-      })
+    // Rate-limited parallel fetching
+    const queue = monthDates.map((d, i) => ({ ...d, index: i }))
+    let active = 0
+    let queueIdx = 0
+    let completed = 0
 
-      if (!response.ok) throw new Error('Failed to generate reading')
-      const data = await response.json()
-      const readingText = data.reading
+    await new Promise<void>((resolve) => {
+      const processNext = () => {
+        if (completed === 12) {
+          resolve()
+          return
+        }
 
-      setReading(readingText)
+        while (active < MAX_CONCURRENT && queueIdx < queue.length) {
+          const item = queue[queueIdx++]
+          active++
 
-      // Save to history
-      const scopeLabels = Object.entries(scope)
-        .filter(([, v]) => v)
-        .map(([k]) => k)
-
-      const entry: ReadingHistoryEntry = {
-        id: String(Date.now()),
-        timestamp: new Date().toISOString(),
-        clientName: clientName || undefined,
-        inputMode,
-        zodiacSign: inputMode === 'zodiac' ? zodiacSignName : undefined,
-        birthDate: inputMode === 'birthdate' ? birthDate : undefined,
-        scope: scopeLabels,
-        style,
-        language: readingLanguage,
-        readingText,
+          fetch('/api/transit-grid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'month',
+              year: item.year,
+              month: item.month,
+              language: uiLang,
+              birthData,
+            }),
+          })
+            .then(res => res.json())
+            .then(json => {
+              if (json.error) {
+                console.error(`Month ${item.index} error:`, json.error)
+                results[item.index] = null
+              } else {
+                results[item.index] = json.data as MonthData
+              }
+            })
+            .catch(err => {
+              console.error(`Month ${item.index} fetch error:`, err)
+              results[item.index] = null
+            })
+            .finally(() => {
+              active--
+              completed++
+              setCompletedCount(completed)
+              setMonths([...results])
+              processNext()
+            })
+        }
       }
 
-      const updated = [entry, ...history].slice(0, MAX_HISTORY)
-      saveHistory(updated)
+      processNext()
+    })
 
-    } catch {
-      setError(t('studio.failedGenerate'))
+    // Now generate the overview with all monthly data
+    setOverviewLoading(true)
+    try {
+      const summaries = results
+        .filter((m): m is MonthData => m !== null)
+        .map(m => {
+          const catSummaries = CATEGORY_KEYS.map(cat => {
+            const c = m.categories[cat]
+            return `${cat}: impact ${c.impact_score}/10 — ${c.key_theme}`
+          }).join('\n')
+          const ms = m.categories.monthly_summary
+          return `Month: ${m.month}\n${catSummaries}\nOverall: ${ms.impact_score}/10 — ${ms.dominant_theme}`
+        })
+
+      if (summaries.length > 0) {
+        const overviewRes = await fetch('/api/transit-grid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'overview',
+            language: uiLang,
+            monthSummaries: summaries,
+          }),
+        })
+
+        const overviewJson = await overviewRes.json()
+        if (overviewJson.data) {
+          setOverview(overviewJson.data as OverviewData)
+        }
+      }
+    } catch (err) {
+      console.error('Overview generation error:', err)
     } finally {
-      setIsGenerating(false)
+      setOverviewLoading(false)
     }
-  }, [
-    inputMode, zodiacSign, birthDate, birthTime, birthCity,
-    clientName, scope, style, readingLanguage,
-    currentTransits, natalInfo, history, t,
-  ])
 
-  // --- Load from history ---
-  function loadFromHistory(entry: ReadingHistoryEntry) {
-    setReading(entry.readingText)
-    if (entry.clientName) setClientName(entry.clientName)
-    if (entry.inputMode) setInputMode(entry.inputMode)
-    if (entry.zodiacSign) {
-      const sign = ZODIAC_SIGNS.find(z => z.name === entry.zodiacSign)
-      if (sign) setZodiacSign(sign.id)
-    }
-    if (entry.birthDate) setBirthDate(entry.birthDate)
-  }
+    setLoading(false)
+    generatingRef.current = false
+  }, [uiLang, birthDate, birthTime, monthDates])
 
-  // --- New Reading ---
-  function handleNewReading() {
-    setReading('')
-    setError(null)
-    topRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const handleDownloadPdf = useCallback(async () => {
+    const validMonths = months.filter((m): m is MonthData => m !== null)
+    if (validMonths.length === 0) return
+    await generateCosmicBlueprint({
+      months: validMonths,
+      overview,
+      clientName,
+      birthDate,
+      birthTime,
+      language: uiLang,
+    })
+  }, [months, overview, clientName, birthDate, birthTime, uiLang])
 
-  // --- Check if generate is possible ---
-  const canGenerate = inputMode === 'zodiac'
-    ? !!zodiacSign
-    : !!birthDate
-
-  const hasScopeSelected = Object.entries(scope).some(([k, v]) => k !== 'relationship' && v)
+  const hasData = months.some(m => m !== null)
+  const isLangMismatch = cachedLang !== null && cachedLang !== uiLang && hasData
+  const totalCalls = 13
+  const progressPct = loading || overviewLoading
+    ? Math.round((completedCount + (overview ? 1 : 0)) / totalCalls * 100)
+    : 0
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }} ref={topRef}>
-      <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
-
-        {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between">
-            <h1 className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl font-semibold tracking-wide text-white/90">
-              <span className="text-white/25 mr-2">✦</span>
-              ASTRARA{' '}
-              <span className="text-white/30 font-normal">{t('studio.title')}</span>
-            </h1>
-            <LanguageToggle />
-          </div>
-          <p className="text-white/30 text-sm mt-2">{t('studio.subtitle')}</p>
-        </div>
-
-        {/* ── CLIENT DETAILS ── */}
-        <SectionHeader label={t('studio.clientDetails')} />
-        <div
-          className="mb-8 p-5 sm:p-6 rounded-2xl border"
-          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <ClientDetailsForm
-            clientName={clientName}
-            onClientNameChange={setClientName}
-            inputMode={inputMode}
-            onInputModeChange={setInputMode}
-            zodiacSign={zodiacSign}
-            onZodiacSignChange={setZodiacSign}
-            birthDate={birthDate}
-            onBirthDateChange={setBirthDate}
-            birthTime={birthTime}
-            onBirthTimeChange={setBirthTime}
-            birthCity={birthCity}
-            onBirthCityChange={setBirthCity}
-            natalInfo={natalInfo}
-          />
-        </div>
-
-        {/* ── READING SCOPE ── */}
-        <SectionHeader label={t('studio.readingScope')} />
-        <div
-          className="mb-8 p-5 sm:p-6 rounded-2xl border"
-          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <ScopeSelector scope={scope} onChange={setScope} />
-        </div>
-
-        {/* ── READING STYLE ── */}
-        <SectionHeader label={t('studio.readingStyle')} />
-        <div
-          className="mb-8 p-5 sm:p-6 rounded-2xl border"
-          style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <StyleSelector
-            style={style}
-            onStyleChange={setStyle}
-            readingLanguage={readingLanguage}
-            onLanguageChange={setReadingLanguage}
-          />
-        </div>
-
-        {/* Generate Button */}
-        <div className="mb-10">
-          <button
-            onClick={generateReading}
-            disabled={isGenerating || !canGenerate || !hasScopeSelected}
-            className="w-full py-3.5 rounded-xl text-sm font-medium tracking-wide transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: isGenerating
-                ? 'rgba(139,92,246,0.1)'
-                : 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(139,92,246,0.15))',
-              border: '1px solid rgba(139,92,246,0.3)',
-              color: 'rgba(255,255,255,0.85)',
-            }}
-          >
-            {isGenerating ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                {t('studio.generating')}
+    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }}>
+      {/* Top Bar */}
+      <div
+        className="sticky top-0 z-50 border-b px-4 py-3"
+        style={{
+          background: 'rgba(7,7,15,0.9)',
+          borderColor: 'rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h1 className="font-[family-name:var(--font-display)] text-lg sm:text-xl font-semibold tracking-wide text-white/90">
+              <span className="text-white/25 mr-1.5">✦</span>
+              ASTRARA
+              <span className="text-white/30 font-normal ml-2">
+                {t('grid.title')}
               </span>
-            ) : (
-              <span>✦ {t('studio.generate')}</span>
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Client info inputs */}
+            <input
+              type="text"
+              placeholder={t('grid.clientName')}
+              value={clientName}
+              onChange={e => setClientName(e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 placeholder-white/20 outline-none focus:border-white/20 w-32"
+              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+            />
+            <input
+              type="date"
+              value={birthDate}
+              onChange={e => setBirthDate(e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 outline-none focus:border-white/20"
+              style={{ borderColor: 'rgba(255,255,255,0.08)', colorScheme: 'dark' }}
+            />
+            <input
+              type="time"
+              value={birthTime}
+              onChange={e => setBirthTime(e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 outline-none focus:border-white/20"
+              style={{ borderColor: 'rgba(255,255,255,0.08)', colorScheme: 'dark' }}
+            />
+
+            <LanguageToggle />
+
+            <button
+              onClick={generateReadings}
+              disabled={loading || overviewLoading}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: loading
+                  ? 'rgba(139,92,246,0.1)'
+                  : 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(139,92,246,0.15))',
+                border: '1px solid rgba(139,92,246,0.3)',
+                color: 'rgba(255,255,255,0.85)',
+              }}
+            >
+              {loading || overviewLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  {t('grid.generating')}
+                </span>
+              ) : hasData ? (
+                <span>↻ {t('grid.regenerate')}</span>
+              ) : (
+                <span>✦ {t('grid.generate')}</span>
+              )}
+            </button>
+
+            {hasData && !loading && !overviewLoading && (
+              <button
+                onClick={handleDownloadPdf}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1))',
+                  border: '1px solid rgba(201,168,76,0.3)',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+              >
+                {t('grid.downloadPdf')}
+              </button>
             )}
-          </button>
-
-          {error && (
-            <p className="text-amber-400/70 text-sm mt-3 text-center">{error}</p>
-          )}
+          </div>
         </div>
 
-        {/* ── READING OUTPUT ── */}
-        <ReadingOutput
-          reading={reading}
-          isGenerating={isGenerating}
-          clientName={clientName}
-          readingLanguage={readingLanguage}
-          style={style}
-          signOrDob={signOrDob}
-          scope={scope}
-          onNewReading={handleNewReading}
-        />
+        {/* Progress bar */}
+        {(loading || overviewLoading) && (
+          <div className="max-w-[1800px] mx-auto mt-2">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: 'linear-gradient(90deg, #8B5CF6, #A78BFA)',
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-white/40 whitespace-nowrap">
+                {completedCount}/{totalCalls} {t('grid.complete')}
+              </span>
+            </div>
+          </div>
+        )}
 
-        {/* Spacing before history */}
-        {(reading || isGenerating) && <div className="h-10" />}
-
-        {/* ── READING HISTORY ── */}
-        <div className="mt-8 mb-12">
-          <ReadingHistory
-            history={history}
-            onLoadReading={loadFromHistory}
-            onClearHistory={() => saveHistory([])}
-          />
-        </div>
-
+        {/* Language mismatch warning */}
+        {isLangMismatch && !loading && (
+          <div className="max-w-[1800px] mx-auto mt-2">
+            <div className="flex items-center gap-2 text-[10px] text-amber-400/60">
+              <span>⚠</span>
+              <span>{t('grid.langMismatch')}</span>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  )
-}
 
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="text-white/15 text-xs">——</span>
-      <span className="text-white/30 text-xs font-medium uppercase tracking-widest">{label}</span>
-      <span className="text-white/15 text-xs">——</span>
+      {/* Main content */}
+      <div className="max-w-[1800px] mx-auto px-4 py-6">
+        {!hasData && !loading && (
+          <div className="flex flex-col items-center justify-center py-32 text-center">
+            <div className="text-4xl mb-4 opacity-30">✦</div>
+            <h2 className="text-lg text-white/50 mb-2">
+              {t('grid.emptyTitle')}
+            </h2>
+            <p className="text-sm text-white/25 max-w-md mb-6">
+              {t('grid.emptyDesc')}
+            </p>
+            <p className="text-xs text-white/15">
+              {t('grid.emptyHint')}
+            </p>
+          </div>
+        )}
+
+        {(hasData || loading) && (
+          <>
+            {/* Client name display */}
+            {clientName && (
+              <div className="mb-4">
+                <span className="text-xs text-white/30">
+                  {t('grid.readingFor')}
+                </span>
+                <span className="text-sm text-white/60 ml-2">{clientName}</span>
+                {birthDate && (
+                  <span className="text-xs text-white/25 ml-3">
+                    ({birthDate}{birthTime ? ` ${birthTime}` : ''})
+                  </span>
+                )}
+              </div>
+            )}
+
+            <TransitGrid
+              months={months}
+              overview={overview}
+              monthLabels={monthLabels}
+              loading={loading}
+              completedCount={completedCount}
+              overviewLoading={overviewLoading}
+            />
+          </>
+        )}
+
+        {error && (
+          <div className="mt-4 p-4 rounded-xl border text-center" style={{ background: 'rgba(248,113,113,0.05)', borderColor: 'rgba(248,113,113,0.2)' }}>
+            <p className="text-sm text-red-400/70">{error}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Pulse glow keyframe */}
+      <style jsx global>{`
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.2; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   )
 }
