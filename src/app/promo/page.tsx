@@ -601,6 +601,7 @@ function TransitGridPage() {
 
             <LanguageToggle />
 
+            {/* Button 1: Generate Grid (purple) */}
             <button
               onClick={generateReadings}
               disabled={loading || overviewLoading}
@@ -616,7 +617,7 @@ function TransitGridPage() {
               {loading || overviewLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                  {t('grid.generating')}
+                  {completedCount > 0 ? `${completedCount}/12` : t('grid.generating')}
                 </span>
               ) : hasData ? (
                 <span>↻ {t('grid.regenerate')}</span>
@@ -625,24 +626,37 @@ function TransitGridPage() {
               )}
             </button>
 
-            {generationDone && hasData && !loading && !overviewLoading && (
-              <button
-                onClick={() => generateBlueprint(false)}
-                disabled={blueprintLoading}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(196,162,101,0.15), rgba(196,162,101,0.05))',
-                  border: '1px solid rgba(196,162,101,0.4)',
-                  color: 'rgba(196,162,101,0.9)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
+            {/* Button 2: Cosmic Blueprint (gold) — always visible, independent */}
+            <button
+              onClick={() => generateBlueprint(false)}
+              disabled={blueprintLoading}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:cursor-not-allowed"
+              style={{
+                background: blueprintLoading
+                  ? 'rgba(196,162,101,0.08)'
+                  : 'linear-gradient(135deg, rgba(196,162,101,0.15), rgba(196,162,101,0.05))',
+                border: '1px solid rgba(196,162,101,0.4)',
+                color: 'rgba(196,162,101,0.9)',
+                backdropFilter: 'blur(8px)',
+                opacity: blueprintLoading ? 0.7 : 1,
+              }}
+            >
+              {blueprintLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 border-2 border-current/20 border-t-current/60 rounded-full animate-spin" />
+                  {blueprintStage === 'narrative'
+                    ? `Crafting... ${blueprintPart}/3`
+                    : blueprintStage === 'pdf'
+                      ? 'Building PDF...'
+                      : 'Preparing...'}
+                </span>
+              ) : (
                 <span className="flex items-center gap-2">
                   <span style={{ fontSize: '11px' }}>&#11015;</span>
                   Cosmic Blueprint
                 </span>
-              </button>
-            )}
+              )}
+            </button>
           </div>
         </div>
 
