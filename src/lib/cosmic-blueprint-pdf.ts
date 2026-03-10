@@ -349,6 +349,32 @@ function needsNewPage(doc: jsPDF, y: number, needed: number): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Sun sign from birth date
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getSunSignAbbr(birthDate: string): string {
+  // birthDate formats: "15 June 1981", "1981-06-15", etc.
+  const d = new Date(birthDate)
+  if (isNaN(d.getTime())) return ''
+  const month = d.getMonth() + 1 // 1-12
+  const day = d.getDate()
+  // Approximate tropical zodiac boundaries
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'ARI'
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'TAU'
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'GEM'
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return 'CAN'
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return 'LEO'
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return 'VIR'
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'LIB'
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'SCO'
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'SAG'
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return 'CAP'
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'AQU'
+  if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) return 'PIS'
+  return ''
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PAGE 1 — Cover
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -384,16 +410,29 @@ function drawCover(
     doc.line(x1, y1, x2, y2)
   }
 
-  // 3-letter zodiac abbreviations
+  // 3-letter zodiac abbreviations — highlight client's sun sign
   const signs = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
-  doc.setGState(doc.GState({ opacity: 0.5 }))
-  setBody(doc, f, 5.5)
+  const sunSign = getSunSignAbbr(birthDate)
   for (let i = 0; i < 12; i++) {
     const angle = ((i * 30) + 15 - 90) * Math.PI / 180
     const lr = wr - 3.5
     const lx = cx + lr * Math.cos(angle)
     const ly = cy + lr * Math.sin(angle)
-    doc.setTextColor(...P.gold)
+    const isSunSign = signs[i] === sunSign
+    if (isSunSign) {
+      // Gold filled dot behind the sun sign
+      doc.setGState(doc.GState({ opacity: 0.25 }))
+      doc.setFillColor(...P.gold)
+      doc.circle(lx, ly - 0.3, 5, 'F')
+      // Bolder, larger text
+      doc.setGState(doc.GState({ opacity: 0.9 }))
+      setBody(doc, f, 7, true)
+      doc.setTextColor(...P.gold)
+    } else {
+      doc.setGState(doc.GState({ opacity: 0.5 }))
+      setBody(doc, f, 5.5)
+      doc.setTextColor(...P.gold)
+    }
     const ltw = doc.getTextWidth(signs[i])
     doc.text(signs[i], lx - ltw / 2, ly + 1.2)
   }
@@ -755,23 +794,25 @@ function drawMonthPage(
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
       y = MT
     }
 
     const rgb = CAT_RGB[cat]
 
-    // Category name line with score
+    // Category name in accent colour with score
     doc.setTextColor(...rgb)
     setBody(doc, f, 8.5, true)
     const catText = catLabel(cat, lang).toUpperCase()
     doc.text(catText, ML, y + 2)
 
-    // Thin colored line extending right from category name
+    // Thin gold line extending right from category name
     const catTW = doc.getTextWidth(catText)
-    doc.setDrawColor(...rgb)
+    doc.setDrawColor(...P.gold)
     doc.setLineWidth(0.3)
-    doc.setGState(doc.GState({ opacity: 0.4 }))
-    doc.line(ML + catTW + 3, y + 1, ML + catTW + 35, y + 1)
+    doc.setGState(doc.GState({ opacity: 0.3 }))
+    doc.line(ML + catTW + 3, y + 1, PW - MR - 15, y + 1)
     doc.setGState(doc.GState({ opacity: 1 }))
 
     // Score dot
@@ -891,7 +932,8 @@ function drawMonthPage(
 
   // ─── Monthly Affirmation ───
   if (month.affirmation) {
-    if (needsNewPage(doc, y, 20)) {
+    // Calculate affirmation height: top line(6) + gap(8) + max 2 lines(12) + gap(2) + bottom line = ~30
+    if (needsNewPage(doc, y, 32)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -1021,46 +1063,30 @@ function drawClosingPage(
     y += 12
   }
 
-  // Key dates to remember — short, scannable entries
+  // Key dates to remember — chronological, short entries
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 14, 'normal')
   doc.text(tr('keyDates', lang), ML, y)
   y += 8
 
-  // Top months by score, presented as short date entries
-  const sorted = [...months].sort((a, b) => b.overall_score - a.overall_score)
-  const top = sorted.slice(0, 8)
+  // Show all months in chronological order (original order) with first sentence
+  for (const m of months) {
+    if (needsNewPage(doc, y, 10)) break
 
-  for (const m of top) {
-    if (needsNewPage(doc, y, 12)) break // Don't overflow onto next page
-
-    doc.setFillColor(...getImpactRGB(m.overall_score))
-    doc.circle(ML + 3, y + 0.5, 2, 'F')
+    drawImpactDot(doc, f, ML + 3, y + 0.5, m.overall_score, 2)
 
     doc.setTextColor(...P.navy)
-    setBody(doc, f, 10, true)
-    doc.text(m.month, ML + 9, y + 2)
-
-    // Extract just the first sentence of the opening (short, no truncation)
-    const firstSentence = m.opening.split(/[.!?]/)[0]?.trim()
-    if (firstSentence) {
-      doc.setTextColor(...P.grey)
-      setBody(doc, f, 9)
-      doc.text(sanitizeForPDF(`${firstSentence}.`), ML + 9, y + 7, { maxWidth: CW - 12 })
-    }
-    y += 13
+    setBody(doc, f, 9, true)
+    const firstSentence = sanitizeForPDF(m.opening.split(/[.!?]/)[0]?.trim() || '')
+    const entry = `${m.month} — ${firstSentence}`
+    // Single line, truncate if needed
+    const maxEntryW = CW - 12
+    const entryLines = doc.splitTextToSize(entry, maxEntryW)
+    doc.text(entryLines[0], ML + 9, y + 2)
+    y += 7
   }
 
-  // Growth trajectory as final reflection
-  if (yearOverview.growth_trajectory) {
-    y += 4
-    goldLine(doc, y, 40)
-    y += 8
-    doc.setTextColor(...P.grey)
-    setDisplayItalic(doc, f, 10.5)
-    y = wrapDraw(doc, yearOverview.growth_trajectory, ML, y, CW, 5)
-    y += 10
-  }
+  y += 8
 
   // Signature block — styled and warm
   goldLine(doc, y, 30)
@@ -1135,12 +1161,12 @@ function drawAboutPage(doc: jsPDF, f: FontSet, lang: Lang, pageNum: number, clie
 // ═══════════════════════════════════════════════════════════════════════════
 
 const DOT_COLORS: Record<string, RGB> = {
-  beneficial_aspect: [196, 162, 101],    // gold
-  challenging_aspect: [184, 74, 74],     // red
-  retrograde_station: [130, 80, 160],    // purple
-  moon_phase: [180, 180, 195],           // silver
-  eclipse: [184, 74, 74],               // red
-  season: [196, 162, 101],              // gold
+  beneficial_aspect: [45, 142, 78],      // green #2D8E4E
+  challenging_aspect: [196, 69, 54],     // red #C44536
+  retrograde_station: [107, 77, 138],    // purple #6B4D8A
+  moon_phase: [160, 160, 168],           // silver #A0A0A8
+  eclipse: [196, 162, 101],              // gold #C4A265
+  season: [58, 80, 136],                 // blue #3A5088
 }
 
 function drawRitualCalendar(
@@ -1380,10 +1406,18 @@ function drawEclipseSpotlight(
 // SONIC TOOLKIT PAGE — Personalised sound healing reference
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface DailyPracticeRoutine {
+  morning: string
+  midday: string
+  evening: string
+  weekly: string
+}
+
 interface SonicToolkitData {
   primaryPlanets: { planet: string; hz: number; chakra: string; instrument: string; note: string; count: number }[]
   topChakras: string[]
   dailyPractice: string
+  practiceRoutine: DailyPracticeRoutine
 }
 
 function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): SonicToolkitData {
@@ -1434,7 +1468,7 @@ function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): Son
     .slice(0, 3)
     .map(([c]) => c)
 
-  // Daily practice suggestion
+  // Daily practice suggestion (legacy single string)
   const topPlanet = primaryPlanets[0]
   const dailyPractice = topPlanet
     ? lang === 'lt'
@@ -1442,7 +1476,28 @@ function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): Son
       : `Begin your day with a 5-minute meditation using the ${topPlanet.hz} Hz frequency (${topPlanet.planet} energy, ${topPlanet.chakra} chakra). Use a ${topPlanet.instrument.split(',')[0].toLowerCase()} and allow the vibration to dissolve tension. Close with three deep breaths and set your intention for the day.`
     : ''
 
-  return { primaryPlanets, topChakras, dailyPractice }
+  // Structured multi-part routine using top 4 planets
+  const p0 = primaryPlanets[0]
+  const p1 = primaryPlanets[1]
+  const p2 = primaryPlanets[2]
+  const p3 = primaryPlanets[3]
+
+  const practiceRoutine: DailyPracticeRoutine = {
+    morning: p0
+      ? `Begin with ${p0.hz} Hz (${p0.planet}) using a ${p0.instrument.split(',')[0].toLowerCase()}. Focus on the ${p0.chakra.toLowerCase()} chakra. Set your intention for the day while the vibration dissolves tension and opens your awareness.`
+      : '',
+    midday: p1
+      ? `Use ${p1.hz} Hz (${p1.planet}) with a tuning fork on your wrist pulse points. This recalibrates mental clarity and grounds scattered energy during your busiest hours.`
+      : '',
+    evening: p2
+      ? `Close with ${p2.hz} Hz (${p2.planet}) through ${p2.instrument.split(',')[0].toLowerCase()} or singing bowl. Focus on the ${p2.chakra.toLowerCase()} chakra. Reflect on the day's integration and release any residual tension before sleep.`
+      : '',
+    weekly: p3
+      ? `Full sound bath combining all four primary frequencies in sequence: ${p2?.planet || 'Saturn'} (grounding) then ${p0?.planet || 'Jupiter'} (expansion) then ${p1?.planet || 'Venus'} (integration) then ${p3.planet} (activation). Best aligned with the lunar phase — New Moon for intention setting, Full Moon for release and celebration.`
+      : '',
+  }
+
+  return { primaryPlanets, topChakras, dailyPractice, practiceRoutine }
 }
 
 function drawSonicToolkit(
@@ -1570,17 +1625,48 @@ function drawSonicToolkit(
   doc.text(tr('sonicPractice', lang), ML, y)
   y += 8
 
-  // Background tint
-  doc.setFillColor(196, 162, 101)
-  doc.setGState(doc.GState({ opacity: 0.04 }))
-  const practiceLines = doc.splitTextToSize(sanitizeForPDF(toolkit.dailyPractice), CW - 12)
-  const practiceH = practiceLines.length * 5 + 8
-  doc.roundedRect(ML, y - 2, CW, practiceH, 2, 2, 'F')
-  doc.setGState(doc.GState({ opacity: 1 }))
+  const routineSections: { label: string; time: string; text: string }[] = [
+    { label: 'Morning', time: '5 minutes', text: toolkit.practiceRoutine.morning },
+    { label: 'Midday', time: '3 minutes', text: toolkit.practiceRoutine.midday },
+    { label: 'Evening', time: '5 minutes', text: toolkit.practiceRoutine.evening },
+    { label: 'Weekly Deep Practice', time: '20-30 minutes', text: toolkit.practiceRoutine.weekly },
+  ]
 
-  doc.setTextColor(...P.navy)
-  setBody(doc, f, 10)
-  y = wrapDraw(doc, toolkit.dailyPractice, ML + 6, y + 2, CW - 12, 5)
+  for (const section of routineSections) {
+    if (!section.text) continue
+
+    // Estimate height for background tint
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9.5)
+    const sectionLines = doc.splitTextToSize(sanitizeForPDF(section.text), CW - 16)
+    const sectionH = sectionLines.length * 4.5 + 14
+
+    // Background tint
+    doc.setFillColor(196, 162, 101)
+    doc.setGState(doc.GState({ opacity: 0.04 }))
+    doc.roundedRect(ML, y - 2, CW, sectionH, 2, 2, 'F')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    // Time period label in bold
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 10, true)
+    doc.text(`${section.label}`, ML + 6, y + 3)
+
+    // Time duration in grey
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 8.5)
+    const timeText = `(${section.time})`
+    const labelW = doc.getTextWidth(`${section.label} `)
+    doc.text(timeText, ML + 6 + labelW + 16, y + 3)
+
+    y += 8
+
+    // Body text
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 9.5)
+    y = wrapDraw(doc, section.text, ML + 6, y, CW - 12, 4.5)
+    y += 6
+  }
 
   pageFooter(doc, f, pageNum, clientName, lang)
 }
