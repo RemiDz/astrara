@@ -7,7 +7,7 @@ import LanguageToggle from '@/components/LanguageToggle'
 import TransitGrid from '@/components/TransitGrid/TransitGrid'
 import type { MonthData, OverviewData } from '@/types/transit-grid'
 import { CATEGORY_KEYS } from '@/types/transit-grid'
-import { generateCosmicBlueprint, generateBlueprintPdf } from '@/lib/cosmic-blueprint-pdf'
+import { generateBlueprintPdf } from '@/lib/cosmic-blueprint-pdf'
 import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintData, BlueprintEclipseRetroData } from '@/types/cosmic-blueprint'
 import { computeRitualCalendarData } from '@/lib/transit-computation'
 
@@ -165,7 +165,7 @@ function TransitGridPage() {
   const [blueprintStage, setBlueprintStage] = useState<'transits' | 'narrative' | 'pdf' | 'done' | 'error'>('transits')
   const [blueprintPart, setBlueprintPart] = useState(0)
   const [blueprintError, setBlueprintError] = useState<string | null>(null)
-  const [blueprintCached, setBlueprintCached] = useState(false)
+  const [, setBlueprintCached] = useState(false)
 
   // Birth chart data (optional)
   const [clientName, setClientName] = useState('')
@@ -347,20 +347,6 @@ function TransitGridPage() {
     setGenerationDone(true)
     generatingRef.current = false
   }, [uiLang, birthDate, birthTime, monthDates, fetchMonth])
-
-  // Download grid-based PDF
-  const handleDownloadPdf = useCallback(async () => {
-    const validMonths = months.filter((m): m is MonthData => m !== null)
-    if (validMonths.length === 0) return
-    await generateCosmicBlueprint({
-      months: validMonths,
-      overview,
-      clientName,
-      birthDate,
-      birthTime,
-      language: uiLang,
-    })
-  }, [months, overview, clientName, birthDate, birthTime, uiLang])
 
   // ─── Generate Cosmic Blueprint (Premium PDF) ───
 
@@ -639,17 +625,22 @@ function TransitGridPage() {
               )}
             </button>
 
-            {hasData && !loading && !overviewLoading && (
+            {generationDone && hasData && !loading && !overviewLoading && (
               <button
-                onClick={handleDownloadPdf}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97]"
+                onClick={() => generateBlueprint(false)}
+                disabled={blueprintLoading}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.1))',
-                  border: '1px solid rgba(201,168,76,0.3)',
-                  color: 'rgba(255,255,255,0.85)',
+                  background: 'linear-gradient(135deg, rgba(196,162,101,0.15), rgba(196,162,101,0.05))',
+                  border: '1px solid rgba(196,162,101,0.4)',
+                  color: 'rgba(196,162,101,0.9)',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
-                {t('grid.downloadPdf')}
+                <span className="flex items-center gap-2">
+                  <span style={{ fontSize: '11px' }}>&#11015;</span>
+                  Cosmic Blueprint
+                </span>
               </button>
             )}
           </div>
@@ -746,41 +737,6 @@ function TransitGridPage() {
               currentMonth={currentMonth}
             />
 
-            {/* Premium Blueprint Button */}
-            {hasData && !loading && !overviewLoading && (
-              <div className="mt-8 flex flex-col items-center">
-                <button
-                  onClick={() => generateBlueprint(false)}
-                  disabled={blueprintLoading}
-                  className="group relative px-8 py-3 rounded-xl text-sm font-medium tracking-wider transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(196,162,101,0.15), rgba(196,162,101,0.05))',
-                    border: '1px solid rgba(196,162,101,0.4)',
-                    color: 'rgba(196,162,101,0.9)',
-                    boxShadow: '0 0 30px rgba(196,162,101,0.08)',
-                  }}
-                >
-                  <span className="flex items-center gap-3">
-                    <span style={{ opacity: 0.6 }}>✦</span>
-                    {t('grid.generateBlueprint')}
-                  </span>
-                </button>
-
-                {blueprintCached && (
-                  <button
-                    onClick={() => generateBlueprint(true)}
-                    disabled={blueprintLoading}
-                    className="mt-2 text-[10px] text-white/20 hover:text-white/40 transition-colors cursor-pointer"
-                  >
-                    {t('grid.regenerateBlueprint')}
-                  </button>
-                )}
-
-                <p className="mt-3 text-[10px] text-white/15 max-w-sm text-center">
-                  {t('grid.blueprintDesc')}
-                </p>
-              </div>
-            )}
           </>
         )}
 
