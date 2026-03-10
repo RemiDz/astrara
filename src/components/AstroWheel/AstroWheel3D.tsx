@@ -173,6 +173,14 @@ const RingEdge = memo(function RingEdge({ radius, opacity = 0.35 }: { radius: nu
 })
 
 // ─── Outer Zodiac Ring (Ring 1) ─────────────────────────────────────
+/** Map 0–1 impact score to green→red HSL colour; 0 = neutral grey */
+function impactColour(score: number): string {
+  const display = Math.round(score * 10)
+  if (display <= 0) return '#9CA3AF' // neutral grey — no transit data
+  const hue = 120 - ((Math.min(display, 10) - 1) / 9) * 120 // 120=green → 0=red
+  return `hsl(${hue}, 70%, 45%)`
+}
+
 function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRefs, impactScore }: {
   sign: typeof ZODIAC_SIGNS[number]
   gx: number
@@ -208,10 +216,7 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
           background: 'transparent',
           border: 'none',
           fontSize: '26px',
-          color: impactScore >= 0.7 ? '#FF4444'
-            : impactScore >= 0.4 ? '#FF8C00'
-            : impactScore >= 0.2 ? '#FFD700'
-            : ELEMENT_COLOURS[sign.element],
+          color: impactColour(impactScore),
           opacity: sceneReady ? 0.5 : 0,
           textShadow: 'none',
           fontFamily: 'serif',
