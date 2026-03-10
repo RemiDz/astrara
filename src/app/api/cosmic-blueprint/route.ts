@@ -192,13 +192,7 @@ Write rich narrative readings for each month below, PLUS a full year overview an
 // API call with retry (same pattern as transit-grid)
 // ---------------------------------------------------------------------------
 
-function stripJsonFences(raw: string): string {
-  let s = raw.trim()
-  if (s.startsWith('```json')) s = s.slice(7)
-  else if (s.startsWith('```')) s = s.slice(3)
-  if (s.endsWith('```')) s = s.slice(0, -3)
-  return s.trim()
-}
+const DEBUG = process.env.NODE_ENV === 'development'
 
 async function callClaude(
   apiKey: string,
@@ -235,8 +229,8 @@ async function callClaude(
 
     if (!response.ok) {
       const errText = await response.text()
-      console.error(`[cosmic-blueprint] API error (${response.status}):`, errText.substring(0, 300))
-      throw new Error(`API error ${response.status}`)
+      console.error(`[cosmic-blueprint] API error (${response.status}):`, errText.substring(0, 500))
+      throw new Error(`API returned ${response.status}: ${errText.substring(0, 200)}`)
     }
 
     const data = await response.json()
@@ -261,24 +255,53 @@ async function callClaude(
   throw new Error('Exhausted retries')
 }
 
-function parseJSON<T>(rawText: string, label: string): T {
-  const cleaned = stripJsonFences(rawText)
+function extractJSON<T>(rawText: string, label: string): T {
+  if (DEBUG) {
+    console.log(`[cosmic-blueprint] ${label} raw response length: ${rawText.length} chars`)
+    console.log(`[cosmic-blueprint] ${label} first 500:`, rawText.substring(0, 500))
+    console.log(`[cosmic-blueprint] ${label} last 200:`, rawText.substring(rawText.length - 200))
+  }
 
-  // Try to find valid JSON even if truncated
-  let jsonStr = cleaned
-  if (!jsonStr.endsWith('}')) {
-    // Attempt to close truncated JSON
-    const lastBrace = jsonStr.lastIndexOf('}')
+  let text = rawText.trim()
+
+  // Strip markdown code fences
+  if (text.startsWith('```json')) text = text.slice(7)
+  else if (text.startsWith('```')) text = text.slice(3)
+  if (text.endsWith('```')) text = text.slice(0, -3)
+  text = text.trim()
+
+  // Strip any preamble before the first {
+  const firstBrace = text.indexOf('{')
+  if (firstBrace < 0) {
+    console.error(`[cosmic-blueprint] ${label}: No JSON object found in response. First 300:`, text.substring(0, 300))
+    throw new Error(`No JSON found in ${label} response`)
+  }
+  if (firstBrace > 0) {
+    console.warn(`[cosmic-blueprint] ${label}: Stripped ${firstBrace} chars of preamble`)
+    text = text.substring(firstBrace)
+  }
+
+  // Handle truncation — find the last valid closing brace
+  if (!text.endsWith('}')) {
+    console.warn(`[cosmic-blueprint] ${label}: Response appears truncated. Last 100 chars:`, text.slice(-100))
+    const lastBrace = text.lastIndexOf('}')
     if (lastBrace > 0) {
-      jsonStr = jsonStr.substring(0, lastBrace + 1)
-      console.warn(`[cosmic-blueprint] ${label}: Truncated response, trimmed to last valid brace`)
+      text = text.substring(0, lastBrace + 1)
+      console.warn(`[cosmic-blueprint] ${label}: Truncation salvage — trimmed to position ${lastBrace + 1}`)
+    } else {
+      throw new Error(`${label} response is truncated beyond repair — increase max_tokens`)
     }
   }
 
   try {
-    return JSON.parse(jsonStr) as T
-  } catch {
-    console.error(`[cosmic-blueprint] ${label} JSON parse failed. First 500:`, jsonStr.substring(0, 500))
+    return JSON.parse(text) as T
+  } catch (e) {
+    // Log detailed context for debugging
+    console.error(`[cosmic-blueprint] ${label} JSON parse failed.`)
+    console.error(`[cosmic-blueprint] ${label} cleaned length: ${text.length}`)
+    console.error(`[cosmic-blueprint] ${label} first 500:`, text.substring(0, 500))
+    console.error(`[cosmic-blueprint] ${label} last 200:`, text.substring(text.length - 200))
+    console.error(`[cosmic-blueprint] ${label} parse error:`, e instanceof Error ? e.message : e)
     throw new Error(`JSON parse error in ${label}`)
   }
 }
@@ -357,7 +380,7 @@ export async function POST(req: NextRequest) {
     const transitBlock = buildTransitBlock(monthDates)
 
     let userPrompt: string
-    let maxTokens = 4000
+    let maxTokens = 4096
 
     if (part === 3 && allMonthsSummary) {
       // Compute eclipse/retro summary for part 3
@@ -365,7 +388,7 @@ export async function POST(req: NextRequest) {
         ? computeEclipseRetroSummary(allMonthDates)
         : ''
       userPrompt = buildFinalPrompt(transitBlock, allMonthsSummary, eclipseRetroSummary)
-      maxTokens = 4500 // Part 3 has more content (year overview + eclipses)
+      maxTokens = 5000 // Part 3 has more content (year overview + eclipses)
     } else {
       userPrompt = buildMonthsPrompt(transitBlock, narrativeThread || undefined)
     }
@@ -375,7 +398,7 @@ export async function POST(req: NextRequest) {
     const rawText = await callClaude(apiKey, systemPrompt, userPrompt, maxTokens)
 
     if (part === 3) {
-      const result = parseJSON<{
+      const result = extractJSON<{
         months: BlueprintMonthNarrative[]
         year_overview: BlueprintYearOverview & { eclipses_and_retrogrades?: BlueprintEclipseRetroData }
       }>(rawText, `Part ${part}`)
@@ -393,7 +416,7 @@ export async function POST(req: NextRequest) {
         eclipseRetroData: eclipseRetroData || null,
       })
     } else {
-      const result = parseJSON<{
+      const result = extractJSON<{
         months: BlueprintMonthNarrative[]
       }>(rawText, `Part ${part}`)
 
