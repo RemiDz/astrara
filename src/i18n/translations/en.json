@@ -379,5 +379,13 @@
   "social.generating": "Generating...",
   "social.copy": "Copy",
   "social.copied": "Copied",
-  "social.tapToCopy": "tap to copy"
+  "social.tapToCopy": "tap to copy",
+  "sign.whatsHappening": "What's Happening Now",
+  "sign.keyAspects": "Key Aspects",
+  "sign.seeWhy": "See why",
+  "sign.impactSummary": "Transit Summary",
+  "sign.noTransits": "No active transits in this sign right now.",
+  "sign.rulerActive": "Ruling planet active in aspects",
+  "sign.applying": "tightening",
+  "sign.separating": "fading"
 }

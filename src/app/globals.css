@@ -377,6 +377,11 @@ canvas + div,
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Selection */
 ::selection {
   background: rgba(139, 92, 246, 0.3);

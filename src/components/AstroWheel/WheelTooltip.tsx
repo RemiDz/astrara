@@ -1,6 +1,8 @@
 'use client'
 
+import { useRef } from 'react'
 import type { PlanetPosition, AspectData } from '@/lib/astronomy'
+import type { SignImpactDetail } from '@/lib/zodiac-impact'
 import { ZODIAC_SIGNS } from '@/lib/zodiac'
 import { calculateDistance } from '@/lib/distance'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -18,12 +20,13 @@ interface WheelTooltipProps {
   planets: PlanetPosition[]
   aspects?: AspectData[]
   zodiacImpact?: Record<string, number>
+  zodiacImpactDetail?: Record<string, SignImpactDetail>
   onClose: () => void
   solarFlareClass?: string | null
   solarFluxValue?: number | null
 }
 
-export default function WheelTooltip({ tooltip, planets, aspects = [], zodiacImpact = {}, onClose, solarFlareClass, solarFluxValue }: WheelTooltipProps) {
+export default function WheelTooltip({ tooltip, planets, aspects = [], zodiacImpact = {}, zodiacImpactDetail = {}, onClose, solarFlareClass, solarFluxValue }: WheelTooltipProps) {
   const { t, lang } = useTranslation()
   const content = useContent()
 
@@ -35,7 +38,7 @@ export default function WheelTooltip({ tooltip, planets, aspects = [], zodiacImp
         <PlanetDetail planet={tooltip.data} t={t} content={content} solarFlareClass={solarFlareClass} solarFluxValue={solarFluxValue} />
       )}
       {tooltip.type === 'sign' && (
-        <SignDetail signId={tooltip.data} planets={planets} aspects={aspects} zodiacImpact={zodiacImpact} t={t} lang={lang} content={content} />
+        <SignDetail signId={tooltip.data} planets={planets} aspects={aspects} zodiacImpact={zodiacImpact} zodiacImpactDetail={zodiacImpactDetail} t={t} lang={lang} content={content} />
       )}
       {tooltip.type === 'aspect' && (
         <AspectDetail aspect={tooltip.data} t={t} content={content} />
@@ -205,7 +208,10 @@ const ASPECT_COLOURS: Record<string, string> = {
   opposition: '#A78BFA', sextile: '#4DCCB0',
 }
 
-function ImpactScoreBar({ score, t, lang }: { score: number; t: (k: string) => string; lang: string }) {
+function ImpactScoreBar({ score, t, lang, hasBreakdown, breakdownRef }: {
+  score: number; t: (k: string) => string; lang: string
+  hasBreakdown?: boolean; breakdownRef?: React.RefObject<HTMLDivElement | null>
+}) {
   const display = Math.round(score * 10)
   const colour = display >= 8 ? '#FF4444' : display >= 6 ? '#FF8C00' : display >= 4 ? '#FFD700' : '#4ADE80'
   const qualEN = ['Quiet', 'Quiet', 'Mild', 'Mild', 'Active', 'Active', 'Strong', 'Strong', 'Intense', 'Intense']
@@ -214,9 +220,21 @@ function ImpactScoreBar({ score, t, lang }: { score: number; t: (k: string) => s
 
   return (
     <div className="mb-4">
-      <h3 className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
-        {lang === 'lt' ? 'Šiandienos Poveikis' : "Today's Impact"}
-      </h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          {lang === 'lt' ? 'Šiandienos Poveikis' : "Today's Impact"}
+        </h3>
+        {hasBreakdown && (
+          <button
+            type="button"
+            className="text-[10px] tracking-wide"
+            style={{ color: 'var(--accent-purple, #a78bfa)', background: 'none', border: 'none', cursor: 'pointer' }}
+            onClick={() => breakdownRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            {t('sign.seeWhy')} ↓
+          </button>
+        )}
+      </div>
       <div className="glass-card p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium" style={{ color: colour }}>{display}/10</span>
@@ -230,18 +248,113 @@ function ImpactScoreBar({ score, t, lang }: { score: number; t: (k: string) => s
   )
 }
 
-function SignDetail({ signId, planets, aspects, zodiacImpact, t, lang, content }: {
+// Colour for aspect nature — harmonious (green), challenging (orange/red), fusion (purple)
+const ASPECT_NATURE_COLOURS: Record<string, string> = {
+  conjunction: '#A78BFA', // purple — fusion
+  trine: '#4DCCB0',      // teal — harmonious
+  sextile: '#4DCCB0',    // teal — harmonious
+  square: '#FF6B4A',     // orange-red — challenging
+  opposition: '#FF6B4A', // orange-red — challenging
+}
+
+function buildTransitSummary(
+  planetsInSign: PlanetPosition[],
+  activeAspects: AspectData[],
+  rulerContribCount: number,
+  signName: string,
+  t: (k: string) => string,
+  lang: string,
+): string | null {
+  if (planetsInSign.length === 0 && activeAspects.length === 0 && rulerContribCount === 0) return null
+
+  const parts: string[] = []
+
+  // Planet names transiting
+  if (planetsInSign.length > 0) {
+    const names = planetsInSign.map(p => t(`planet.${p.id}`))
+    const joined = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + (lang === 'lt' ? ' ir ' : ' and ') + names[names.length - 1]
+    parts.push(lang === 'lt'
+      ? `${joined} ${planetsInSign.length === 1 ? 'keliauja' : 'keliauja'} per ${signName}`
+      : `${joined} ${planetsInSign.length === 1 ? 'is' : 'are'} transiting through ${signName}`)
+  }
+
+  // Aspect summary
+  const challenging = activeAspects.filter(a => a.type === 'square' || a.type === 'opposition')
+  const harmonious = activeAspects.filter(a => a.type === 'trine' || a.type === 'sextile')
+  const fusions = activeAspects.filter(a => a.type === 'conjunction')
+
+  if (fusions.length > 0) {
+    parts.push(lang === 'lt'
+      ? `${fusions.length} konjunkcij${fusions.length === 1 ? 'a sutelkia' : 'os sutelkia'} energiją`
+      : `${fusions.length} conjunction${fusions.length === 1 ? ' fuses' : 's fuse'} energies`)
+  }
+  if (harmonious.length > 0) {
+    parts.push(lang === 'lt'
+      ? `${harmonious.length} harmoninga${harmonious.length === 1 ? 's aspektas palaiko' : 'i aspektai palaiko'} srautą`
+      : `${harmonious.length} harmonious aspect${harmonious.length === 1 ? ' supports' : 's support'} flow`)
+  }
+  if (challenging.length > 0) {
+    parts.push(lang === 'lt'
+      ? `${challenging.length} iššūk${challenging.length === 1 ? 'is kuria' : 'iai kuria'} įtampą`
+      : `${challenging.length} challenging aspect${challenging.length === 1 ? ' creates' : 's create'} tension`)
+  }
+
+  if (rulerContribCount > 0) {
+    parts.push(lang === 'lt' ? 'valdanti planeta aktyvi aspektuose' : 'ruling planet is active in aspects')
+  }
+
+  if (parts.length === 0) return null
+  const sentence = parts.join(lang === 'lt' ? ', ' : ', ') + '.'
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1)
+}
+
+function SignDetail({ signId, planets, aspects, zodiacImpact, zodiacImpactDetail, t, lang, content }: {
   signId: string; planets: PlanetPosition[]; aspects: AspectData[]; zodiacImpact: Record<string, number>
+  zodiacImpactDetail: Record<string, SignImpactDetail>
   t: (k: string) => string; lang: string; content: ReturnType<typeof useContent>
 }) {
   const sign = ZODIAC_SIGNS.find(s => s.id === signId)
   const planetsInSign = planets.filter(p => p.zodiacSign === signId)
   const signInsight = content?.signMeanings?.[signId]
   const impactScore = zodiacImpact[signId] ?? 0
+  const detail = zodiacImpactDetail[signId]
+  const breakdownRef = useRef<HTMLDivElement>(null)
 
   // Aspects involving planets in this sign
   const signPlanetIds = new Set(planetsInSign.map(p => p.id))
   const activeAspects = aspects.filter(a => a.orb <= 5 && (signPlanetIds.has(a.planet1) || signPlanetIds.has(a.planet2)))
+
+  // Per-planet contribution from breakdown
+  const planetContribs: Record<string, number> = {}
+  if (detail) {
+    for (const c of detail.contributions) {
+      if (c.type === 'planet' && c.planetId) {
+        planetContribs[c.planetId] = (planetContribs[c.planetId] ?? 0) + c.value
+      }
+    }
+  }
+
+  // Per-aspect contribution from breakdown
+  const aspectContribs: Record<string, number> = {}
+  if (detail) {
+    for (const c of detail.contributions) {
+      if (c.type === 'aspect' && c.planet1 && c.planet2 && c.aspectType) {
+        const key = `${c.planet1}-${c.aspectType}-${c.planet2}`
+        aspectContribs[key] = (aspectContribs[key] ?? 0) + c.value
+      }
+    }
+  }
+
+  // Ruler contributions count
+  const rulerContribCount = detail ? detail.contributions.filter(c => c.type === 'ruler').length : 0
+  const rulerTotalBonus = detail ? detail.contributions.filter(c => c.type === 'ruler').reduce((s, c) => s + c.value, 0) : 0
+
+  const hasBreakdown = planetsInSign.length > 0 || activeAspects.length > 0 || rulerContribCount > 0
+
+  const summary = buildTransitSummary(
+    planetsInSign, activeAspects, rulerContribCount,
+    t(`zodiac.${signId}`), t, lang,
+  )
 
   if (!sign) return null
 
@@ -261,58 +374,164 @@ function SignDetail({ signId, planets, aspects, zodiacImpact, t, lang, content }
         </p>
       </div>
 
-      {/* Impact Score Bar */}
-      <ImpactScoreBar score={impactScore} t={t} lang={lang} />
+      {/* Impact Score Bar — with "See why ↓" when breakdown exists */}
+      <ImpactScoreBar score={impactScore} t={t} lang={lang} hasBreakdown={hasBreakdown} breakdownRef={breakdownRef} />
 
-      {/* Planets currently in this sign — transit cards */}
-      {planetsInSign.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
-            {lang === 'lt' ? `Dabar ${t(`zodiac.${signId}.loc`) || t(`zodiac.${signId}`)}` : `Currently in ${t(`zodiac.${signId}`)}`}
-          </h3>
-          <div className="space-y-2.5">
-            {planetsInSign.map(p => {
-              const insight = content?.planetMeanings?.[p.id]?.[signId]
-              return (
-                <div key={p.id} className="glass-card p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg" style={{ color: p.colour }}>{p.glyph}</span>
-                    <span className="text-sm font-medium text-white">{t(`planet.${p.id}`)}</span>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.degreeInSign}°</span>
-                    {p.isRetrograde && <span className="text-xs text-red-400">Rx</span>}
+      {/* ═══════════════ Transit Breakdown Section ═══════════════ */}
+      <div ref={breakdownRef}>
+
+        {/* What's Happening Now — planet transits with impact contribution */}
+        {planetsInSign.length > 0 ? (
+          <div className="mb-4">
+            <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+              {t('sign.whatsHappening')}
+            </h3>
+            <div className="space-y-2.5">
+              {planetsInSign.map((p, i) => {
+                const insight = content?.planetMeanings?.[p.id]?.[signId]
+                const contrib = planetContribs[p.id]
+                return (
+                  <div
+                    key={p.id}
+                    className="glass-card p-3"
+                    style={{ animation: `fadeIn 0.3s ease-out ${i * 0.08}s both` }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg" style={{ color: p.colour }}>{p.glyph}</span>
+                      <span className="text-sm font-medium text-white">{t(`planet.${p.id}`)}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.degreeInSign}°</span>
+                      {p.isRetrograde && <span className="text-xs text-red-400">Rx</span>}
+                      {contrib != null && (
+                        <span
+                          className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}
+                        >
+                          +{contrib.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    {insight?.oneLiner && (
+                      <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        &ldquo;{insight.oneLiner}&rdquo;
+                      </p>
+                    )}
+                    {insight?.practicalTip && (
+                      <p className="text-xs leading-relaxed mt-1" style={{ color: 'var(--text-muted)' }}>
+                        {insight.practicalTip}
+                      </p>
+                    )}
                   </div>
-                  {insight?.oneLiner && (
-                    <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                      &ldquo;{insight.oneLiner}&rdquo;
-                    </p>
-                  )}
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="mb-4">
+            <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+              {t('sign.planetsHere')}
+            </h3>
+            <p className="text-sm italic" style={{ color: 'var(--text-muted)' }}>
+              {signInsight?.noPlanetsMessage || t('sign.noTransits')}
+            </p>
+          </div>
+        )}
 
-      {/* Active Aspects in this sign */}
-      {activeAspects.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
-            {lang === 'lt' ? 'Aktyvūs Aspektai' : 'Active Aspects'}
-          </h3>
-          <div className="space-y-1.5">
-            {activeAspects.map((a, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <span style={{ color: ASPECT_COLOURS[a.type] || '#888' }}>
-                  {a.planet1Glyph} {a.symbol} {a.planet2Glyph}
-                </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {t(`aspect.${a.type}`)} · {a.orb.toFixed(1)}°
-                </span>
-              </div>
-            ))}
+        {/* Key Aspects — colour-coded with interpretations */}
+        {activeAspects.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
+              {t('sign.keyAspects')}
+            </h3>
+            <div className="space-y-2">
+              {activeAspects.map((a, i) => {
+                const natureColour = ASPECT_NATURE_COLOURS[a.type] || '#888'
+                const key1 = `${a.planet1}-${a.planet2}`
+                const key2 = `${a.planet2}-${a.planet1}`
+                const pairInsight = content?.planetPairAspects?.[key1]?.[a.type]
+                  ?? content?.planetPairAspects?.[key2]?.[a.type]
+                const generalInsight = content?.aspectMeanings?.[a.type]
+                const contribKey = `${a.planet1}-${a.type}-${a.planet2}`
+                const contribKeyAlt = `${a.planet2}-${a.type}-${a.planet1}`
+                const contrib = aspectContribs[contribKey] ?? aspectContribs[contribKeyAlt]
+
+                return (
+                  <div
+                    key={i}
+                    className="glass-card p-3"
+                    style={{ animation: `fadeIn 0.3s ease-out ${(planetsInSign.length + i) * 0.08}s both` }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: natureColour, boxShadow: `0 0 4px ${natureColour}60` }}
+                      />
+                      <span className="text-sm" style={{ color: ASPECT_COLOURS[a.type] || '#888' }}>
+                        {a.planet1Glyph} {a.symbol} {a.planet2Glyph}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {t(`planet.${a.planet1}`)} {t(`aspect.${a.type}`)} {t(`planet.${a.planet2}`)}
+                      </span>
+                      {contrib != null && (
+                        <span
+                          className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}
+                        >
+                          +{contrib.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>
+                      <span>{a.orb.toFixed(1)}° orb</span>
+                      <span>·</span>
+                      <span>{a.isApplying ? t('sign.applying') : t('sign.separating')}</span>
+                    </div>
+                    {(pairInsight || generalInsight?.generalMeaning) && (
+                      <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        &ldquo;{pairInsight || generalInsight?.generalMeaning}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Ruling planet activity */}
+        {rulerContribCount > 0 && (
+          <div className="mb-4">
+            <div className="glass-card p-3 flex items-center gap-2" style={{ animation: 'fadeIn 0.3s ease-out 0.3s both' }}>
+              <span
+                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                style={{ background: '#A78BFA', boxShadow: '0 0 4px #A78BFA60' }}
+              />
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {t('sign.rulerActive')}
+              </span>
+              <span
+                className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}
+              >
+                +{rulerTotalBonus.toFixed(1)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Transit Summary */}
+        {summary && (
+          <div className="mb-4">
+            <h3 className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
+              {t('sign.impactSummary')}
+            </h3>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {summary}
+            </p>
+          </div>
+        )}
+
+      </div>
+      {/* ═══════════════ End Transit Breakdown ═══════════════ */}
 
       <div className="w-full h-px bg-white/8 mb-4" />
 
@@ -330,22 +549,8 @@ function SignDetail({ signId, planets, aspects, zodiacImpact, t, lang, content }
         </>
       )}
 
-      {/* Planets list (original) — only show if no transit cards above */}
-      {planetsInSign.length === 0 && (
-        <>
-          <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
-            {t('sign.planetsHere')}
-          </h3>
-          <p className="text-sm italic mb-5" style={{ color: 'var(--text-muted)' }}>
-            {signInsight?.noPlanetsMessage}
-          </p>
-        </>
-      )}
-
       {signInsight && (
         <>
-          <div className="w-full h-px bg-white/8 mb-4" />
-
           {/* Sign details */}
           <h3 className="text-[10px] uppercase tracking-widest mb-2.5" style={{ color: 'var(--text-muted)' }}>
             {t('sign.details')}

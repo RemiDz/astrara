@@ -379,5 +379,13 @@
   "social.generating": "Generuojama...",
   "social.copy": "Kopijuoti",
   "social.copied": "Nukopijuota",
-  "social.tapToCopy": "palieskite kopijuoti"
+  "social.tapToCopy": "palieskite kopijuoti",
+  "sign.whatsHappening": "Kas Vyksta Dabar",
+  "sign.keyAspects": "Svarbiausi Aspektai",
+  "sign.seeWhy": "Kodėl",
+  "sign.impactSummary": "Tranzitų Santrauka",
+  "sign.noTransits": "Šiuo metu šiame ženkle nėra aktyvių tranzitų.",
+  "sign.rulerActive": "Valdanti planeta aktyvi aspektuose",
+  "sign.applying": "stiprėja",
+  "sign.separating": "silpnėja"
 }
