@@ -408,5 +408,8 @@
   "grid.spiritual": "Dvasinis Augimas",
   "grid.monthlySummary": "Mėnesio Santrauka",
   "grid.yearOverview": "Metu Apzvalga",
-  "grid.downloadPdf": "Atsisiusti Kosmini Plana"
+  "grid.downloadPdf": "Atsisiusti Kosmini Plana",
+  "grid.generateBlueprint": "Generuoti Kosmini Plana",
+  "grid.regenerateBlueprint": "Generuoti is naujo (nauji API kvietimai)",
+  "grid.blueprintDesc": "Premiuminis 18 puslapiu PDF su turtingais, tekanciais naratyviniais skaitymais. 3 dedikuoti API kvietimai gilumei ir detalems."
 }

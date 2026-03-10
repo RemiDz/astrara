@@ -408,5 +408,8 @@
   "grid.spiritual": "Spiritual Growth",
   "grid.monthlySummary": "Monthly Summary",
   "grid.yearOverview": "Year Overview",
-  "grid.downloadPdf": "Download Cosmic Blueprint"
+  "grid.downloadPdf": "Download Cosmic Blueprint",
+  "grid.generateBlueprint": "Generate Cosmic Blueprint",
+  "grid.regenerateBlueprint": "Regenerate (fresh API calls)",
+  "grid.blueprintDesc": "Premium 18-page PDF with rich, flowing narrative readings. 3 dedicated API calls for depth and detail."
 }
