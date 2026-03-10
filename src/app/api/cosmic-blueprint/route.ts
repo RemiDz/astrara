@@ -45,6 +45,14 @@ For each month and each category, include a "sonic_rx" field — a personalised 
 
 Also include a "month_sonic_focus" (1-2 sentences on the PRIMARY sound healing focus for the month) and an "affirmation" — a powerful, specific affirmation tied to this month's dominant planetary energy (not generic positivity — connected to actual planetary themes, e.g. "I move through Saturn's lessons with patience, knowing that every limitation I face is shaping a stronger foundation.").
 
+VARIETY RULES — follow strictly:
+- NEVER start two consecutive months with the same sentence structure
+- NEVER start two consecutive life area readings with "The [Planet]..." — vary between starting with an action, a metaphor, a direct address to the reader, or a time reference
+- Month opening paragraphs must use DIFFERENT narrative devices: some start with imagery, some with a question, some with a direct statement, some with a metaphor
+- Closing affirmations must vary in structure: some as "I am...", some as "I trust...", some as "My [noun]...", some as questions, some as declarations
+- Within a single month, no two life area readings should begin with the same word
+- Avoid these overused phrases: "creates a powerful", "brings profound", "marks a significant", "offers a beautiful opportunity"
+
 The client's data:
 - Name: ${clientName || 'Dear Client'}
 - Birth date: ${birthDate || 'Not provided'}

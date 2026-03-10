@@ -276,17 +276,25 @@ export function computeRitualCalendarData(
       }
     }
 
-    // ─── Significant tight aspects (orb < 1.5°) ───
-    const pos15 = getPlanetPositions(new Date(year, month, 15, 12), 0, 0)
-    const aspects = calculateAspects(pos15)
-    const tightAspects = aspects.filter(a => a.orb < 1.5)
-    for (const a of tightAspects.slice(0, 4)) {
-      const isBeneficial = ['conjunction', 'trine', 'sextile'].includes(a.type)
-      events.push({
-        day: 15,
-        type: isBeneficial ? 'beneficial_aspect' : 'challenging_aspect',
-        label: `${a.planet1Glyph} ${a.symbol} ${a.planet2Glyph}`,
-      })
+    // ─── Significant tight aspects (orb < 3°) — check multiple days ───
+    const aspectCheckDays = [5, 10, 15, 20, 25].filter(d => d <= daysInMonth)
+    const seenAspects = new Set<string>()
+    for (const checkDay of aspectCheckDays) {
+      const posCheck = getPlanetPositions(new Date(year, month, checkDay, 12), 0, 0)
+      const aspects = calculateAspects(posCheck)
+      const tightAspects = aspects.filter(a => a.orb < 3)
+      for (const a of tightAspects) {
+        const key = `${a.planet1}-${a.type}-${a.planet2}`
+        if (seenAspects.has(key)) continue
+        seenAspects.add(key)
+        if (seenAspects.size > 6) break
+        const isBeneficial = ['conjunction', 'trine', 'sextile'].includes(a.type)
+        events.push({
+          day: checkDay,
+          type: isBeneficial ? 'beneficial_aspect' : 'challenging_aspect',
+          label: `${a.planet1Glyph} ${a.symbol} ${a.planet2Glyph}`,
+        })
+      }
     }
 
     result.push({ monthLabel, year, month, daysInMonth, firstDayOfWeek, events })

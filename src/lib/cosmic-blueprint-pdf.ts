@@ -6,6 +6,8 @@ import type {
   BlueprintEclipseRetroData, RitualCalendarMonth, BlueprintData,
 } from '@/types/cosmic-blueprint'
 import { BLUEPRINT_CATEGORY_KEYS, PLANET_FREQUENCIES } from '@/types/cosmic-blueprint'
+import { getPlanetPositions } from './astronomy'
+import { ZODIAC_SIGNS } from './zodiac'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Colour Palette — Print-Optimised Luxury
@@ -496,9 +498,17 @@ function drawCover(
 // PAGE 2 — Personal Introduction
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface NatalPlacement {
+  name: string
+  sign: string
+  degree: number
+}
+
 function drawIntroPage(
   doc: jsPDF, f: FontSet, clientName: string,
-  birthDate: string, lang: Lang, pageNum: number,
+  birthDate: string, birthTime: string,
+  natalPlacements: NatalPlacement[] | null,
+  lang: Lang, pageNum: number,
 ) {
   let y = MT + 10
 
@@ -527,14 +537,57 @@ function drawIntroPage(
   y = wrapDraw(doc, tr('introMethod', lang), ML, y, CW, 4.5)
   y += 4
 
-  // Natal chart note
-  if (birthDate) {
+  // ─── Your Natal Blueprint ───
+  if (natalPlacements && natalPlacements.length > 0) {
+    y += 4
+    goldLine(doc, y, 40)
+    y += 8
+
+    doc.setTextColor(...P.gold)
+    setDisplay(doc, f, 14, 'normal')
+    doc.text(lang === 'lt' ? 'Jusu Gimimo Planas' : 'Your Natal Blueprint', ML, y)
+    y += 7
+
+    // Birth data line
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 9)
+    let birthInfo = birthDate || ''
+    if (birthTime) birthInfo += `  |  ${birthTime}`
+    if (birthInfo) {
+      doc.text(birthInfo, ML, y)
+      y += 5
+    }
+
+    // Natal placements table
+    for (const p of natalPlacements) {
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 9, true)
+      doc.text(p.name, ML + 2, y)
+
+      doc.setTextColor(...P.grey)
+      setBody(doc, f, 9)
+      const degMin = Math.floor(p.degree)
+      const arcMin = Math.round((p.degree - degMin) * 60)
+      doc.text(`${p.sign} ${degMin}°${String(arcMin).padStart(2, '0')}'`, ML + 30, y)
+      y += 5
+    }
+
+    if (!birthTime) {
+      y += 2
+      doc.setTextColor(...P.mutedGrey)
+      setBody(doc, f, 7.5)
+      doc.text(lang === 'lt' ? 'Ascendentas reikalauja tikslaus gimimo laiko.' : 'Ascendant requires exact birth time.', ML, y)
+      y += 4
+    }
+    y += 4
+  } else if (birthDate) {
+    // Natal chart note (no placements available)
     doc.setTextColor(...P.grey)
     setDisplayItalic(doc, f, 10)
     y = wrapDraw(doc, tr('introNatal', lang), ML, y, CW, 5)
     y += 6
   }
-  y += 8
+  y += 6
 
   // How to read section
   goldLine(doc, y, 40)
@@ -809,20 +862,17 @@ function drawMonthPage(
     doc.text(tr('sonicRx', lang), ML, y)
     y += 7
 
-    // Month sonic focus (italic opening)
+    // Focus Frequency of the Month — one-liner (replaces the old paragraph summary)
     if (month.month_sonic_focus) {
-      // Warm gold background tint (3% opacity)
-      doc.setFillColor(196, 162, 101)
-      doc.setGState(doc.GState({ opacity: 0.03 }))
-      const focusLines = doc.splitTextToSize(sanitizeForPDF(month.month_sonic_focus), CW - 8)
-      const focusH = focusLines.length * 5 + 6
-      doc.roundedRect(ML, y - 2, CW, focusH, 2, 2, 'F')
-      doc.setGState(doc.GState({ opacity: 1 }))
-
-      doc.setTextColor(...P.grey)
-      setDisplayItalic(doc, f, 10)
-      y = wrapDraw(doc, month.month_sonic_focus, ML + 4, y + 1, CW - 8, 5)
-      y += 5
+      doc.setTextColor(...P.gold)
+      setBody(doc, f, 8.5, true)
+      const focusLabel = lang === 'lt' ? 'Menesio daznis: ' : 'Focus Frequency: '
+      doc.text(focusLabel, ML + 4, y)
+      const labelW = doc.getTextWidth(focusLabel)
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 8.5)
+      doc.text(sanitizeForPDF(month.month_sonic_focus), ML + 4 + labelW, y, { maxWidth: CW - 8 - labelW })
+      y += 6
     }
 
     // Category sonic prescriptions
@@ -1021,18 +1071,21 @@ function drawClosingPage(
     y += 12
   }
 
-  // Key dates to remember — short, scannable entries
+  // Key dates to remember — all 12 months in chronological order
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 14, 'normal')
   doc.text(tr('keyDates', lang), ML, y)
   y += 8
 
-  // Top months by score, presented as short date entries
-  const sorted = [...months].sort((a, b) => b.overall_score - a.overall_score)
-  const top = sorted.slice(0, 8)
-
-  for (const m of top) {
-    if (needsNewPage(doc, y, 12)) break // Don't overflow onto next page
+  for (const m of months) {
+    if (needsNewPage(doc, y, 14)) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT
+    }
 
     doc.setFillColor(...getImpactRGB(m.overall_score))
     doc.circle(ML + 3, y + 0.5, 2, 'F')
@@ -1041,7 +1094,7 @@ function drawClosingPage(
     setBody(doc, f, 10, true)
     doc.text(m.month, ML + 9, y + 2)
 
-    // Extract just the first sentence of the opening (short, no truncation)
+    // Extract first sentence of opening as key theme summary
     const firstSentence = m.opening.split(/[.!?]/)[0]?.trim()
     if (firstSentence) {
       doc.setTextColor(...P.grey)
@@ -1087,45 +1140,113 @@ function drawClosingPage(
 // ═══════════════════════════════════════════════════════════════════════════
 
 function drawAboutPage(doc: jsPDF, f: FontSet, lang: Lang, pageNum: number, clientName: string) {
-  let y = MT + 15
+  let y = MT + 10
 
   doc.setTextColor(...P.navy)
   setDisplay(doc, f, 18, 'normal')
   doc.text(tr('aboutTitle', lang), ML, y)
   y += 8
   goldLine(doc, y, 40)
-  y += 12
-
-  // Methodology
-  doc.setTextColor(...P.grey)
-  setBody(doc, f, 9.5)
-  y = wrapDraw(doc, tr('aboutMethod', lang), ML, y, CW, 4.5)
-  y += 12
-
-  // About Astrara
-  doc.setTextColor(...P.gold)
-  setDisplay(doc, f, 13, 'normal')
-  doc.text('Astrara', ML, y)
-  y += 7
-
-  doc.setTextColor(...P.grey)
-  setBody(doc, f, 9.5)
-  y = wrapDraw(doc, tr('aboutAstrara', lang), ML, y, CW, 4.5)
   y += 10
 
-  // Website
+  // ─── Data Sources ───
   doc.setTextColor(...P.gold)
-  setBody(doc, f, 11, true)
-  doc.text('astrara.app', ML, y)
-  y += 18
+  setDisplay(doc, f, 12, 'normal')
+  doc.text(lang === 'lt' ? 'Duomenu Saltiniai' : 'Data Sources', ML, y)
+  y += 7
 
-  // Disclaimer
+  const dataSources = lang === 'lt' ? [
+    'Planetu pozicijos: NASA JPL efemerides duomenys per astronomy-engine biblioteka (sub-arkminutes tikslumas)',
+    'Planetu dazniai: Hans Cousto "Kosmines Oktavos" metodologija — girdimi dazniai isvedami is planetu orbitiniu periodu per oktavine transpozicija',
+    'Aspektu skaiciavimai: Apskaiciuota is ekliptines ilgumos skirtumu su standartiniais orbais (konjunkcija 8, trinas 8, kvadratura 7, sekstilis 6, opozicija 8)',
+  ] : [
+    'Planetary Positions: NASA JPL ephemeris data via astronomy-engine library (sub-arcminute accuracy)',
+    'Planetary Frequencies: Based on Hans Cousto\'s "Cosmic Octave" methodology — deriving audible frequencies from planetary orbital periods through octave transposition',
+    'Aspect Calculations: Computed from ecliptic longitude differences with standard orbs (conjunction 8, trine 8, square 7, sextile 6, opposition 8)',
+  ]
+
+  doc.setTextColor(...P.grey)
+  setBody(doc, f, 8.5)
+  for (const src of dataSources) {
+    starDot(doc, ML + 3, y)
+    y = wrapDraw(doc, src, ML + 8, y + 1, CW - 10, 4)
+    y += 3
+  }
+  y += 4
+
+  // ─── Methodology ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 12, 'normal')
+  doc.text(lang === 'lt' ? 'Metodologija' : 'Methodology', ML, y)
+  y += 7
+
+  const methodText = lang === 'lt'
+    ? 'Tranzitu skaitymai paremti santykiu tarp dabartiniu planetu poziciju ir kliento gimimo horoskopo poziciju. Skaitymas atsizvelgia i pagrindinius tranzitus (iseoriniu planetu i gimimo pozicijas), menulio fazes, uzteminu ciklus ir retrogradinius periodus.'
+    : 'Transit readings are based on the relationship between current planetary positions and the client\'s natal chart positions. The reading considers major transits (outer planets to natal positions), lunar phases, eclipse cycles, and retrograde periods.'
+
+  doc.setTextColor(...P.grey)
+  setBody(doc, f, 9)
+  y = wrapDraw(doc, methodText, ML, y, CW, 4.5)
+  y += 6
+
+  // ─── Sound Healing Integration ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 12, 'normal')
+  doc.text(lang === 'lt' ? 'Garso Terapijos Integracija' : 'Sound Healing Integration', ML, y)
+  y += 7
+
+  const soundText = lang === 'lt'
+    ? 'Planetu dazniai pagristi Hans Cousto Kosmines Oktavos metodologija, kur planetu orbitiniai periodai transponuojami i girdima spektra per oktaviniu dvigubinimu. Sie dazniai siejami su cakru centrais ir konkreciu instrumentu, sukuriant tilta tarp astronomijos ir garso terapijos.'
+    : 'Planetary frequencies are based on the Cosmic Octave methodology by Hans Cousto, where planetary orbital periods are transposed into the audible spectrum through octave doubling. These frequencies correspond to chakra centres and specific instruments, creating a bridge between astronomy and sound healing practice.'
+
+  doc.setTextColor(...P.grey)
+  setBody(doc, f, 9)
+  y = wrapDraw(doc, soundText, ML, y, CW, 4.5)
+  y += 6
+
+  // ─── Harmonic Waves Ecosystem ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 12, 'normal')
+  doc.text('Harmonic Waves', ML, y)
+  y += 7
+
+  const ecosystem = [
+    { name: 'Astrara', desc: lang === 'lt' ? 'Realaus laiko kosmine ismintis' : 'Real-time cosmic intelligence', url: 'astrara.app' },
+    { name: 'Binara', desc: lang === 'lt' ? 'Binauraliniai ritmai meditacijai' : 'Binaural beats for meditation', url: 'binara.app' },
+    { name: 'World Pulse', desc: lang === 'lt' ? 'Zemes duomenys garso terapijos praktikams' : 'Earth data for sound healing practitioners', url: '' },
+  ]
+
+  for (const app of ecosystem) {
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 9.5, true)
+    doc.text(app.name, ML + 4, y)
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 9)
+    doc.text(` — ${app.desc}`, ML + 4 + doc.getTextWidth(app.name), y)
+    if (app.url) {
+      doc.setTextColor(...P.gold)
+      setBody(doc, f, 8)
+      doc.text(app.url, ML + 4, y + 4.5)
+    }
+    y += app.url ? 9 : 6
+  }
+
+  doc.setTextColor(...P.mutedGrey)
+  setBody(doc, f, 8)
+  doc.text(lang === 'lt' ? 'Irankiai samoningam praktikui' : 'Tools for the conscious practitioner', ML + 4, y)
+  y += 10
+
+  // ─── Disclaimer ───
   goldLine(doc, y, 30)
   y += 8
 
+  const disclaimerText = lang === 'lt'
+    ? 'Sis skaitymas skirtas orientacijai, savianalzei ir garso terapijos praktikos planavimui. Jis nera finansine, medicinine ar teisine konsultacija. Planetu dazniai pagristi Kosmines Oktavos metodologija ir naudojami garso terapijos tradicijoje.'
+    : 'This reading is for guidance, self-reflection, and sound healing practice planning. It does not constitute financial, medical, or legal advice. Planetary frequencies are based on the Cosmic Octave methodology and are used within the sound healing tradition.'
+
   doc.setTextColor(...P.mutedGrey)
   setBody(doc, f, 7.5)
-  y = wrapDraw(doc, tr('disclaimer', lang), ML, y, CW, 3.5)
+  y = wrapDraw(doc, disclaimerText, ML, y, CW, 3.5)
 
   pageFooter(doc, f, pageNum, clientName, lang)
 }
@@ -1204,8 +1325,8 @@ function drawRitualCalendar(
           const primaryEvent = dayEvents[0]
           const dotColor = DOT_COLORS[primaryEvent.type] || P.gold
           doc.setFillColor(...dotColor)
-          doc.setGState(doc.GState({ opacity: 0.6 }))
-          doc.circle(dx + dayW / 2, dy - 0.5, 2, 'F')
+          doc.setGState(doc.GState({ opacity: 0.8 }))
+          doc.circle(dx + dayW / 2, dy - 0.5, 2.5, 'F')
           doc.setGState(doc.GState({ opacity: 1 }))
 
           // Day number in white on the dot
@@ -1382,12 +1503,14 @@ function drawEclipseSpotlight(
 
 interface SonicToolkitData {
   primaryPlanets: { planet: string; hz: number; chakra: string; instrument: string; note: string; count: number }[]
-  topChakras: string[]
-  dailyPractice: string
+  allChakras: { name: string; planets: string[] }[]
+  allInstruments: string[]
+  morningPractice: string
+  eveningPractice: string
 }
 
 function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): SonicToolkitData {
-  // Count planet mentions across all sonic_rx fields to find most active
+  // Count planet mentions across all sonic_rx fields for sorting
   const planetCounts: Record<string, number> = {}
   for (const m of months) {
     for (const cat of BLUEPRINT_CATEGORY_KEYS) {
@@ -1398,7 +1521,6 @@ function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): Son
         }
       }
     }
-    // Also check month_sonic_focus
     const focus = m.month_sonic_focus || ''
     for (const planet of Object.keys(PLANET_FREQUENCIES)) {
       if (focus.toLowerCase().includes(planet.toLowerCase())) {
@@ -1407,42 +1529,58 @@ function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): Son
     }
   }
 
-  // Sort by count, take top 4
-  const sorted = Object.entries(planetCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-
-  const primaryPlanets = sorted.map(([planet, count]) => {
-    const freq = PLANET_FREQUENCIES[planet]
-    return {
+  // Include ALL 10 planets sorted by Hz
+  const primaryPlanets = Object.entries(PLANET_FREQUENCIES)
+    .sort((a, b) => a[1].hz - b[1].hz)
+    .map(([planet, freq]) => ({
       planet,
       hz: freq.hz,
       chakra: freq.chakra,
       instrument: freq.instrument,
       note: freq.note,
-      count,
-    }
-  })
+      count: planetCounts[planet] || 0,
+    }))
 
-  // Top chakras
-  const chakraCounts: Record<string, number> = {}
-  for (const p of primaryPlanets) {
-    chakraCounts[p.chakra] = (chakraCounts[p.chakra] || 0) + p.count
+  // All 7 chakras with their planet correspondences
+  const chakraPlanets: Record<string, string[]> = {
+    'Crown': [], 'Third Eye': [], 'Throat': [], 'Heart': [],
+    'Solar Plexus': [], 'Sacral': [], 'Root': [],
   }
-  const topChakras = Object.entries(chakraCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([c]) => c)
+  for (const [planet, freq] of Object.entries(PLANET_FREQUENCIES)) {
+    const c = freq.chakra
+    if (chakraPlanets[c]) {
+      chakraPlanets[c].push(`${planet} (${freq.hz}Hz)`)
+    }
+  }
+  const allChakras = Object.entries(chakraPlanets).map(([name, planets]) => ({ name, planets }))
 
-  // Daily practice suggestion
-  const topPlanet = primaryPlanets[0]
-  const dailyPractice = topPlanet
-    ? lang === 'lt'
-      ? `Pradekite diena 5 minutes meditacija su ${topPlanet.hz} Hz dazniu (${topPlanet.planet} energija, ${topPlanet.chakra} cakra). Naudokite ${topPlanet.instrument.split(',')[0].toLowerCase()} ir leiskite vibracijai issklaidyti dienos itampa. Baigdami, tris kartus giliai ikvepkite ir nustatykite savo dienos intencija.`
-      : `Begin your day with a 5-minute meditation using the ${topPlanet.hz} Hz frequency (${topPlanet.planet} energy, ${topPlanet.chakra} chakra). Use a ${topPlanet.instrument.split(',')[0].toLowerCase()} and allow the vibration to dissolve tension. Close with three deep breaths and set your intention for the day.`
-    : ''
+  // All instruments mentioned in the report
+  const allInstruments = [
+    'Crystal singing bowls (various notes)',
+    'Tibetan singing bowls',
+    'Gong',
+    'Monochord',
+    'Tuning forks',
+    'Frame drum / Djembe',
+    'Ocean drum',
+    'Didgeridoo',
+    'Overtone singing (voice)',
+  ]
 
-  return { primaryPlanets, topChakras, dailyPractice }
+  // Morning and evening practice
+  const topPlanet = Object.entries(planetCounts).sort((a, b) => b[1] - a[1])[0]
+  const topFreq = topPlanet ? PLANET_FREQUENCIES[topPlanet[0]] : PLANET_FREQUENCIES.Sun
+  const topName = topPlanet ? topPlanet[0] : 'Sun'
+
+  const morningPractice = lang === 'lt'
+    ? `Pradekite diena 5-7 minutes meditacija su ${topFreq.hz} Hz dazniu (${topName} energija, ${topFreq.chakra} cakra). Naudokite ${topFreq.instrument.split(',')[0].toLowerCase()} ir leiskite vibracijai isvalyti nakties energija. Baigdami, tris kartus giliai ikvepkite ir nustatykite savo dienos intencija.`
+    : `Begin your day with a 5-7 minute meditation using the ${topFreq.hz} Hz frequency (${topName} energy, ${topFreq.chakra} chakra). Use a ${topFreq.instrument.split(',')[0].toLowerCase()} and allow the vibration to clear overnight energy. Close with three deep breaths and set your intention for the day.`
+
+  const eveningPractice = lang === 'lt'
+    ? `Vakare, pries miega, 5 minutes klausykites 210.42 Hz dazniu (Menulio energija, Kryzkaulio cakra) naudodami kristalini garsini dubeni arba Tibetieti dubeni. Leiskite vibracijai nuraminti nervine sistema ir paruosti kuna giliam poilsiui.`
+    : `In the evening before sleep, listen to 210.42 Hz (Moon energy, Sacral chakra) for 5 minutes using a crystal singing bowl or Tibetan bowl. Allow the vibration to calm the nervous system and prepare the body for deep rest.`
+
+  return { primaryPlanets, allChakras, allInstruments, morningPractice, eveningPractice }
 }
 
 function drawSonicToolkit(
@@ -1460,127 +1598,179 @@ function drawSonicToolkit(
   goldLineFull(doc, y)
   y += 10
 
-  // ─── Primary Frequencies ───
+  // ─── All 10 Frequencies (sorted by Hz) ───
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 13, 'normal')
   doc.text(tr('sonicFrequencies', lang), ML, y)
-  y += 8
+  y += 7
+
+  // Compact table: Planet | Hz | Note | Chakra
+  // Table header
+  doc.setTextColor(...P.gold)
+  setBody(doc, f, 7.5, true)
+  doc.text('Planet', ML + 2, y)
+  doc.text('Frequency', ML + 28, y)
+  doc.text('Note', ML + 55, y)
+  doc.text('Chakra', ML + 70, y)
+  doc.text('Instrument', ML + 100, y)
+  y += 2
+  goldLineFull(doc, y)
+  y += 4
 
   for (const p of toolkit.primaryPlanets) {
-    // Mini card with gold-tinted background
-    doc.setFillColor(196, 162, 101)
-    doc.setGState(doc.GState({ opacity: 0.04 }))
-    doc.roundedRect(ML, y - 3, CW, 22, 2, 2, 'F')
-    doc.setGState(doc.GState({ opacity: 1 }))
-
-    // Planet name in bold
     doc.setTextColor(...P.navy)
-    setBody(doc, f, 11, true)
-    doc.text(p.planet, ML + 4, y)
+    setBody(doc, f, 8, true)
+    doc.text(p.planet, ML + 2, y)
 
-    // Frequency in large text
     doc.setTextColor(...P.gold)
-    setDisplay(doc, f, 16, 'bold')
-    const hzText = `${p.hz} Hz`
-    const hzW = doc.getTextWidth(hzText)
-    doc.text(hzText, PW - MR - hzW - 4, y)
+    setBody(doc, f, 8.5, true)
+    doc.text(`${p.hz} Hz`, ML + 28, y)
 
-    // Details line
     doc.setTextColor(...P.grey)
-    setBody(doc, f, 8.5)
-    const desc = `${p.chakra} chakra  ·  Note: ${p.note}  ·  ${p.instrument}`
-    y += 5
-    y = wrapDraw(doc, desc, ML + 4, y, CW - 8, 4)
-    y += 6
+    setBody(doc, f, 8)
+    doc.text(p.note, ML + 55, y)
+    doc.text(p.chakra, ML + 70, y)
+
+    // Truncate instrument to fit
+    setBody(doc, f, 7)
+    const instShort = p.instrument.length > 30 ? p.instrument.substring(0, 28) + '...' : p.instrument
+    doc.text(instShort, ML + 100, y)
+    y += 5.5
   }
 
   y += 4
 
-  // ─── Recommended Instruments ───
+  // ─── All Instruments ───
+  if (needsNewPage(doc, y, 70)) {
+    pageFooter(doc, f, pageNum, clientName, lang)
+    doc.addPage()
+    pageNum++
+    doc.setFillColor(...P.paperRGB)
+    doc.rect(0, 0, PW, PH, 'F')
+    y = MT
+  }
+
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 13, 'normal')
   doc.text(tr('sonicInstruments', lang), ML, y)
   y += 8
 
-  // Build instrument list from top planets with proper capitalisation
-  const instruments = [...new Set(toolkit.primaryPlanets.flatMap(p => p.instrument.split(',').map(i => i.trim())))]
-  for (const inst of instruments.slice(0, 6)) {
-    starDot(doc, ML + 4, y)
-    doc.setTextColor(...P.navy)
-    setBody(doc, f, 10, true)
-    // Capitalise first letter
-    const capitalised = inst.charAt(0).toUpperCase() + inst.slice(1)
-    doc.text(capitalised, ML + 9, y + 1)
+  // Two columns of instruments
+  const halfLen = Math.ceil(toolkit.allInstruments.length / 2)
+  for (let i = 0; i < halfLen; i++) {
+    const inst1 = toolkit.allInstruments[i]
+    if (inst1) {
+      starDot(doc, ML + 4, y)
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 9)
+      doc.text(inst1, ML + 9, y + 1)
+    }
+    const inst2 = toolkit.allInstruments[i + halfLen]
+    if (inst2) {
+      starDot(doc, ML + CW / 2 + 4, y)
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 9)
+      doc.text(inst2, ML + CW / 2 + 9, y + 1)
+    }
     y += 6
   }
 
-  y += 6
+  y += 4
 
-  // ─── Chakra Focus Areas ───
+  // ─── All 7 Chakra Focus Areas ───
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 13, 'normal')
   doc.text(tr('sonicChakras', lang), ML, y)
   y += 8
 
   const chakraColors: Record<string, RGB> = {
-    'Root': [184, 74, 74],
-    'Sacral': [220, 140, 60],
-    'Solar Plexus': [196, 162, 101],
-    'Heart': [42, 123, 82],
-    'Throat': [58, 79, 138],
-    'Third Eye': [107, 77, 138],
     'Crown': [160, 120, 200],
+    'Third Eye': [107, 77, 138],
+    'Throat': [58, 79, 138],
+    'Heart': [42, 123, 82],
+    'Solar Plexus': [196, 162, 101],
+    'Sacral': [220, 140, 60],
+    'Root': [184, 74, 74],
   }
 
-  // Chakra descriptions based on planetary context
-  const chakraDescriptions: Record<string, string> = {
-    'Root': 'Grounding, physical vitality, security during transformation',
-    'Sacral': 'Creative flow, emotional release, sensual connection',
-    'Solar Plexus': 'Personal power, confidence, digestive harmony',
-    'Heart': 'Love integration, relationship healing, self-compassion',
-    'Throat': 'Authentic expression, communication clarity, truth',
-    'Third Eye': 'Intuition, vision, mental clarity and insight',
-    'Crown': 'Spiritual connection, higher wisdom, cosmic alignment',
-  }
+  for (const chakra of toolkit.allChakras) {
+    if (needsNewPage(doc, y, 12)) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT
+    }
 
-  for (const chakra of toolkit.topChakras) {
-    const cc = chakraColors[chakra] || P.gold
+    const cc = chakraColors[chakra.name] || P.gold
     doc.setFillColor(...cc)
     doc.circle(ML + 4, y, 2.5, 'F')
 
     doc.setTextColor(...P.navy)
-    setBody(doc, f, 10, true)
-    doc.text(`${chakra} Chakra`, ML + 10, y + 1.5)
+    setBody(doc, f, 9.5, true)
+    doc.text(`${chakra.name} Chakra`, ML + 10, y + 1.5)
 
-    // Description
-    const desc = chakraDescriptions[chakra]
-    if (desc) {
+    // Planet correspondences
+    if (chakra.planets.length > 0) {
       doc.setTextColor(...P.grey)
-      setBody(doc, f, 8.5)
-      doc.text(desc, ML + 10, y + 6)
+      setBody(doc, f, 8)
+      doc.text(chakra.planets.join(', '), ML + 10, y + 6)
     }
-    y += 12
+    y += 11
   }
 
   y += 4
 
-  // ─── Daily Practice ───
+  // ─── Daily Practice: Morning & Evening ───
+  if (needsNewPage(doc, y, 45)) {
+    pageFooter(doc, f, pageNum, clientName, lang)
+    doc.addPage()
+    pageNum++
+    doc.setFillColor(...P.paperRGB)
+    doc.rect(0, 0, PW, PH, 'F')
+    y = MT
+  }
+
   doc.setTextColor(...P.gold)
   setDisplay(doc, f, 13, 'normal')
   doc.text(tr('sonicPractice', lang), ML, y)
   y += 8
 
-  // Background tint
+  // Morning practice
+  doc.setTextColor(...P.gold)
+  setBody(doc, f, 9, true)
+  doc.text(lang === 'lt' ? 'RYTO PRAKTIKA' : 'MORNING PRACTICE', ML + 4, y)
+  y += 5
+
   doc.setFillColor(196, 162, 101)
   doc.setGState(doc.GState({ opacity: 0.04 }))
-  const practiceLines = doc.splitTextToSize(sanitizeForPDF(toolkit.dailyPractice), CW - 12)
-  const practiceH = practiceLines.length * 5 + 8
-  doc.roundedRect(ML, y - 2, CW, practiceH, 2, 2, 'F')
+  const morningLines = doc.splitTextToSize(sanitizeForPDF(toolkit.morningPractice), CW - 12)
+  const morningH = morningLines.length * 5 + 6
+  doc.roundedRect(ML, y - 2, CW, morningH, 2, 2, 'F')
   doc.setGState(doc.GState({ opacity: 1 }))
 
   doc.setTextColor(...P.navy)
-  setBody(doc, f, 10)
-  y = wrapDraw(doc, toolkit.dailyPractice, ML + 6, y + 2, CW - 12, 5)
+  setBody(doc, f, 9.5)
+  y = wrapDraw(doc, toolkit.morningPractice, ML + 6, y + 1, CW - 12, 4.5)
+  y += 6
+
+  // Evening practice
+  doc.setTextColor(...P.gold)
+  setBody(doc, f, 9, true)
+  doc.text(lang === 'lt' ? 'VAKARO PRAKTIKA' : 'EVENING PRACTICE', ML + 4, y)
+  y += 5
+
+  doc.setFillColor(107, 77, 138)
+  doc.setGState(doc.GState({ opacity: 0.04 }))
+  const eveningLines = doc.splitTextToSize(sanitizeForPDF(toolkit.eveningPractice), CW - 12)
+  const eveningH = eveningLines.length * 5 + 6
+  doc.roundedRect(ML, y - 2, CW, eveningH, 2, 2, 'F')
+  doc.setGState(doc.GState({ opacity: 1 }))
+
+  doc.setTextColor(...P.navy)
+  setBody(doc, f, 9.5)
+  y = wrapDraw(doc, toolkit.eveningPractice, ML + 6, y + 1, CW - 12, 4.5)
 
   pageFooter(doc, f, pageNum, clientName, lang)
 }
@@ -1622,12 +1812,31 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   // ─── Page 1: Cover ───
   drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language)
 
+  // ─── Compute natal placements from birth date ───
+  let natalPlacements: NatalPlacement[] | null = null
+  if (birthDate) {
+    try {
+      const bd = new Date(birthDate)
+      if (!isNaN(bd.getTime())) {
+        // Use lat/lng 0,0 — ecliptic longitudes are location-independent for planet signs
+        const positions = getPlanetPositions(bd, 0, 0)
+        const natalNames = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars']
+        natalPlacements = positions
+          .filter(p => natalNames.includes(p.name))
+          .map(p => {
+            const signName = ZODIAC_SIGNS.find(z => z.id === p.zodiacSign)?.name ?? p.zodiacSign
+            return { name: p.name, sign: signName, degree: p.degreeInSign }
+          })
+      }
+    } catch { /* natal calculation failed, continue without */ }
+  }
+
   // ─── Page 2: Introduction ───
   doc.addPage()
   pageNum++
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
-  drawIntroPage(doc, f, clientName, birthDate, language, pageNum)
+  drawIntroPage(doc, f, clientName, birthDate, birthTime, natalPlacements, language, pageNum)
 
   // ─── Page 3: Year at a Glance ───
   doc.addPage()
