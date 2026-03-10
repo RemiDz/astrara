@@ -28,9 +28,12 @@ interface TransitGridProps {
   loading: boolean
   completedCount: number
   overviewLoading: boolean
+  monthErrors?: (string | null)[]
+  onRetryMonth?: (index: number) => void
+  currentMonth?: number | null
 }
 
-export default function TransitGrid({ months, overview, monthLabels, loading, completedCount, overviewLoading }: TransitGridProps) {
+export default function TransitGrid({ months, overview, monthLabels, loading, completedCount, overviewLoading, monthErrors, onRetryMonth, currentMonth }: TransitGridProps) {
   const { lang } = useTranslation()
   const allCategories: (CategoryKey | 'monthly_summary')[] = [...CATEGORY_KEYS, 'monthly_summary']
 
@@ -106,6 +109,8 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
           const rowAvg = rowAverages[rowIdx]
           const rowColor = rowAvg > 0 ? getImpactColor(rowAvg) : 'rgba(255,255,255,0.3)'
           const isLoadingRow = !monthData && loading
+          const rowError = monthErrors?.[rowIdx] ?? null
+          const isRetrying = currentMonth === rowIdx && !loading
 
           return (
             <div key={label} className="contents">
@@ -113,8 +118,12 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
               <div
                 className="p-3 rounded-xl border flex flex-col justify-center sticky left-0 z-10"
                 style={{
-                  background: 'rgba(13,13,26,0.95)',
-                  borderColor: rowAvg > 0 ? `${rowColor}33` : 'rgba(255,255,255,0.05)',
+                  background: rowError
+                    ? 'rgba(248,113,113,0.04)'
+                    : 'rgba(13,13,26,0.95)',
+                  borderColor: rowError
+                    ? 'rgba(248,113,113,0.2)'
+                    : rowAvg > 0 ? `${rowColor}33` : 'rgba(255,255,255,0.05)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -127,6 +136,15 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
                     {rowAvg}
                   </div>
                 )}
+                {rowError && onRetryMonth && (
+                  <button
+                    onClick={() => onRetryMonth(rowIdx)}
+                    disabled={isRetrying}
+                    className="mt-1.5 text-[9px] text-red-400/80 hover:text-red-300 cursor-pointer disabled:opacity-40"
+                  >
+                    {isRetrying ? '...' : '↻ Retry'}
+                  </button>
+                )}
               </div>
 
               {/* Category cells */}
@@ -136,7 +154,8 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
                   data={monthData ? monthData.categories[cat] : null}
                   categoryKey={cat}
                   monthLabel={label}
-                  isLoading={isLoadingRow}
+                  isLoading={isLoadingRow || isRetrying}
+                  error={rowError}
                 />
               ))}
 
@@ -146,7 +165,8 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
                 data={monthData ? monthData.categories.monthly_summary : null}
                 categoryKey="monthly_summary"
                 monthLabel={label}
-                isLoading={isLoadingRow}
+                isLoading={isLoadingRow || isRetrying}
+                error={rowError}
               />
             </div>
           )

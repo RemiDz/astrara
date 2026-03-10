@@ -1,153 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { computeMonthTransitData } from '@/lib/transit-computation'
-import type { TransitDataForMonth } from '@/types/transit-grid'
 
-const SYSTEM_PROMPT = `You are a professional astrologer providing detailed transit readings for a client consultation.
-You are given exact planetary positions and aspects computed from NASA JPL-accurate ephemeris data.
-Provide practitioner-quality interpretations — specific, insightful, and actionable.
-Do NOT give vague horoscope-style generalisations.
-Reference the actual planets and aspects in your interpretations.
+const SYSTEM_PROMPT = `You are a professional astrologer providing transit readings for a client consultation.
+You receive exact planetary positions and aspects from NASA JPL-accurate ephemeris.
+Give specific, insightful, actionable interpretations. Reference actual planets and aspects.
+Balance: ~40% positive, ~30% challenging, ~30% practical. Be honest about difficulties.
+Respond ONLY in valid JSON. No markdown, backticks, or code fences.`
 
-CRITICAL — BALANCED AND HONEST READINGS:
-1. CHALLENGES ARE MANDATORY: Include difficult transits, squares, oppositions, retrogrades.
-2. For every challenging transit, state what the problem is, when it peaks, and how to navigate it.
-3. BALANCE RATIO: Roughly 40% positive / 30% challenging / 30% neutral-practical.
-4. Use direct, honest language for challenges — no "gentle nudges" or "growth opportunities" as euphemisms.
-5. Be specific about what goes wrong during retrogrades.
-6. Call difficult aspects what they are: squares = friction, oppositions = confrontation, malefic conjunctions = intensity.
+const OVERVIEW_SYSTEM_PROMPT = `You are a professional astrologer synthesising a 12-month overview.
+Given monthly summaries from NASA JPL data, identify year-long trends, peak months, trajectory.
+Be honest about difficult periods. Respond ONLY in valid JSON. No markdown, backticks, or code fences.`
 
-Respond ONLY in valid JSON with no markdown formatting, backticks, or code fences.`
+function buildCompactMonthPrompt(year: number, month: number, language: string, birthData?: string): string {
+  const data = computeMonthTransitData(year, month)
 
-const OVERVIEW_SYSTEM_PROMPT = `You are a professional astrologer providing a 12-month overview synthesis for a client consultation.
-You are given monthly summaries computed from NASA JPL-accurate ephemeris data.
-Synthesise year-long trends, identify peak months, and provide trajectory analysis.
-Be honest about difficult periods — name them clearly.
-
-Respond ONLY in valid JSON with no markdown formatting, backticks, or code fences.`
-
-function buildMonthPrompt(data: TransitDataForMonth, language: string, birthData?: string): string {
+  // Compact planet positions: "Sun Ari 15°, Moon Lib 22° Rx"
   const pos1 = data.positions_1st.map(p =>
-    `${p.glyph} ${p.name}: ${p.sign} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
-  ).join('\n')
+    `${p.name} ${p.sign.substring(0, 3)} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
+  ).join(', ')
 
   const pos15 = data.positions_15th.map(p =>
-    `${p.glyph} ${p.name}: ${p.sign} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
-  ).join('\n')
+    `${p.name} ${p.sign.substring(0, 3)} ${p.degree}°${p.retrograde ? ' Rx' : ''}`
+  ).join(', ')
 
+  // Compact aspects: "Sun□Saturn(2.1°), Venus△Jupiter(1.3°)"
   const asp1 = data.aspects_1st.map(a =>
-    `${a.planet1Glyph} ${a.planet1} ${a.symbol} ${a.planet2Glyph} ${a.planet2} (${a.type}, orb ${a.orb}°, ${a.isApplying ? 'applying' : 'separating'})`
-  ).join('\n')
+    `${a.planet1}${a.symbol}${a.planet2}(${a.orb}°)`
+  ).join(', ')
 
   const asp15 = data.aspects_15th.map(a =>
-    `${a.planet1Glyph} ${a.planet1} ${a.symbol} ${a.planet2Glyph} ${a.planet2} (${a.type}, orb ${a.orb}°, ${a.isApplying ? 'applying' : 'separating'})`
-  ).join('\n')
+    `${a.planet1}${a.symbol}${a.planet2}(${a.orb}°)`
+  ).join(', ')
 
-  const ingresses = data.ingresses.length > 0 ? `Sign ingresses this month:\n${data.ingresses.join('\n')}` : 'No sign ingresses this month.'
-  const retrogrades = data.retrogrades.length > 0 ? `Retrograde activity:\n${data.retrogrades.join('\n')}` : 'No retrograde stations this month.'
-  const moonPhases = data.moonPhases.length > 0 ? `Moon phases:\n${data.moonPhases.join('\n')}` : ''
+  const extras: string[] = []
+  if (data.ingresses.length > 0) extras.push(`Ingresses: ${data.ingresses.join('; ')}`)
+  if (data.retrogrades.length > 0) extras.push(`Retrogrades: ${data.retrogrades.join('; ')}`)
+  if (data.moonPhases.length > 0) extras.push(`Moon: ${data.moonPhases.join('; ')}`)
 
-  const langInstruction = language === 'lt'
-    ? '\n\nIMPORTANT: Write ALL text content (key_theme, full_reading, practical_guidance, category_effect, interpretation, dates_to_watch, dominant_theme, opportunities, challenges, interrelations) in Lithuanian. Use proper Lithuanian astrological terminology. Keep planet names and symbols in their standard form.'
-    : '\n\nWrite all content in British English.'
+  const lang = language === 'lt' ? 'Write ALL text in Lithuanian.' : 'Write in British English.'
+  const birth = birthData ? `\nClient: ${birthData}` : ''
 
-  const birthContext = birthData ? `\n\nClient birth data:\n${birthData}\nAccount for personal transits (transiting planets aspecting natal positions).` : '\n\nGenerate general transit readings (no birth chart provided).'
+  return `${data.monthLabel}
+1st: ${pos1}
+15th: ${pos15}
+Aspects 1st: ${asp1 || 'none'}
+Aspects 15th: ${asp15 || 'none'}
+${extras.join('\n')}${birth}
+${lang}
 
-  return `Month: ${data.monthLabel}
-
-Planetary positions (1st of month):
-${pos1}
-
-Planetary positions (15th of month):
-${pos15}
-
-Major aspects (1st of month):
-${asp1}
-
-Major aspects (15th of month):
-${asp15}
-
-${ingresses}
-${retrogrades}
-${moonPhases}
-${birthContext}
-${langInstruction}
-
-Generate transit readings for this month across 5 life categories plus a monthly summary.
-Return JSON in this exact structure:
-{
-  "month": "${data.monthLabel}",
-  "categories": {
-    "finance": {
-      "impact_score": <1-10>,
-      "key_theme": "<1-2 sentence headline>",
-      "full_reading": "<3-5 sentences practitioner-quality interpretation>",
-      "planetary_breakdown": [
-        {
-          "planet": "<name>",
-          "symbol": "<glyph>",
-          "position": "<sign degree°>",
-          "aspects": [
-            { "type": "<aspect name>", "symbol": "<aspect glyph>", "target": "<planet name>", "target_symbol": "<planet glyph>", "interpretation": "<1 sentence>" }
-          ],
-          "impact_contribution": <1-5>,
-          "category_effect": "<1 sentence effect on this category>"
-        }
-      ],
-      "practical_guidance": "<actionable advice>",
-      "dates_to_watch": ["<date — event description>"]
-    },
-    "relationships": { <same structure> },
-    "career": { <same structure> },
-    "health": { <same structure> },
-    "spiritual": { <same structure> },
-    "monthly_summary": {
-      "impact_score": <1-10 weighted average>,
-      "dominant_theme": "<1-2 sentences>",
-      "full_reading": "<3-5 sentences>",
-      "key_players": ["<planet names>"],
-      "opportunities": "<key opportunities>",
-      "challenges": "<key challenges>",
-      "interrelations": "<how categories interrelate>"
-    }
-  }
-}`
+Return JSON: {"month":"${data.monthLabel}","categories":{"finance":{"impact_score":<1-10>,"key_theme":"<1-2 sentences>","full_reading":"<3-5 sentences>","planetary_breakdown":[{"planet":"<name>","symbol":"<glyph>","position":"<sign deg°>","aspects":[{"type":"<name>","symbol":"<glyph>","target":"<planet>","target_symbol":"<glyph>","interpretation":"<1 sentence>"}],"impact_contribution":<1-5>,"category_effect":"<1 sentence>"}],"practical_guidance":"<advice>","dates_to_watch":["<date — event>"]},"relationships":{same},"career":{same},"health":{same},"spiritual":{same},"monthly_summary":{"impact_score":<1-10>,"dominant_theme":"<1-2 sentences>","full_reading":"<3-5 sentences>","key_players":["<planets>"],"opportunities":"<text>","challenges":"<text>","interrelations":"<text>"}}}`
 }
 
 function buildOverviewPrompt(monthSummaries: string[], language: string): string {
-  const langInstruction = language === 'lt'
-    ? '\n\nIMPORTANT: Write ALL text content in Lithuanian. Use proper Lithuanian astrological terminology.'
-    : '\n\nWrite all content in British English.'
+  const lang = language === 'lt' ? 'Write ALL text in Lithuanian.' : 'Write in British English.'
 
-  return `Here are the monthly transit summaries for 12 months:
+  return `Monthly summaries:\n${monthSummaries.join('\n---\n')}
+${lang}
 
-${monthSummaries.join('\n\n---\n\n')}
-${langInstruction}
+Return JSON: {"categories":{"finance":{"impact_score":<1-10>,"year_trend":"<3-5 sentences>","peak_months":["<months>"],"trajectory":"<improving/challenging/stable/transformative>","key_events":"<text>","full_reading":"<3-5 sentences>"},"relationships":{same},"career":{same},"health":{same},"spiritual":{same},"grand_summary":{"impact_score":<1-10>,"dominant_theme":"<theme>","full_reading":"<5-7 sentences>","key_players":["<planets>"],"peak_months":["<months>"],"trajectory":"<trajectory>"}}}`
+}
 
-Synthesise these into a 12-month overview. Return JSON in this exact structure:
-{
-  "categories": {
-    "finance": {
-      "impact_score": <1-10 yearly average>,
-      "year_trend": "<3-5 sentence year-long narrative>",
-      "peak_months": ["<month names with highest impact>"],
-      "trajectory": "<improving/challenging/stable/transformative>",
-      "key_events": "<major planetary ingresses or retrogrades affecting this category>",
-      "full_reading": "<3-5 sentence detailed overview>"
-    },
-    "relationships": { <same structure> },
-    "career": { <same structure> },
-    "health": { <same structure> },
-    "spiritual": { <same structure> },
-    "grand_summary": {
-      "impact_score": <1-10>,
-      "dominant_theme": "<the overarching theme of the year>",
-      "full_reading": "<5-7 sentence grand synthesis>",
-      "key_players": ["<most influential planets>"],
-      "peak_months": ["<most intense months>"],
-      "trajectory": "<overall year trajectory>"
+async function callAnthropicWithRetry(
+  apiKey: string,
+  system: string,
+  userPrompt: string,
+  maxTokens: number,
+  retries: number = 2,
+): Promise<string> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+
+    if (response.status === 429 || response.status === 529) {
+      if (attempt < retries) {
+        const delay = 3000 * (attempt + 1)
+        console.warn(`[transit-grid] Rate limited (${response.status}), retrying in ${delay}ms...`)
+        await new Promise(r => setTimeout(r, delay))
+        continue
+      }
     }
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error(`[transit-grid] API error (${response.status}):`, errText.substring(0, 300))
+      throw new Error(`API error ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (!data.content || !Array.isArray(data.content)) {
+      throw new Error('Unexpected API response structure')
+    }
+
+    const text = data.content
+      .filter((block: { type: string }) => block.type === 'text')
+      .map((block: { text: string }) => block.text)
+      .join('')
+
+    console.log(`[transit-grid] Response tokens: input=${data.usage?.input_tokens ?? '?'} output=${data.usage?.output_tokens ?? '?'}`)
+    return text
   }
-}`
+
+  throw new Error('Exhausted retries')
 }
 
 export async function POST(req: NextRequest) {
@@ -161,96 +126,45 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === 'month') {
-      // Compute transit data server-side
-      const transitData = computeMonthTransitData(year, month)
-      const userPrompt = buildMonthPrompt(transitData, language || 'en', birthData)
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      })
-
-      if (!response.ok) {
-        const errText = await response.text()
-        console.error('Anthropic API error:', errText)
-        return NextResponse.json({ error: 'Failed to generate reading' }, { status: 500 })
-      }
-
-      const data = await response.json()
-      if (!data.content || !Array.isArray(data.content)) {
-        return NextResponse.json({ error: 'Unexpected API response' }, { status: 500 })
-      }
-
-      const text = data.content
-        .filter((block: { type: string }) => block.type === 'text')
-        .map((block: { text: string }) => block.text)
-        .join('')
+      console.log(`[transit-grid] Generating month: ${year}-${month + 1}`)
+      const userPrompt = buildCompactMonthPrompt(year, month, language || 'en', birthData)
+      console.log(`[transit-grid] Prompt length: ${userPrompt.length} chars`)
 
       try {
+        const text = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 1500)
         const parsed = JSON.parse(text)
+        console.log(`[transit-grid] Month ${year}-${month + 1}: OK`)
         return NextResponse.json({ data: parsed })
-      } catch {
-        console.error('Failed to parse JSON response:', text.substring(0, 200))
-        return NextResponse.json({ error: 'Invalid JSON in API response' }, { status: 500 })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Unknown error'
+        console.error(`[transit-grid] Month ${year}-${month + 1} failed:`, msg)
+        return NextResponse.json({ error: msg }, { status: 500 })
       }
 
     } else if (type === 'overview') {
       if (!monthSummaries || !Array.isArray(monthSummaries)) {
-        return NextResponse.json({ error: 'Missing month summaries for overview' }, { status: 400 })
+        return NextResponse.json({ error: 'Missing month summaries' }, { status: 400 })
       }
 
+      console.log(`[transit-grid] Generating overview from ${monthSummaries.length} months`)
       const userPrompt = buildOverviewPrompt(monthSummaries, language || 'en')
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          system: OVERVIEW_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      })
-
-      if (!response.ok) {
-        const errText = await response.text()
-        console.error('Anthropic API error:', errText)
-        return NextResponse.json({ error: 'Failed to generate overview' }, { status: 500 })
-      }
-
-      const data = await response.json()
-      const text = data.content
-        .filter((block: { type: string }) => block.type === 'text')
-        .map((block: { text: string }) => block.text)
-        .join('')
-
       try {
+        const text = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 1500)
         const parsed = JSON.parse(text)
+        console.log(`[transit-grid] Overview: OK`)
         return NextResponse.json({ data: parsed })
-      } catch {
-        console.error('Failed to parse overview JSON:', text.substring(0, 200))
-        return NextResponse.json({ error: 'Invalid JSON in overview response' }, { status: 500 })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Unknown error'
+        console.error(`[transit-grid] Overview failed:`, msg)
+        return NextResponse.json({ error: msg }, { status: 500 })
       }
     }
 
     return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
 
   } catch (error) {
-    console.error('Transit grid error:', error)
+    console.error('[transit-grid] Unhandled error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

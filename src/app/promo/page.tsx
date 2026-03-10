@@ -10,7 +10,7 @@ import { CATEGORY_KEYS } from '@/types/transit-grid'
 import { generateCosmicBlueprint } from '@/lib/cosmic-blueprint-pdf'
 
 const STORAGE_KEY = 'astrara-transit-grid'
-const MAX_CONCURRENT = 4
+const MAX_CONCURRENT = 2
 
 export default function Page() {
   return (
@@ -48,6 +48,9 @@ function TransitGridPage() {
   const [completedCount, setCompletedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [cachedLang, setCachedLang] = useState<string | null>(null)
+  const [monthErrors, setMonthErrors] = useState<(string | null)[]>(Array(12).fill(null))
+  const [currentMonth, setCurrentMonth] = useState<number | null>(null)
+  const [generationDone, setGenerationDone] = useState(false)
 
   // Birth chart data (optional)
   const [clientName, setClientName] = useState('')
@@ -98,6 +101,39 @@ function TransitGridPage() {
     return s
   }
 
+  // Fetch a single month reading
+  const fetchMonth = useCallback(async (
+    year: number, month: number, language: string, birthData?: string
+  ): Promise<{ data: MonthData | null; error: string | null }> => {
+    try {
+      const res = await fetch('/api/transit-grid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'month', year, month, language, birthData }),
+      })
+      const json = await res.json()
+      if (json.error) return { data: null, error: json.error }
+      return { data: json.data as MonthData, error: null }
+    } catch (err) {
+      return { data: null, error: err instanceof Error ? err.message : 'Network error' }
+    }
+  }, [])
+
+  // Retry a single failed month
+  const retrySingleMonth = useCallback(async (index: number) => {
+    const d = monthDates[index]
+    const birthData = buildBirthData()
+
+    setMonthErrors(prev => { const n = [...prev]; n[index] = null; return n })
+    setCurrentMonth(index)
+
+    const { data, error: err } = await fetchMonth(d.year, d.month, uiLang, birthData)
+
+    setMonths(prev => { const n = [...prev]; n[index] = data; return n })
+    setMonthErrors(prev => { const n = [...prev]; n[index] = err; return n })
+    setCurrentMonth(null)
+  }, [monthDates, uiLang, fetchMonth, birthDate, birthTime])
+
   // Generate all readings
   const generateReadings = useCallback(async () => {
     if (generatingRef.current) return
@@ -108,65 +144,42 @@ function TransitGridPage() {
     setMonths(Array(12).fill(null))
     setOverview(null)
     setCachedLang(uiLang)
+    setMonthErrors(Array(12).fill(null))
+    setGenerationDone(false)
 
     const birthData = buildBirthData()
     const results: (MonthData | null)[] = Array(12).fill(null)
+    const errors: (string | null)[] = Array(12).fill(null)
 
-    // Rate-limited parallel fetching
+    // Worker-based concurrency limiter
     const queue = monthDates.map((d, i) => ({ ...d, index: i }))
-    let active = 0
-    let queueIdx = 0
+    let nextIdx = 0
     let completed = 0
 
-    await new Promise<void>((resolve) => {
-      const processNext = () => {
-        if (completed === 12) {
-          resolve()
-          return
-        }
+    async function worker() {
+      while (nextIdx < queue.length) {
+        const item = queue[nextIdx++]
+        setCurrentMonth(item.index)
 
-        while (active < MAX_CONCURRENT && queueIdx < queue.length) {
-          const item = queue[queueIdx++]
-          active++
+        const { data, error: err } = await fetchMonth(item.year, item.month, uiLang, birthData)
+        results[item.index] = data
+        errors[item.index] = err
 
-          fetch('/api/transit-grid', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'month',
-              year: item.year,
-              month: item.month,
-              language: uiLang,
-              birthData,
-            }),
-          })
-            .then(res => res.json())
-            .then(json => {
-              if (json.error) {
-                console.error(`Month ${item.index} error:`, json.error)
-                results[item.index] = null
-              } else {
-                results[item.index] = json.data as MonthData
-              }
-            })
-            .catch(err => {
-              console.error(`Month ${item.index} fetch error:`, err)
-              results[item.index] = null
-            })
-            .finally(() => {
-              active--
-              completed++
-              setCompletedCount(completed)
-              setMonths([...results])
-              processNext()
-            })
-        }
+        if (err) console.error(`[promo] Month ${item.index + 1} failed:`, err)
+
+        completed++
+        setCompletedCount(completed)
+        setMonths([...results])
+        setMonthErrors([...errors])
       }
+    }
 
-      processNext()
-    })
+    // Launch MAX_CONCURRENT workers
+    await Promise.all(Array.from({ length: MAX_CONCURRENT }, () => worker()))
+    setCurrentMonth(null)
 
-    // Now generate the overview with all monthly data
+    // Generate overview from successful months
+    const successCount = results.filter(m => m !== null).length
     setOverviewLoading(true)
     try {
       const summaries = results
@@ -202,9 +215,15 @@ function TransitGridPage() {
       setOverviewLoading(false)
     }
 
+    const failedCount = errors.filter(e => e !== null).length
+    if (failedCount > 0) {
+      setError(`${successCount}/12 months generated. ${failedCount} failed — click retry on failed cards.`)
+    }
+
     setLoading(false)
+    setGenerationDone(true)
     generatingRef.current = false
-  }, [uiLang, birthDate, birthTime, monthDates])
+  }, [uiLang, birthDate, birthTime, monthDates, fetchMonth])
 
   const handleDownloadPdf = useCallback(async () => {
     const validMonths = months.filter((m): m is MonthData => m !== null)
@@ -329,9 +348,23 @@ function TransitGridPage() {
                 />
               </div>
               <span className="text-[10px] text-white/40 whitespace-nowrap">
-                {completedCount}/{totalCalls} {t('grid.complete')}
+                {currentMonth !== null && !overviewLoading
+                  ? `${monthLabels[currentMonth]} (${completedCount + 1}/13)`
+                  : overviewLoading
+                    ? `Overview (${totalCalls}/${totalCalls})`
+                    : `${completedCount}/${totalCalls}`
+                }
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Generation complete summary */}
+        {generationDone && !loading && !overviewLoading && (
+          <div className="max-w-[1800px] mx-auto mt-2">
+            <span className="text-[10px] text-white/30">
+              {months.filter(m => m !== null).length}/12 months + {overview ? '1' : '0'} overview generated
+            </span>
           </div>
         )}
 
@@ -387,6 +420,9 @@ function TransitGridPage() {
               loading={loading}
               completedCount={completedCount}
               overviewLoading={overviewLoading}
+              monthErrors={monthErrors}
+              onRetryMonth={retrySingleMonth}
+              currentMonth={currentMonth}
             />
           </>
         )}

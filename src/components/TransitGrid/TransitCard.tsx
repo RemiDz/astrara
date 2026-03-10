@@ -26,10 +26,27 @@ interface TransitCardProps {
   monthLabel: string
   isLoading: boolean
   isOverview?: boolean
+  error?: string | null
 }
 
-export default function TransitCard({ data, categoryKey, monthLabel, isLoading, isOverview }: TransitCardProps) {
+export default function TransitCard({ data, categoryKey, monthLabel, isLoading, isOverview, error }: TransitCardProps) {
   const [expanded, setExpanded] = useState(false)
+
+  // Error state — no data and there's an error for this row
+  if (!data && error && !isLoading) {
+    return (
+      <div
+        className="rounded-xl border p-3 min-h-[120px] flex flex-col items-center justify-center text-center"
+        style={{
+          background: 'rgba(248,113,113,0.03)',
+          borderColor: 'rgba(248,113,113,0.15)',
+        }}
+      >
+        <span className="text-red-400/50 text-lg mb-1">!</span>
+        <span className="text-[9px] text-red-400/40">Failed</span>
+      </div>
+    )
+  }
 
   if (isLoading || !data) {
     return (
