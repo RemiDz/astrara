@@ -179,63 +179,63 @@ function catLabelGrid(key: CategoryKey | 'monthly_summary', lang: Lang): string 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Font Loading
+// Font Setup — built-in jsPDF fonts only (times + helvetica)
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function loadFont(url: string): Promise<string> {
-  const response = await fetch(url)
-  const buffer = await response.arrayBuffer()
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  return btoa(binary)
-}
-
 interface FontSet {
-  hasCormorant: boolean
-  hasDMSans: boolean
-  hasItalic: boolean
+  hasCormorant: false
+  hasDMSans: false
+  hasItalic: false
 }
 
-async function registerFonts(doc: jsPDF): Promise<FontSet> {
-  const result: FontSet = { hasCormorant: false, hasDMSans: false, hasItalic: false }
+function initFonts(): FontSet {
+  // Use jsPDF built-in fonts only: times (serif) + helvetica (sans)
+  // This avoids custom font registration crashes in production/Vercel
+  return { hasCormorant: false, hasDMSans: false, hasItalic: false }
+}
 
-  try {
-    const [cgRegular, cgBold, dmRegular, dmMedium] = await Promise.all([
-      loadFont('/fonts/CormorantGaramond-Regular.ttf'),
-      loadFont('/fonts/CormorantGaramond-Bold.ttf'),
-      loadFont('/fonts/DMSans-Regular.ttf'),
-      loadFont('/fonts/DMSans-Medium.ttf'),
-    ])
+// ═══════════════════════════════════════════════════════════════════════════
+// Unicode Sanitization — replace symbols that built-in fonts can't render
+// ═══════════════════════════════════════════════════════════════════════════
 
-    doc.addFileToVFS('CormorantGaramond-Regular.ttf', cgRegular)
-    doc.addFont('CormorantGaramond-Regular.ttf', 'Cormorant', 'normal')
-    doc.addFileToVFS('CormorantGaramond-Bold.ttf', cgBold)
-    doc.addFont('CormorantGaramond-Bold.ttf', 'Cormorant', 'bold')
-    result.hasCormorant = true
+const SYMBOL_MAP: Record<string, string> = {
+  // Planets
+  '\u2609': 'Sun',     // ☉
+  '\u263D': 'Moon',    // ☽
+  '\u263F': 'Mercury', // ☿
+  '\u2640': 'Venus',   // ♀
+  '\u2642': 'Mars',    // ♂
+  '\u2643': 'Jupiter', // ♃
+  '\u2644': 'Saturn',  // ♄
+  '\u2645': 'Uranus',  // ♅
+  '\u2646': 'Neptune', // ♆
+  '\u2647': 'Pluto',   // ♇
+  // Aspects
+  '\u260C': 'conj.',   // ☌
+  '\u260D': 'opp.',    // ☍
+  '\u25B3': 'tri.',    // △
+  '\u25A1': 'sq.',     // □
+  '\u26B9': 'sxt.',    // ⚹
+  // Common decorative
+  '\u2726': '*',       // ✦
+  '\u2727': '*',       // ✧
+  '\u2605': '*',       // ★
+  '\u25C6': '*',       // ◆
+  '\u2B07': 'v',       // ⬇
+  // Em dash (safe in built-in fonts but adding for completeness)
+}
 
-    doc.addFileToVFS('DMSans-Regular.ttf', dmRegular)
-    doc.addFont('DMSans-Regular.ttf', 'DMSans', 'normal')
-    doc.addFileToVFS('DMSans-Medium.ttf', dmMedium)
-    doc.addFont('DMSans-Medium.ttf', 'DMSansMedium', 'normal')
-    result.hasDMSans = true
-
-    // Try loading italic
-    try {
-      const cgItalic = await loadFont('/fonts/CormorantGaramond-Italic.ttf')
-      doc.addFileToVFS('CormorantGaramond-Italic.ttf', cgItalic)
-      doc.addFont('CormorantGaramond-Italic.ttf', 'CormorantItalic', 'normal')
-      result.hasItalic = true
-    } catch {
-      // Italic not available — will use regular
-    }
-  } catch (e) {
-    console.warn('Failed to load custom fonts:', e)
+function sanitizeForPDF(text: string): string {
+  if (!text) return text
+  let clean = text
+  for (const [symbol, replacement] of Object.entries(SYMBOL_MAP)) {
+    clean = clean.replaceAll(symbol, replacement)
   }
-
-  return result
+  // Strip any remaining non-Latin1 characters that would render as boxes
+  // Keep Latin Extended-A (0100-017F) for Lithuanian: ą č ę ė į š ų ū ž
+  // Keep common punctuation and symbols
+  clean = clean.replace(/[^\x00-\xFF\u0100-\u017F\u2013\u2014\u2018\u2019\u201C\u201D\u2026]/g, '')
+  return clean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -300,7 +300,8 @@ function starDot(doc: jsPDF, x: number, y: number) {
 
 function wrapDraw(doc: jsPDF, text: string, x: number, y: number, maxW: number, lh: number): number {
   if (!text) return y
-  const lines = doc.splitTextToSize(text, maxW)
+  const safe = sanitizeForPDF(text)
+  const lines = doc.splitTextToSize(safe, maxW)
   for (const line of lines) {
     doc.text(line, x, y)
     y += lh
@@ -808,7 +809,7 @@ function drawMonthPage(
       // Warm gold background tint (3% opacity)
       doc.setFillColor(196, 162, 101)
       doc.setGState(doc.GState({ opacity: 0.03 }))
-      const focusLines = doc.splitTextToSize(month.month_sonic_focus, CW - 8)
+      const focusLines = doc.splitTextToSize(sanitizeForPDF(month.month_sonic_focus), CW - 8)
       const focusH = focusLines.length * 5 + 6
       doc.roundedRect(ML, y - 2, CW, focusH, 2, 2, 'F')
       doc.setGState(doc.GState({ opacity: 1 }))
@@ -864,7 +865,7 @@ function drawMonthPage(
     // Light background tint for synthesis
     doc.setFillColor(...P.gold)
     doc.setGState(doc.GState({ opacity: 0.05 }))
-    const synthLines = doc.splitTextToSize(month.month_synthesis, CW - 8)
+    const synthLines = doc.splitTextToSize(sanitizeForPDF(month.month_synthesis), CW - 8)
     const synthH = synthLines.length * 4.8 + 6
     doc.roundedRect(ML, y - 2, CW, synthH, 2, 2, 'F')
     doc.setGState(doc.GState({ opacity: 1 }))
@@ -900,7 +901,7 @@ function drawMonthPage(
 
     doc.setTextColor(...P.navy)
     setDisplayItalic(doc, f, 12)
-    const affLines = doc.splitTextToSize(month.affirmation, CW - 20)
+    const affLines = doc.splitTextToSize(sanitizeForPDF(month.affirmation), CW - 20)
     for (const line of affLines) {
       const lw = doc.getTextWidth(line)
       doc.text(line, PW / 2 - lw / 2, y)
@@ -1296,8 +1297,8 @@ function drawEclipseSpotlight(
     // Card background
     doc.setFillColor(...cardColor)
     doc.setGState(doc.GState({ opacity: 0.06 }))
-    const narrativeLines = doc.splitTextToSize(event.narrative || '', CW - 12)
-    const sonicLines = event.sonic_rx ? doc.splitTextToSize(event.sonic_rx, CW - 12) : []
+    const narrativeLines = doc.splitTextToSize(sanitizeForPDF(event.narrative || ''), CW - 12)
+    const sonicLines = event.sonic_rx ? doc.splitTextToSize(sanitizeForPDF(event.sonic_rx), CW - 12) : []
     const cardH = 20 + narrativeLines.length * 4.5 + (sonicLines.length > 0 ? sonicLines.length * 4 + 8 : 0)
     doc.roundedRect(ML, y - 2, CW, cardH, 3, 3, 'F')
     doc.setGState(doc.GState({ opacity: 1 }))
@@ -1517,7 +1518,7 @@ function drawSonicToolkit(
   // Background tint
   doc.setFillColor(196, 162, 101)
   doc.setGState(doc.GState({ opacity: 0.04 }))
-  const practiceLines = doc.splitTextToSize(toolkit.dailyPractice, CW - 12)
+  const practiceLines = doc.splitTextToSize(sanitizeForPDF(toolkit.dailyPractice), CW - 12)
   const practiceH = practiceLines.length * 5 + 8
   doc.roundedRect(ML, y - 2, CW, practiceH, 2, 2, 'F')
   doc.setGState(doc.GState({ opacity: 1 }))
@@ -1554,7 +1555,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   // Set paper background for all pages via page event
   doc.setFillColor(...P.paperRGB)
 
-  const f = await registerFonts(doc)
+  const f = initFonts()
   let pageNum = 1
 
   // Date range
@@ -1667,7 +1668,7 @@ export async function generateCosmicBlueprint(params: CosmicBlueprintParams) {
   if (months.length === 0) return
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const f = await registerFonts(doc)
+  const f = initFonts()
   let pageNum = 1
 
   const firstMonth = months[0].month
@@ -1766,7 +1767,7 @@ function drawGridYearGlance(
     doc.setTextColor(...P.grey)
     setBody(doc, f, 8)
     const theme = m.categories.monthly_summary.dominant_theme
-    const wrapped = doc.splitTextToSize(theme, CW - 50)
+    const wrapped = doc.splitTextToSize(sanitizeForPDF(theme), CW - 50)
     doc.text(wrapped[0], ML + 50, y + 2.5)
     y += 8
   }
@@ -1792,7 +1793,7 @@ function drawGridYearGlance(
       if (data.year_trend) {
         doc.setTextColor(...P.grey)
         setBody(doc, f, 8)
-        const tl = doc.splitTextToSize(data.year_trend, CW - 8)
+        const tl = doc.splitTextToSize(sanitizeForPDF(data.year_trend), CW - 8)
         doc.text(tl[0], ML + 9, y + 1)
         y += tl.length > 1 ? 10 : 6
       }
@@ -1854,10 +1855,10 @@ function drawGridMonthPage(
     if (reading.planetary_breakdown && reading.planetary_breakdown.length > 0) {
       doc.setTextColor(...P.mutedGrey)
       setBody(doc, f, 6)
-      const planets = reading.planetary_breakdown.map(p => {
+      const planets = sanitizeForPDF(reading.planetary_breakdown.map(p => {
         const aspects = p.aspects?.map(a => `${a.symbol}${a.target}`).join(' ') ?? ''
         return `${p.symbol} ${p.planet} ${p.position} ${aspects}`
-      }).join('  |  ')
+      }).join('  |  '))
       const pLines = doc.splitTextToSize(planets, CW - 4)
       for (const line of pLines.slice(0, 2)) {
         doc.text(line, ML + 2, y)
@@ -1868,7 +1869,7 @@ function drawGridMonthPage(
     if (reading.practical_guidance) {
       doc.setTextColor(100, 90, 120)
       setBody(doc, f, 7)
-      const gLines = doc.splitTextToSize(reading.practical_guidance, CW - 4)
+      const gLines = doc.splitTextToSize(sanitizeForPDF(reading.practical_guidance), CW - 4)
       for (const line of gLines.slice(0, 2)) {
         doc.text(line, ML + 2, y)
         y += 3.5
