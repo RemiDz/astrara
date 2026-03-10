@@ -95,8 +95,9 @@ async function callAnthropicWithRetry(
 
     if (response.status === 429 || response.status === 529) {
       if (attempt < retries) {
-        const delay = 3000 * (attempt + 1)
-        console.warn(`[transit-grid] Rate limited (${response.status}), retrying in ${delay}ms...`)
+        const backoffs = [5000, 10000, 20000]
+        const delay = backoffs[attempt] ?? 20000
+        console.warn(`[transit-grid] Rate limited (${response.status}), retrying in ${delay / 1000}s (attempt ${attempt + 1}/${retries})...`)
         await new Promise(r => setTimeout(r, delay))
         continue
       }
@@ -151,6 +152,11 @@ export async function POST(req: NextRequest) {
         const rawText = await callAnthropicWithRetry(apiKey, SYSTEM_PROMPT, userPrompt, 3000)
         const cleaned = stripJsonFences(rawText)
 
+        if (!cleaned.endsWith('}')) {
+          console.error(`[transit-grid] Month ${year}-${month + 1} response truncated. Last 100 chars:`, cleaned.slice(-100))
+          return NextResponse.json({ error: 'Response truncated — model hit token limit' }, { status: 500 })
+        }
+
         try {
           const parsed = JSON.parse(cleaned)
           console.log(`[transit-grid] Month ${year}-${month + 1}: OK`)
@@ -158,7 +164,7 @@ export async function POST(req: NextRequest) {
         } catch (parseErr) {
           console.error(`[transit-grid] Month ${year}-${month + 1} JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
           console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
-          return NextResponse.json({ error: 'JSON parse error — response may be truncated' }, { status: 500 })
+          return NextResponse.json({ error: 'JSON parse error' }, { status: 500 })
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
@@ -178,6 +184,11 @@ export async function POST(req: NextRequest) {
         const rawText = await callAnthropicWithRetry(apiKey, OVERVIEW_SYSTEM_PROMPT, userPrompt, 3000)
         const cleaned = stripJsonFences(rawText)
 
+        if (!cleaned.endsWith('}')) {
+          console.error(`[transit-grid] Overview response truncated. Last 100 chars:`, cleaned.slice(-100))
+          return NextResponse.json({ error: 'Overview response truncated — model hit token limit' }, { status: 500 })
+        }
+
         try {
           const parsed = JSON.parse(cleaned)
           console.log(`[transit-grid] Overview: OK`)
@@ -185,7 +196,7 @@ export async function POST(req: NextRequest) {
         } catch (parseErr) {
           console.error(`[transit-grid] Overview JSON parse failed. Raw (first 500):`, cleaned.substring(0, 500))
           console.error(`[transit-grid] Raw (last 200):`, cleaned.substring(cleaned.length - 200))
-          return NextResponse.json({ error: 'JSON parse error — overview response may be truncated' }, { status: 500 })
+          return NextResponse.json({ error: 'Overview JSON parse error' }, { status: 500 })
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Unknown error'

@@ -10,7 +10,7 @@ import { CATEGORY_KEYS } from '@/types/transit-grid'
 import { generateCosmicBlueprint } from '@/lib/cosmic-blueprint-pdf'
 
 const STORAGE_KEY = 'astrara-transit-grid'
-const MAX_CONCURRENT = 2
+const DELAY_BETWEEN_CALLS = 2000
 
 export default function Page() {
   return (
@@ -134,7 +134,7 @@ function TransitGridPage() {
     setCurrentMonth(null)
   }, [monthDates, uiLang, fetchMonth, birthDate, birthTime])
 
-  // Generate all readings
+  // Generate all readings — sequential with delay to avoid rate limiting
   const generateReadings = useCallback(async () => {
     if (generatingRef.current) return
     generatingRef.current = true
@@ -151,31 +151,26 @@ function TransitGridPage() {
     const results: (MonthData | null)[] = Array(12).fill(null)
     const errors: (string | null)[] = Array(12).fill(null)
 
-    // Worker-based concurrency limiter
-    const queue = monthDates.map((d, i) => ({ ...d, index: i }))
-    let nextIdx = 0
-    let completed = 0
+    // Sequential generation — one month at a time with delay
+    for (let i = 0; i < monthDates.length; i++) {
+      const d = monthDates[i]
+      setCurrentMonth(i)
 
-    async function worker() {
-      while (nextIdx < queue.length) {
-        const item = queue[nextIdx++]
-        setCurrentMonth(item.index)
+      const { data, error: err } = await fetchMonth(d.year, d.month, uiLang, birthData)
+      results[i] = data
+      errors[i] = err
 
-        const { data, error: err } = await fetchMonth(item.year, item.month, uiLang, birthData)
-        results[item.index] = data
-        errors[item.index] = err
+      if (err) console.error(`[promo] Month ${i + 1} failed:`, err)
 
-        if (err) console.error(`[promo] Month ${item.index + 1} failed:`, err)
+      setCompletedCount(i + 1)
+      setMonths([...results])
+      setMonthErrors([...errors])
 
-        completed++
-        setCompletedCount(completed)
-        setMonths([...results])
-        setMonthErrors([...errors])
+      // Delay between calls to avoid rate limiting
+      if (i < monthDates.length - 1) {
+        await new Promise(r => setTimeout(r, DELAY_BETWEEN_CALLS))
       }
     }
-
-    // Launch MAX_CONCURRENT workers
-    await Promise.all(Array.from({ length: MAX_CONCURRENT }, () => worker()))
     setCurrentMonth(null)
 
     // Generate overview from successful months
