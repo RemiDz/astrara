@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { computeMonthTransitData } from '@/lib/transit-computation'
-import type { BlueprintMonthNarrative, BlueprintYearOverview } from '@/types/cosmic-blueprint'
+import { computeMonthTransitData, computeEclipseRetroSummary } from '@/lib/transit-computation'
+import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintEclipseRetroData } from '@/types/cosmic-blueprint'
 
 // ---------------------------------------------------------------------------
 // System prompt — rich narrative for premium PDF
@@ -17,7 +17,7 @@ function buildSystemPrompt(
     ? 'Write in Lithuanian. Use natural, flowing Lithuanian — not stiff translations.'
     : 'Write in English.'
 
-  return `You are a renowned professional astrologer writing a personal 12-month transit reading for a client. This reading is a premium paid product — the client expects depth, insight, and care.
+  return `You are a renowned professional astrologer and certified sound healing practitioner writing a personal 12-month transit reading for a client. This reading is a premium paid product — the client expects depth, insight, and care.
 
 Your writing style:
 - Warm, wise, and personal — as if speaking directly to the client
@@ -28,6 +28,22 @@ Your writing style:
 - Each monthly reading should tell a story — the energy builds, peaks, and transitions
 - Reference connections between categories ("The financial confidence you're building this month is supported by the same Jupiter energy opening doors in your career...")
 - Use evocative but grounded language — mystical without being fluffy
+
+NARRATIVE ARC — CRITICAL:
+These 12 months tell ONE continuous story, not 12 isolated readings.
+For months 2+, reference what came before ("The seeds planted in March begin to sprout...", "That relationship tension from April finds resolution now...").
+For months before the final month, foreshadow what's coming ("Pay attention to the financial opportunities emerging now — they become central next month...").
+Each month's opening paragraph should bridge from the previous month's energy. The client should feel compelled to read the whole report like a story.
+
+SOUND HEALING PRESCRIPTIONS:
+For each month and each category, include a "sonic_rx" field — a personalised sound healing prescription. The prescriptions must be specific and professional:
+- Reference specific frequencies tied to planetary correspondences (Hans Cousto's cosmic octave): Sun=126.22Hz, Moon=210.42Hz, Mercury=141.27Hz, Venus=221.23Hz, Mars=144.72Hz, Jupiter=183.58Hz, Saturn=147.85Hz, Uranus=207.36Hz, Neptune=211.44Hz, Pluto=140.25Hz
+- Recommend specific instruments: crystal singing bowls (specify note/chakra), monochord, gongs, tuning forks, didgeridoo, overtone singing, ocean drums, Tibetan bowls, frame drums
+- Suggest specific chakras to work with based on the planetary energy
+- Include timing guidance ("best practised during the waning moon phase" or "ideal around March 14th when the aspect is exact")
+- Keep each sonic_rx 2-3 sentences — specific and actionable, not vague
+
+Also include a "month_sonic_focus" (1-2 sentences on the PRIMARY sound healing focus for the month) and an "affirmation" — a powerful, specific affirmation tied to this month's dominant planetary energy (not generic positivity — connected to actual planetary themes, e.g. "I move through Saturn's lessons with patience, knowing that every limitation I face is shaping a stronger foundation.").
 
 The client's data:
 - Name: ${clientName || 'Dear Client'}
@@ -86,11 +102,15 @@ ${extras.join('\n')}`)
 // Prompt builders for each of the 3 calls
 // ---------------------------------------------------------------------------
 
-function buildMonthsPrompt(transitBlock: string): string {
+function buildMonthsPrompt(transitBlock: string, narrativeThread?: string): string {
+  const threadSection = narrativeThread
+    ? `\nStory so far (continue the narrative arc from these previous months):\n${narrativeThread}\n`
+    : ''
+
   return `Transit data for this period:
 
 ${transitBlock}
-
+${threadSection}
 Write rich, flowing narrative readings for each month. Use this JSON structure:
 
 {
@@ -98,43 +118,52 @@ Write rich, flowing narrative readings for each month. Use this JSON structure:
     {
       "month": "Month Year",
       "overall_score": 7,
-      "opening": "A 2-3 sentence atmospheric opening setting the energetic tone for the month",
+      "opening": "A 2-3 sentence atmospheric opening setting the energetic tone for the month. For months 2+, bridge from the previous month's energy.",
       "finance": {
         "score": 6,
-        "narrative": "A rich 4-6 sentence narrative about financial energy this month. Weave in the specific planetary transits naturally. Include dates where relevant. End with practical guidance."
+        "narrative": "A rich 4-6 sentence narrative about financial energy this month. Weave in the specific planetary transits naturally. Include dates where relevant. End with practical guidance.",
+        "sonic_rx": "2-3 sentence sound healing prescription specific to this category's planetary activity. Reference specific Hz frequencies, instruments, chakras, and timing."
       },
-      "relationships": { "score": 8, "narrative": "4-6 sentences..." },
-      "career": { "score": 7, "narrative": "4-6 sentences..." },
-      "health": { "score": 5, "narrative": "4-6 sentences..." },
-      "spiritual": { "score": 9, "narrative": "4-6 sentences..." },
-      "month_synthesis": "A 3-4 sentence closing that weaves all themes together and bridges to the next month's energy"
+      "relationships": { "score": 8, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "career": { "score": 7, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "health": { "score": 5, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "spiritual": { "score": 9, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "month_synthesis": "A 3-4 sentence closing that weaves all themes together and bridges to the next month's energy",
+      "month_sonic_focus": "1-2 sentences on the PRIMARY sound healing focus for the month overall",
+      "affirmation": "A powerful, specific affirmation tied to this month's dominant planetary energy — not generic positivity"
     }
   ]
 }`
 }
 
-function buildFinalPrompt(transitBlock: string, allMonthsSummary: string): string {
+function buildFinalPrompt(transitBlock: string, allMonthsSummary: string, eclipseRetroSummary: string): string {
+  const eclipseSection = eclipseRetroSummary
+    ? `\nEclipses and retrogrades during this 12-month period (use these ACCURATE dates):\n${eclipseRetroSummary}\n`
+    : ''
+
   return `Transit data for this period:
 
 ${transitBlock}
 
-Summary of all 12 months for year overview context:
+Story so far (this is the final batch — bring the narrative arc to a satisfying conclusion):
 ${allMonthsSummary}
-
-Write rich narrative readings for each month below, PLUS a full year overview. Use this JSON structure:
+${eclipseSection}
+Write rich narrative readings for each month below, PLUS a full year overview and an eclipses_and_retrogrades section. Use this JSON structure:
 
 {
   "months": [
     {
       "month": "Month Year",
       "overall_score": 7,
-      "opening": "A 2-3 sentence atmospheric opening",
-      "finance": { "score": 6, "narrative": "4-6 sentences..." },
-      "relationships": { "score": 8, "narrative": "4-6 sentences..." },
-      "career": { "score": 7, "narrative": "4-6 sentences..." },
-      "health": { "score": 5, "narrative": "4-6 sentences..." },
-      "spiritual": { "score": 9, "narrative": "4-6 sentences..." },
-      "month_synthesis": "3-4 sentence closing"
+      "opening": "A 2-3 sentence atmospheric opening that bridges from months 8's energy. For the final month, provide a sense of completion.",
+      "finance": { "score": 6, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "relationships": { "score": 8, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "career": { "score": 7, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "health": { "score": 5, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "spiritual": { "score": 9, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
+      "month_synthesis": "3-4 sentence closing",
+      "month_sonic_focus": "1-2 sentences on the PRIMARY sound healing focus for the month",
+      "affirmation": "A powerful, specific affirmation tied to this month's dominant planetary energy"
     }
   ],
   "year_overview": {
@@ -142,7 +171,19 @@ Write rich narrative readings for each month below, PLUS a full year overview. U
     "major_themes": "3-4 sentence description of the year's major planetary themes",
     "peak_periods": "2-3 sentences highlighting the most significant months and why",
     "growth_trajectory": "3-4 sentences about the client's overall growth arc across the year",
-    "closing_message": "A warm, empowering 2-3 sentence personal closing message to the client"
+    "closing_message": "A warm, empowering 2-3 sentence personal closing message to the client",
+    "eclipses_and_retrogrades": {
+      "intro": "2 sentences demystifying eclipses and retrogrades — reassuring, not fear-based",
+      "events": [
+        {
+          "name": "Solar Eclipse in Aries",
+          "date": "March 29, 2026",
+          "type": "eclipse_solar",
+          "narrative": "3-4 sentences explaining what this means for the client specifically",
+          "sonic_rx": "Sound healing recommendation for navigating this event"
+        }
+      ]
+    }
   }
 }`
 }
@@ -286,10 +327,12 @@ export async function POST(req: NextRequest) {
     const {
       part, // 1, 2, or 3
       monthDates, // array of { year, month } (4 items)
+      allMonthDates, // full 12-month array (for eclipse/retro computation in part 3)
       language,
       clientName,
       birthDate,
       birthTime,
+      narrativeThread, // summary of previous parts' narrative threads
       allMonthsSummary, // only for part 3
     } = body
 
@@ -314,25 +357,40 @@ export async function POST(req: NextRequest) {
     const transitBlock = buildTransitBlock(monthDates)
 
     let userPrompt: string
+    let maxTokens = 4000
+
     if (part === 3 && allMonthsSummary) {
-      userPrompt = buildFinalPrompt(transitBlock, allMonthsSummary)
+      // Compute eclipse/retro summary for part 3
+      const eclipseRetroSummary = allMonthDates
+        ? computeEclipseRetroSummary(allMonthDates)
+        : ''
+      userPrompt = buildFinalPrompt(transitBlock, allMonthsSummary, eclipseRetroSummary)
+      maxTokens = 4500 // Part 3 has more content (year overview + eclipses)
     } else {
-      userPrompt = buildMonthsPrompt(transitBlock)
+      userPrompt = buildMonthsPrompt(transitBlock, narrativeThread || undefined)
     }
 
     console.log(`[cosmic-blueprint] Part ${part}: generating narrative for ${monthDates.length} months (prompt ${userPrompt.length} chars)`)
 
-    const rawText = await callClaude(apiKey, systemPrompt, userPrompt, 4000)
+    const rawText = await callClaude(apiKey, systemPrompt, userPrompt, maxTokens)
 
     if (part === 3) {
       const result = parseJSON<{
         months: BlueprintMonthNarrative[]
-        year_overview: BlueprintYearOverview
+        year_overview: BlueprintYearOverview & { eclipses_and_retrogrades?: BlueprintEclipseRetroData }
       }>(rawText, `Part ${part}`)
+
+      // Extract eclipses_and_retrogrades from year_overview if present
+      const yearOverview = result.year_overview || null
+      let eclipseRetroData: BlueprintEclipseRetroData | undefined
+      if (yearOverview?.eclipses_and_retrogrades) {
+        eclipseRetroData = yearOverview.eclipses_and_retrogrades
+      }
 
       return NextResponse.json({
         months: result.months || [],
-        year_overview: result.year_overview || null,
+        year_overview: yearOverview,
+        eclipseRetroData: eclipseRetroData || null,
       })
     } else {
       const result = parseJSON<{

@@ -1,8 +1,11 @@
 import jsPDF from 'jspdf'
 import type { MonthData, OverviewData, CategoryKey } from '@/types/transit-grid'
 import { CATEGORY_KEYS } from '@/types/transit-grid'
-import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintCategoryKey } from '@/types/cosmic-blueprint'
-import { BLUEPRINT_CATEGORY_KEYS } from '@/types/cosmic-blueprint'
+import type {
+  BlueprintMonthNarrative, BlueprintYearOverview, BlueprintCategoryKey,
+  BlueprintEclipseRetroData, RitualCalendarMonth, BlueprintData,
+} from '@/types/cosmic-blueprint'
+import { BLUEPRINT_CATEGORY_KEYS, PLANET_FREQUENCIES } from '@/types/cosmic-blueprint'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Colour Palette — Print-Optimised Luxury
@@ -117,16 +120,37 @@ const T: Record<string, { en: string; lt: string }> = {
 
   // Pages 4-15
   impact: { en: 'Impact', lt: 'Poveikis' },
+  sonicRx: { en: 'Your Sonic Prescription', lt: 'Jusu Garso Receptas' },
 
-  // Page 16
+  // Ritual Calendar
+  ritualCalendar: { en: 'Your Ritual Calendar', lt: 'Jusu Ritualu Kalendorius' },
+  ritualLegend: { en: 'Legend', lt: 'Legenda' },
+  ritualBeneficial: { en: 'Beneficial aspect', lt: 'Palankus aspektas' },
+  ritualChallenging: { en: 'Challenging aspect', lt: 'Issukiantis aspektas' },
+  ritualRetrograde: { en: 'Retrograde station', lt: 'Retrogradine stotis' },
+  ritualMoonPhase: { en: 'New/Full Moon', lt: 'Jaunatis/Pilnatis' },
+  ritualEclipse: { en: 'Eclipse', lt: 'Uztemimas' },
+  ritualSeason: { en: 'Solstice/Equinox', lt: 'Saulegriza/Lygiadienis' },
+
+  // Eclipse & Retrograde Spotlight
+  eclipseTitle: { en: 'Cosmic Crossroads: Eclipses & Retrogrades', lt: 'Kosminiai Kryzkeles: Uztemimiai ir Retrogradai' },
+
+  // Sonic Toolkit
+  sonicToolkitTitle: { en: 'Your Sonic Toolkit', lt: 'Jusu Garso Irankiai' },
+  sonicFrequencies: { en: 'Primary Frequencies', lt: 'Pagrindines Dazniai' },
+  sonicInstruments: { en: 'Recommended Instruments', lt: 'Rekomenduojami Instrumentai' },
+  sonicChakras: { en: 'Chakra Focus Areas', lt: 'Cakru Fokuso Sritys' },
+  sonicPractice: { en: 'Daily Practice', lt: 'Kasdienis Praktika' },
+
+  // Year pages
   yearPerspective: { en: 'Your Year in Perspective', lt: 'Jusu Metai Perspektyvoje' },
 
-  // Page 17
+  // Closing
   movingForward: { en: 'Moving Forward', lt: 'Zvelgiant i Prieki' },
   keyDates: { en: 'Key Dates to Remember', lt: 'Svarbios Datos' },
   withCosmicLight: { en: 'With cosmic light,', lt: 'Su kosmine sviesa,' },
 
-  // Page 18
+  // About
   aboutTitle: { en: 'About This Reading', lt: 'Apie Si Skaityma' },
   aboutMethod: {
     en: 'This Cosmic Blueprint was generated using NASA JPL-accurate planetary ephemeris data from the astronomy-engine library, combined with professional astrological interpretation powered by advanced AI. All planetary positions, aspects, and transit timings are computed from precise astronomical algorithms.',
@@ -757,12 +781,80 @@ function drawMonthPage(
     y += 8 // spacing between categories
   }
 
+  // ─── Sonic Prescription Section ───
+  const hasSonicRx = BLUEPRINT_CATEGORY_KEYS.some(cat => month[cat]?.sonic_rx) || month.month_sonic_focus
+  if (hasSonicRx) {
+    if (needsNewPage(doc, y, 50)) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT
+    }
+
+    // Gold accent line
+    goldLineFull(doc, y)
+    y += 6
+
+    // Section header
+    doc.setTextColor(...P.gold)
+    setDisplay(doc, f, 13, 'normal')
+    doc.text(tr('sonicRx', lang), ML, y)
+    y += 7
+
+    // Month sonic focus (italic opening)
+    if (month.month_sonic_focus) {
+      // Warm gold background tint (3% opacity)
+      doc.setFillColor(196, 162, 101)
+      doc.setGState(doc.GState({ opacity: 0.03 }))
+      const focusLines = doc.splitTextToSize(month.month_sonic_focus, CW - 8)
+      const focusH = focusLines.length * 5 + 6
+      doc.roundedRect(ML, y - 2, CW, focusH, 2, 2, 'F')
+      doc.setGState(doc.GState({ opacity: 1 }))
+
+      doc.setTextColor(...P.grey)
+      setDisplayItalic(doc, f, 10)
+      y = wrapDraw(doc, month.month_sonic_focus, ML + 4, y + 1, CW - 8, 5)
+      y += 5
+    }
+
+    // Category sonic prescriptions
+    for (const cat of BLUEPRINT_CATEGORY_KEYS) {
+      const reading = month[cat]
+      if (!reading?.sonic_rx) continue
+
+      if (needsNewPage(doc, y, 18)) {
+        pageFooter(doc, f, pageNum, clientName, lang)
+        doc.addPage()
+        pageNum++
+        doc.setFillColor(...P.paperRGB)
+        doc.rect(0, 0, PW, PH, 'F')
+        y = MT
+      }
+
+      const rgb = CAT_RGB[cat]
+      doc.setTextColor(...rgb)
+      setBody(doc, f, 7.5, true)
+      doc.text(catLabel(cat, lang).toUpperCase(), ML + 4, y)
+      y += 4
+
+      doc.setTextColor(...P.grey)
+      setBody(doc, f, 8.5)
+      y = wrapDraw(doc, reading.sonic_rx, ML + 4, y, CW - 8, 4)
+      y += 3
+    }
+    y += 2
+  }
+
   // Month synthesis
   if (month.month_synthesis) {
     if (needsNewPage(doc, y, 25)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
       y = MT
     }
 
@@ -789,6 +881,33 @@ function drawMonthPage(
     doc.triangle(dx, y - 1.2, dx + 1.2, y, dx, y + 1.2, 'F')
     doc.triangle(dx, y - 1.2, dx - 1.2, y, dx, y + 1.2, 'F')
     doc.setGState(doc.GState({ opacity: 1 }))
+  }
+
+  // ─── Monthly Affirmation ───
+  if (month.affirmation) {
+    if (needsNewPage(doc, y, 20)) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT
+    }
+
+    y += 6
+    goldLine(doc, y, 50)
+    y += 8
+
+    doc.setTextColor(...P.navy)
+    setDisplayItalic(doc, f, 12)
+    const affLines = doc.splitTextToSize(month.affirmation, CW - 20)
+    for (const line of affLines) {
+      const lw = doc.getTextWidth(line)
+      doc.text(line, PW / 2 - lw / 2, y)
+      y += 6
+    }
+    y += 2
+    goldLine(doc, y, 50)
   }
 
   pageFooter(doc, f, pageNum, clientName, lang)
@@ -989,12 +1108,436 @@ function drawAboutPage(doc: jsPDF, f: FontSet, lang: Lang, pageNum: number, clie
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// RITUAL CALENDAR PAGE — 3×4 mini-month grid with coloured event dots
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DOT_COLORS: Record<string, RGB> = {
+  beneficial_aspect: [196, 162, 101],    // gold
+  challenging_aspect: [184, 74, 74],     // red
+  retrograde_station: [130, 80, 160],    // purple
+  moon_phase: [180, 180, 195],           // silver
+  eclipse: [184, 74, 74],               // red
+  season: [196, 162, 101],              // gold
+}
+
+function drawRitualCalendar(
+  doc: jsPDF, f: FontSet, calendar: RitualCalendarMonth[],
+  clientName: string, lang: Lang, pageNum: number,
+) {
+  let y = MT + 2
+
+  // Title
+  doc.setTextColor(...P.navy)
+  setDisplay(doc, f, 18, 'normal')
+  doc.text(tr('ritualCalendar', lang), ML, y)
+  y += 6
+  goldLineFull(doc, y)
+  y += 6
+
+  // 3×4 mini-month grid
+  const cols = 4
+  const rows = 3
+  const cellW = (CW - 6) / cols
+  const cellH = 52
+  const dayW = cellW / 7
+  const dayH = 5.5
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const idx = row * cols + col
+      if (idx >= calendar.length) continue
+
+      const cal = calendar[idx]
+      const cx = ML + col * (cellW + 2)
+      const cy = y + row * (cellH + 4)
+
+      // Month label
+      const shortLabel = cal.monthLabel.split(' ')[0].substring(0, 3)
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 7, true)
+      doc.text(shortLabel, cx, cy + 3)
+
+      // Day grid header (S M T W T F S)
+      const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+      doc.setTextColor(...P.mutedGrey)
+      setBody(doc, f, 4.5)
+      for (let d = 0; d < 7; d++) {
+        doc.text(dayLabels[d], cx + d * dayW + dayW / 2 - 1, cy + 7)
+      }
+
+      // Day numbers
+      let dayRow = 0
+      let dayCol = cal.firstDayOfWeek
+
+      for (let day = 1; day <= cal.daysInMonth; day++) {
+        const dx = cx + dayCol * dayW
+        const dy = cy + 9 + dayRow * dayH
+
+        // Check for events on this day
+        const dayEvents = cal.events.filter(e => e.day === day)
+
+        if (dayEvents.length > 0) {
+          // Draw coloured dot behind the number
+          const primaryEvent = dayEvents[0]
+          const dotColor = DOT_COLORS[primaryEvent.type] || P.gold
+          doc.setFillColor(...dotColor)
+          doc.setGState(doc.GState({ opacity: 0.6 }))
+          doc.circle(dx + dayW / 2, dy - 0.5, 2, 'F')
+          doc.setGState(doc.GState({ opacity: 1 }))
+
+          // Day number in white on the dot
+          doc.setTextColor(...P.white)
+          setBody(doc, f, 4)
+          const dt = String(day)
+          const dtw = doc.getTextWidth(dt)
+          doc.text(dt, dx + dayW / 2 - dtw / 2, dy + 0.5)
+        } else {
+          // Normal day number
+          doc.setTextColor(...P.mutedGrey)
+          setBody(doc, f, 4)
+          const dt = String(day)
+          const dtw = doc.getTextWidth(dt)
+          doc.text(dt, dx + dayW / 2 - dtw / 2, dy + 0.5)
+        }
+
+        dayCol++
+        if (dayCol >= 7) {
+          dayCol = 0
+          dayRow++
+        }
+      }
+    }
+  }
+
+  y += rows * (cellH + 4) + 4
+
+  // ─── Legend ───
+  goldLine(doc, y, 60)
+  y += 6
+
+  doc.setTextColor(...P.gold)
+  setBody(doc, f, 8, true)
+  doc.text(tr('ritualLegend', lang), ML, y)
+  y += 5
+
+  const legendItems = [
+    { type: 'beneficial_aspect', label: tr('ritualBeneficial', lang) },
+    { type: 'challenging_aspect', label: tr('ritualChallenging', lang) },
+    { type: 'retrograde_station', label: tr('ritualRetrograde', lang) },
+    { type: 'moon_phase', label: tr('ritualMoonPhase', lang) },
+    { type: 'eclipse', label: tr('ritualEclipse', lang) },
+    { type: 'season', label: tr('ritualSeason', lang) },
+  ]
+
+  const legendCols = 3
+  const legendColW = CW / legendCols
+  for (let i = 0; i < legendItems.length; i++) {
+    const item = legendItems[i]
+    const col = i % legendCols
+    const row = Math.floor(i / legendCols)
+    const lx = ML + col * legendColW
+    const ly = y + row * 5
+
+    const dotColor = DOT_COLORS[item.type] || P.gold
+    doc.setFillColor(...dotColor)
+    doc.setGState(doc.GState({ opacity: 0.7 }))
+    doc.circle(lx + 2, ly, 1.5, 'F')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 7)
+    doc.text(item.label, lx + 6, ly + 1)
+  }
+
+  pageFooter(doc, f, pageNum, clientName, lang)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ECLIPSE & RETROGRADE SPOTLIGHT PAGE — Event cards
+// ═══════════════════════════════════════════════════════════════════════════
+
+function drawEclipseSpotlight(
+  doc: jsPDF, f: FontSet, data: BlueprintEclipseRetroData,
+  clientName: string, lang: Lang, pageNum: number,
+) {
+  let y = MT + 5
+
+  // Title
+  doc.setTextColor(...P.navy)
+  setDisplay(doc, f, 16, 'normal')
+  doc.text(tr('eclipseTitle', lang), ML, y)
+  y += 7
+  goldLineFull(doc, y)
+  y += 8
+
+  // Intro (reassuring tone)
+  if (data.intro) {
+    doc.setTextColor(...P.grey)
+    setDisplayItalic(doc, f, 10.5)
+    y = wrapDraw(doc, data.intro, ML, y, CW, 5)
+    y += 8
+  }
+
+  // Event cards
+  for (const event of data.events) {
+    if (needsNewPage(doc, y, 45)) {
+      pageFooter(doc, f, pageNum, clientName, lang)
+      doc.addPage()
+      pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
+      y = MT
+    }
+
+    // Event type determines color
+    const isEclipse = event.type === 'eclipse_solar' || event.type === 'eclipse_lunar'
+    const cardColor: RGB = isEclipse ? P.gold : [130, 80, 160] // gold for eclipses, purple for retrogrades
+
+    // Card background
+    doc.setFillColor(...cardColor)
+    doc.setGState(doc.GState({ opacity: 0.06 }))
+    const narrativeLines = doc.splitTextToSize(event.narrative || '', CW - 12)
+    const sonicLines = event.sonic_rx ? doc.splitTextToSize(event.sonic_rx, CW - 12) : []
+    const cardH = 20 + narrativeLines.length * 4.5 + (sonicLines.length > 0 ? sonicLines.length * 4 + 8 : 0)
+    doc.roundedRect(ML, y - 2, CW, cardH, 3, 3, 'F')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    // Left colour bar
+    doc.setFillColor(...cardColor)
+    doc.setGState(doc.GState({ opacity: 0.5 }))
+    doc.rect(ML, y - 2, 2.5, cardH, 'F')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
+    // Event name
+    doc.setTextColor(...cardColor)
+    setDisplay(doc, f, 12, 'normal')
+    doc.text(event.name, ML + 6, y + 3)
+
+    // Date
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 9, true)
+    doc.text(event.date, ML + 6, y + 9)
+    y += 14
+
+    // Narrative
+    if (event.narrative) {
+      doc.setTextColor(...P.navy)
+      setBody(doc, f, 9.5)
+      y = wrapDraw(doc, event.narrative, ML + 6, y, CW - 12, 4.5)
+      y += 3
+    }
+
+    // Sonic prescription in warm-tinted box
+    if (event.sonic_rx) {
+      doc.setFillColor(196, 162, 101)
+      doc.setGState(doc.GState({ opacity: 0.05 }))
+      const rxH = sonicLines.length * 4 + 4
+      doc.roundedRect(ML + 6, y - 1, CW - 12, rxH, 1.5, 1.5, 'F')
+      doc.setGState(doc.GState({ opacity: 1 }))
+
+      doc.setTextColor(...P.gold)
+      setBody(doc, f, 6.5, true)
+      doc.text('SONIC RX', ML + 8, y + 2)
+      y += 4
+
+      doc.setTextColor(...P.grey)
+      setBody(doc, f, 8.5)
+      y = wrapDraw(doc, event.sonic_rx, ML + 8, y, CW - 16, 4)
+      y += 2
+    }
+
+    y += 6
+  }
+
+  pageFooter(doc, f, pageNum, clientName, lang)
+  return pageNum
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SONIC TOOLKIT PAGE — Personalised sound healing reference
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface SonicToolkitData {
+  primaryPlanets: { planet: string; hz: number; chakra: string; instrument: string; note: string; count: number }[]
+  topChakras: string[]
+  dailyPractice: string
+}
+
+function computeSonicToolkit(months: BlueprintMonthNarrative[], lang: Lang): SonicToolkitData {
+  // Count planet mentions across all sonic_rx fields to find most active
+  const planetCounts: Record<string, number> = {}
+  for (const m of months) {
+    for (const cat of BLUEPRINT_CATEGORY_KEYS) {
+      const rx = m[cat]?.sonic_rx || ''
+      for (const planet of Object.keys(PLANET_FREQUENCIES)) {
+        if (rx.toLowerCase().includes(planet.toLowerCase())) {
+          planetCounts[planet] = (planetCounts[planet] || 0) + 1
+        }
+      }
+    }
+    // Also check month_sonic_focus
+    const focus = m.month_sonic_focus || ''
+    for (const planet of Object.keys(PLANET_FREQUENCIES)) {
+      if (focus.toLowerCase().includes(planet.toLowerCase())) {
+        planetCounts[planet] = (planetCounts[planet] || 0) + 1
+      }
+    }
+  }
+
+  // Sort by count, take top 4
+  const sorted = Object.entries(planetCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+
+  const primaryPlanets = sorted.map(([planet, count]) => {
+    const freq = PLANET_FREQUENCIES[planet]
+    return {
+      planet,
+      hz: freq.hz,
+      chakra: freq.chakra,
+      instrument: freq.instrument,
+      note: freq.note,
+      count,
+    }
+  })
+
+  // Top chakras
+  const chakraCounts: Record<string, number> = {}
+  for (const p of primaryPlanets) {
+    chakraCounts[p.chakra] = (chakraCounts[p.chakra] || 0) + p.count
+  }
+  const topChakras = Object.entries(chakraCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([c]) => c)
+
+  // Daily practice suggestion
+  const topPlanet = primaryPlanets[0]
+  const dailyPractice = topPlanet
+    ? lang === 'lt'
+      ? `Pradekite diena 5 minutes meditacija su ${topPlanet.hz} Hz dazniu (${topPlanet.planet} energija, ${topPlanet.chakra} cakra). Naudokite ${topPlanet.instrument.split(',')[0].toLowerCase()} ir leiskite vibracijai issklaidyti dienos itampa. Baigdami, tris kartus giliai ikvepkite ir nustatykite savo dienos intencija.`
+      : `Begin your day with a 5-minute meditation using the ${topPlanet.hz} Hz frequency (${topPlanet.planet} energy, ${topPlanet.chakra} chakra). Use a ${topPlanet.instrument.split(',')[0].toLowerCase()} and allow the vibration to dissolve tension. Close with three deep breaths and set your intention for the day.`
+    : ''
+
+  return { primaryPlanets, topChakras, dailyPractice }
+}
+
+function drawSonicToolkit(
+  doc: jsPDF, f: FontSet, toolkit: SonicToolkitData,
+  year: string, clientName: string, lang: Lang, pageNum: number,
+) {
+  let y = MT + 5
+
+  // Title
+  doc.setTextColor(...P.navy)
+  setDisplay(doc, f, 18, 'normal')
+  const title = `${tr('sonicToolkitTitle', lang)} ${year}`
+  doc.text(title, ML, y)
+  y += 7
+  goldLineFull(doc, y)
+  y += 10
+
+  // ─── Primary Frequencies ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 13, 'normal')
+  doc.text(tr('sonicFrequencies', lang), ML, y)
+  y += 8
+
+  for (const p of toolkit.primaryPlanets) {
+    // Planet name + frequency
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 10.5, true)
+    doc.text(`${p.planet}  —  ${p.hz} Hz`, ML + 4, y)
+
+    doc.setTextColor(...P.grey)
+    setBody(doc, f, 8.5)
+    const desc = lang === 'lt'
+      ? `${p.chakra} cakra  ·  Nata: ${p.note}  ·  ${p.instrument}`
+      : `${p.chakra} chakra  ·  Note: ${p.note}  ·  ${p.instrument}`
+    y += 5
+    y = wrapDraw(doc, desc, ML + 4, y, CW - 8, 4)
+    y += 5
+  }
+
+  y += 4
+
+  // ─── Recommended Instruments ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 13, 'normal')
+  doc.text(tr('sonicInstruments', lang), ML, y)
+  y += 8
+
+  // Build instrument list from top planets
+  const instruments = [...new Set(toolkit.primaryPlanets.flatMap(p => p.instrument.split(',').map(i => i.trim())))]
+  doc.setTextColor(...P.navy)
+  setBody(doc, f, 10)
+  for (const inst of instruments.slice(0, 6)) {
+    starDot(doc, ML + 4, y)
+    doc.text(inst, ML + 9, y + 1)
+    y += 6
+  }
+
+  y += 6
+
+  // ─── Chakra Focus Areas ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 13, 'normal')
+  doc.text(tr('sonicChakras', lang), ML, y)
+  y += 8
+
+  const chakraColors: Record<string, RGB> = {
+    'Root': [184, 74, 74],
+    'Sacral': [220, 140, 60],
+    'Solar Plexus': [196, 162, 101],
+    'Heart': [42, 123, 82],
+    'Throat': [58, 79, 138],
+    'Third Eye': [107, 77, 138],
+    'Crown': [160, 120, 200],
+  }
+
+  for (const chakra of toolkit.topChakras) {
+    const cc = chakraColors[chakra] || P.gold
+    doc.setFillColor(...cc)
+    doc.circle(ML + 4, y, 2.5, 'F')
+
+    doc.setTextColor(...P.navy)
+    setBody(doc, f, 10, true)
+    doc.text(chakra, ML + 10, y + 1.5)
+    y += 7
+  }
+
+  y += 6
+
+  // ─── Daily Practice ───
+  doc.setTextColor(...P.gold)
+  setDisplay(doc, f, 13, 'normal')
+  doc.text(tr('sonicPractice', lang), ML, y)
+  y += 8
+
+  // Background tint
+  doc.setFillColor(196, 162, 101)
+  doc.setGState(doc.GState({ opacity: 0.04 }))
+  const practiceLines = doc.splitTextToSize(toolkit.dailyPractice, CW - 12)
+  const practiceH = practiceLines.length * 5 + 8
+  doc.roundedRect(ML, y - 2, CW, practiceH, 2, 2, 'F')
+  doc.setGState(doc.GState({ opacity: 1 }))
+
+  doc.setTextColor(...P.navy)
+  setBody(doc, f, 10)
+  y = wrapDraw(doc, toolkit.dailyPractice, ML + 6, y + 2, CW - 12, 5)
+
+  pageFooter(doc, f, pageNum, clientName, lang)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Export — Premium Blueprint (narrative-based)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface BlueprintPdfParams {
   months: BlueprintMonthNarrative[]
   yearOverview: BlueprintYearOverview | null
+  eclipseRetroData?: BlueprintEclipseRetroData | null
+  ritualCalendar?: RitualCalendarMonth[]
   clientName: string
   birthDate: string
   birthTime: string
@@ -1002,7 +1545,7 @@ export interface BlueprintPdfParams {
 }
 
 export async function generateBlueprintPdf(params: BlueprintPdfParams) {
-  const { months, yearOverview, clientName, birthDate, birthTime, language } = params
+  const { months, yearOverview, eclipseRetroData, ritualCalendar, clientName, birthDate, birthTime, language } = params
 
   if (months.length === 0) return
 
@@ -1018,6 +1561,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   const firstMonth = months[0].month
   const lastMonth = months[months.length - 1].month
   const dateRange = `${firstMonth} — ${lastMonth}`
+  const yearStr = firstMonth.split(' ').pop() || new Date().getFullYear().toString()
 
   // ─── Page 1: Cover ───
   drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language)
@@ -1025,7 +1569,6 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   // ─── Page 2: Introduction ───
   doc.addPage()
   pageNum++
-  // Light background
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
   drawIntroPage(doc, f, clientName, birthDate, language, pageNum)
@@ -1037,7 +1580,26 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
   doc.rect(0, 0, PW, PH, 'F')
   drawYearGlance(doc, f, months, yearOverview, clientName, language, pageNum)
 
-  // ─── Pages 4–15: Monthly Readings ───
+  // ─── Page 4: Ritual Calendar ───
+  if (ritualCalendar && ritualCalendar.length > 0) {
+    doc.addPage()
+    pageNum++
+    doc.setFillColor(...P.paperRGB)
+    doc.rect(0, 0, PW, PH, 'F')
+    drawRitualCalendar(doc, f, ritualCalendar, clientName, language, pageNum)
+  }
+
+  // ─── Page 5: Eclipse & Retrograde Spotlight ───
+  const eclipseData = eclipseRetroData || yearOverview?.eclipses_and_retrogrades
+  if (eclipseData && eclipseData.events && eclipseData.events.length > 0) {
+    doc.addPage()
+    pageNum++
+    doc.setFillColor(...P.paperRGB)
+    doc.rect(0, 0, PW, PH, 'F')
+    pageNum = drawEclipseSpotlight(doc, f, eclipseData, clientName, language, pageNum)
+  }
+
+  // ─── Pages 6–17: Monthly Readings ───
   for (const month of months) {
     doc.addPage()
     pageNum++
@@ -1046,7 +1608,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     pageNum = drawMonthPage(doc, f, month, clientName, language, pageNum)
   }
 
-  // ─── Page 16: Year Synthesis ───
+  // ─── Year Synthesis ───
   if (yearOverview) {
     doc.addPage()
     pageNum++
@@ -1055,7 +1617,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     drawYearSynthesis(doc, f, yearOverview, clientName, language, pageNum)
   }
 
-  // ─── Page 17: Closing ───
+  // ─── Closing ───
   if (yearOverview) {
     doc.addPage()
     pageNum++
@@ -1064,7 +1626,17 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
     drawClosingPage(doc, f, yearOverview, months, clientName, language, pageNum)
   }
 
-  // ─── Page 18: About ───
+  // ─── Sonic Toolkit ───
+  const toolkit = computeSonicToolkit(months, language)
+  if (toolkit.primaryPlanets.length > 0) {
+    doc.addPage()
+    pageNum++
+    doc.setFillColor(...P.paperRGB)
+    doc.rect(0, 0, PW, PH, 'F')
+    drawSonicToolkit(doc, f, toolkit, yearStr, clientName, language, pageNum)
+  }
+
+  // ─── About ───
   doc.addPage()
   pageNum++
   doc.setFillColor(...P.paperRGB)

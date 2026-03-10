@@ -8,7 +8,8 @@ import TransitGrid from '@/components/TransitGrid/TransitGrid'
 import type { MonthData, OverviewData } from '@/types/transit-grid'
 import { CATEGORY_KEYS } from '@/types/transit-grid'
 import { generateCosmicBlueprint, generateBlueprintPdf } from '@/lib/cosmic-blueprint-pdf'
-import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintData } from '@/types/cosmic-blueprint'
+import type { BlueprintMonthNarrative, BlueprintYearOverview, BlueprintData, BlueprintEclipseRetroData } from '@/types/cosmic-blueprint'
+import { computeRitualCalendarData } from '@/lib/transit-computation'
 
 const STORAGE_KEY = 'astrara-transit-grid'
 const BLUEPRINT_STORAGE_KEY = 'astrara-cosmic-blueprint'
@@ -387,9 +388,13 @@ function TransitGridPage() {
           if (isValid && data.months.length >= 12) {
             // Use cached — skip to PDF generation
             setBlueprintStage('pdf')
+            // Recompute ritual calendar (fast, pure computation)
+            const cachedRitualCal = data.ritualCalendar || computeRitualCalendarData(monthDates)
             await generateBlueprintPdf({
               months: data.months,
               yearOverview: data.year_overview,
+              eclipseRetroData: data.year_overview?.eclipses_and_retrogrades || null,
+              ritualCalendar: cachedRitualCal,
               clientName: data.clientName,
               birthDate: data.birthDate,
               birthTime: data.birthTime,
@@ -405,15 +410,17 @@ function TransitGridPage() {
     }
 
     try {
-      // Stage 1: Transit data computation (instant — done server-side in each API call)
+      // Stage 1: Transit data computation + ritual calendar
       setBlueprintStage('transits')
-      await new Promise(r => setTimeout(r, 500)) // Brief visual pause
+      const ritualCalendar = computeRitualCalendarData(monthDates)
+      await new Promise(r => setTimeout(r, 300)) // Brief visual pause
 
       // Stage 2: Narrative generation (3 API calls)
       setBlueprintStage('narrative')
 
       const allMonths: BlueprintMonthNarrative[] = []
       let yearOverview: BlueprintYearOverview | null = null
+      let eclipseRetroData: BlueprintEclipseRetroData | null = null
 
       // Part 1: Months 1-4
       setBlueprintPart(1)
@@ -434,9 +441,14 @@ function TransitGridPage() {
       if (json1.error) throw new Error(json1.error)
       allMonths.push(...(json1.months || []))
 
+      // Extract narrative thread from Part 1 for continuity
+      const thread1 = allMonths.map(m =>
+        `${m.month}: ${m.opening} Key themes: ${m.month_synthesis?.substring(0, 100) || ''}`
+      ).join('\n')
+
       await new Promise(r => setTimeout(r, BLUEPRINT_DELAY))
 
-      // Part 2: Months 5-8
+      // Part 2: Months 5-8 (with narrative thread from Part 1)
       setBlueprintPart(2)
       const part2Dates = monthDates.slice(4, 8)
       const res2 = await fetch('/api/cosmic-blueprint', {
@@ -449,6 +461,7 @@ function TransitGridPage() {
           clientName,
           birthDate,
           birthTime,
+          narrativeThread: thread1,
         }),
       })
       const json2 = await res2.json()
@@ -457,13 +470,13 @@ function TransitGridPage() {
 
       await new Promise(r => setTimeout(r, BLUEPRINT_DELAY))
 
-      // Part 3: Months 9-12 + Year Overview
+      // Part 3: Months 9-12 + Year Overview + Eclipse/Retro
       setBlueprintPart(3)
       const part3Dates = monthDates.slice(8, 12)
 
-      // Build summary of months 1-8 for year overview context
+      // Build full summary of months 1-8 for year overview + narrative thread
       const summaryOfPrev = allMonths.map(m =>
-        `${m.month}: Overall ${m.overall_score}/10. ${m.opening}`
+        `${m.month}: Overall ${m.overall_score}/10. ${m.opening} ${m.month_synthesis?.substring(0, 80) || ''}`
       ).join('\n')
 
       const res3 = await fetch('/api/cosmic-blueprint', {
@@ -472,6 +485,7 @@ function TransitGridPage() {
         body: JSON.stringify({
           part: 3,
           monthDates: part3Dates,
+          allMonthDates: monthDates,
           language: uiLang,
           clientName,
           birthDate,
@@ -483,11 +497,13 @@ function TransitGridPage() {
       if (json3.error) throw new Error(json3.error)
       allMonths.push(...(json3.months || []))
       yearOverview = json3.year_overview || null
+      eclipseRetroData = json3.eclipseRetroData || null
 
       // Cache the data
       const blueprintData: BlueprintData = {
         months: allMonths,
         year_overview: yearOverview,
+        ritualCalendar,
         clientName,
         birthDate,
         birthTime,
@@ -504,6 +520,8 @@ function TransitGridPage() {
       await generateBlueprintPdf({
         months: allMonths,
         yearOverview,
+        eclipseRetroData,
+        ritualCalendar,
         clientName,
         birthDate,
         birthTime,
