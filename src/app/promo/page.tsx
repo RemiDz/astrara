@@ -15,6 +15,7 @@ const STORAGE_KEY = 'astrara-transit-grid'
 const BLUEPRINT_STORAGE_KEY = 'astrara-cosmic-blueprint'
 const DELAY_BETWEEN_CALLS = 2000
 const BLUEPRINT_DELAY = 3000
+const BLUEPRINT_TOTAL_PARTS = 7 // 6 month batches (2 months each) + 1 overview
 
 export default function Page() {
   return (
@@ -47,13 +48,13 @@ function BlueprintModal({
   error,
 }: {
   stage: 'transits' | 'narrative' | 'pdf' | 'done' | 'error'
-  partProgress: number // 0, 1, 2, 3
+  partProgress: number // 0 through 7
   onClose: () => void
   error: string | null
 }) {
   const stageLabels = {
     transits: 'Computing planetary transits...',
-    narrative: `Writing your personal reading... Part ${partProgress} of 3`,
+    narrative: `Writing your personal reading... Part ${partProgress} of ${BLUEPRINT_TOTAL_PARTS}`,
     pdf: 'Designing your report...',
     done: 'Your Cosmic Blueprint is ready!',
     error: 'Generation failed',
@@ -67,8 +68,8 @@ function BlueprintModal({
     error: '⚠️',
   }
 
-  const pct = stage === 'transits' ? 10
-    : stage === 'narrative' ? 10 + (partProgress / 3) * 70
+  const pct = stage === 'transits' ? 5
+    : stage === 'narrative' ? 5 + (partProgress / BLUEPRINT_TOTAL_PARTS) * 80
     : stage === 'pdf' ? 90
     : stage === 'done' ? 100
     : 0
@@ -403,89 +404,91 @@ function TransitGridPage() {
       const ritualCalendar = computeRitualCalendarData(monthDates)
       await new Promise(r => setTimeout(r, 300)) // Brief visual pause
 
-      // Stage 2: Narrative generation (3 API calls)
+      // Stage 2: Narrative generation (6 month calls + 1 overview = 7 total)
       setBlueprintStage('narrative')
 
       const allMonths: BlueprintMonthNarrative[] = []
       let yearOverview: BlueprintYearOverview | null = null
       let eclipseRetroData: BlueprintEclipseRetroData | null = null
 
-      // Part 1: Months 1-4
-      setBlueprintPart(1)
-      const part1Dates = monthDates.slice(0, 4)
-      const res1 = await fetch('/api/cosmic-blueprint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          part: 1,
-          monthDates: part1Dates,
-          language: uiLang,
-          clientName,
-          birthDate,
-          birthTime,
-        }),
-      })
-      const json1 = await res1.json()
-      if (json1.error) throw new Error(json1.error)
-      allMonths.push(...(json1.months || []))
+      // 6 batches of 2 months each
+      const monthBatches = [
+        monthDates.slice(0, 2),   // Call 1: months 1-2
+        monthDates.slice(2, 4),   // Call 2: months 3-4
+        monthDates.slice(4, 6),   // Call 3: months 5-6
+        monthDates.slice(6, 8),   // Call 4: months 7-8
+        monthDates.slice(8, 10),  // Call 5: months 9-10
+        monthDates.slice(10, 12), // Call 6: months 11-12
+      ]
 
-      // Extract narrative thread from Part 1 for continuity
-      const thread1 = allMonths.map(m =>
-        `${m.month}: ${m.opening} Key themes: ${m.month_synthesis?.substring(0, 100) || ''}`
-      ).join('\n')
+      const narrativeThreads: string[] = []
 
+      for (let i = 0; i < monthBatches.length; i++) {
+        setBlueprintPart(i + 1)
+
+        const batchDates = monthBatches[i]
+        const narrativeThread = narrativeThreads.length > 0
+          ? narrativeThreads.join('\n')
+          : undefined
+
+        const res = await fetch('/api/cosmic-blueprint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            part: i + 1,
+            monthDates: batchDates,
+            language: uiLang,
+            clientName,
+            birthDate,
+            birthTime,
+            narrativeThread,
+          }),
+        })
+        const json = await res.json()
+        if (json.error) throw new Error(json.error)
+        allMonths.push(...(json.months || []))
+
+        // Extract narrative thread for continuity in next call
+        if (json.months?.length) {
+          const thread = json.months.map((m: BlueprintMonthNarrative) =>
+            `${m.month}: ${m.opening} Key themes: ${m.month_synthesis?.substring(0, 100) || ''}`
+          ).join('\n')
+          narrativeThreads.push(thread)
+        }
+
+        // Delay between calls to avoid rate limiting
+        if (i < monthBatches.length - 1) {
+          await new Promise(r => setTimeout(r, BLUEPRINT_DELAY))
+        }
+      }
+
+      // Call 7: Year overview + eclipses/retrogrades (separate call, no months)
       await new Promise(r => setTimeout(r, BLUEPRINT_DELAY))
+      setBlueprintPart(7)
 
-      // Part 2: Months 5-8 (with narrative thread from Part 1)
-      setBlueprintPart(2)
-      const part2Dates = monthDates.slice(4, 8)
-      const res2 = await fetch('/api/cosmic-blueprint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          part: 2,
-          monthDates: part2Dates,
-          language: uiLang,
-          clientName,
-          birthDate,
-          birthTime,
-          narrativeThread: thread1,
-        }),
-      })
-      const json2 = await res2.json()
-      if (json2.error) throw new Error(json2.error)
-      allMonths.push(...(json2.months || []))
-
-      await new Promise(r => setTimeout(r, BLUEPRINT_DELAY))
-
-      // Part 3: Months 9-12 + Year Overview + Eclipse/Retro
-      setBlueprintPart(3)
-      const part3Dates = monthDates.slice(8, 12)
-
-      // Build full summary of months 1-8 for year overview + narrative thread
-      const summaryOfPrev = allMonths.map(m =>
+      const allMonthsSummary = allMonths.map(m =>
         `${m.month}: Overall ${m.overall_score}/10. ${m.opening} ${m.month_synthesis?.substring(0, 80) || ''}`
       ).join('\n')
 
-      const res3 = await fetch('/api/cosmic-blueprint', {
+      const overviewRes = await fetch('/api/cosmic-blueprint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          part: 3,
-          monthDates: part3Dates,
+          part: 7,
+          overview: true,
+          monthDates: [], // not used for overview
           allMonthDates: monthDates,
           language: uiLang,
           clientName,
           birthDate,
           birthTime,
-          allMonthsSummary: summaryOfPrev,
+          allMonthsSummary,
         }),
       })
-      const json3 = await res3.json()
-      if (json3.error) throw new Error(json3.error)
-      allMonths.push(...(json3.months || []))
-      yearOverview = json3.year_overview || null
-      eclipseRetroData = json3.eclipseRetroData || null
+      const overviewJson = await overviewRes.json()
+      if (overviewJson.error) throw new Error(overviewJson.error)
+      yearOverview = overviewJson.year_overview || null
+      eclipseRetroData = overviewJson.eclipseRetroData || null
 
       // Cache the data
       const blueprintData: BlueprintData = {
@@ -643,7 +646,7 @@ function TransitGridPage() {
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 border-2 border-current/20 border-t-current/60 rounded-full animate-spin" />
                   {blueprintStage === 'narrative'
-                    ? `Crafting... ${blueprintPart}/3`
+                    ? `Crafting... ${blueprintPart}/${BLUEPRINT_TOTAL_PARTS}`
                     : blueprintStage === 'pdf'
                       ? 'Building PDF...'
                       : 'Preparing...'}

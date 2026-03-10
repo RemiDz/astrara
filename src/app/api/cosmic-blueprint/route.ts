@@ -136,36 +136,18 @@ Write rich, flowing narrative readings for each month. Use this JSON structure:
 }`
 }
 
-function buildFinalPrompt(transitBlock: string, allMonthsSummary: string, eclipseRetroSummary: string): string {
+function buildOverviewPrompt(allMonthsSummary: string, eclipseRetroSummary: string): string {
   const eclipseSection = eclipseRetroSummary
     ? `\nEclipses and retrogrades during this 12-month period (use these ACCURATE dates):\n${eclipseRetroSummary}\n`
     : ''
 
-  return `Transit data for this period:
+  return `Here is a summary of all 12 months of this client's transit readings:
 
-${transitBlock}
-
-Story so far (this is the final batch — bring the narrative arc to a satisfying conclusion):
 ${allMonthsSummary}
 ${eclipseSection}
-Write rich narrative readings for each month below, PLUS a full year overview and an eclipses_and_retrogrades section. Use this JSON structure:
+Now write a comprehensive YEAR OVERVIEW that synthesises the entire 12-month arc, plus an eclipses_and_retrogrades section. Use this JSON structure:
 
 {
-  "months": [
-    {
-      "month": "Month Year",
-      "overall_score": 7,
-      "opening": "A 2-3 sentence atmospheric opening that bridges from months 8's energy. For the final month, provide a sense of completion.",
-      "finance": { "score": 6, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
-      "relationships": { "score": 8, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
-      "career": { "score": 7, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
-      "health": { "score": 5, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
-      "spiritual": { "score": 9, "narrative": "4-6 sentences...", "sonic_rx": "2-3 sentences..." },
-      "month_synthesis": "3-4 sentence closing",
-      "month_sonic_focus": "1-2 sentences on the PRIMARY sound healing focus for the month",
-      "affirmation": "A powerful, specific affirmation tied to this month's dominant planetary energy"
-    }
-  ],
   "year_overview": {
     "opening": "2-3 sentence overview of the year's dominant energy",
     "major_themes": "3-4 sentence description of the year's major planetary themes",
@@ -200,7 +182,7 @@ async function callClaude(
   userPrompt: string,
   maxTokens: number,
   retries: number = 2,
-): Promise<string> {
+): Promise<{ text: string; stopReason: string }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -243,13 +225,14 @@ async function callClaude(
       .map((block: { text: string }) => block.text)
       .join('')
 
-    console.log(`[cosmic-blueprint] Tokens: in=${data.usage?.input_tokens ?? '?'} out=${data.usage?.output_tokens ?? '?'} stop=${data.stop_reason}`)
+    const stopReason = data.stop_reason || 'unknown'
+    console.log(`[cosmic-blueprint] Tokens: in=${data.usage?.input_tokens ?? '?'} out=${data.usage?.output_tokens ?? '?'} stop=${stopReason}`)
 
-    if (data.stop_reason === 'max_tokens') {
+    if (stopReason === 'max_tokens') {
       console.warn(`[cosmic-blueprint] WARNING: Truncated at ${maxTokens} tokens`)
     }
 
-    return rawText
+    return { text: rawText, stopReason }
   }
 
   throw new Error('Exhausted retries')
@@ -348,24 +331,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      part, // 1, 2, or 3
-      monthDates, // array of { year, month } (4 items)
-      allMonthDates, // full 12-month array (for eclipse/retro computation in part 3)
+      part,
+      overview, // true for the year-overview-only call (part 7)
+      monthDates, // array of { year, month } (2 items for month calls)
+      allMonthDates, // full 12-month array (for eclipse/retro computation)
       language,
       clientName,
       birthDate,
       birthTime,
       narrativeThread, // summary of previous parts' narrative threads
-      allMonthsSummary, // only for part 3
+      allMonthsSummary, // only for overview call
     } = body
 
     const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
-    }
-
-    if (!monthDates || !Array.isArray(monthDates) || monthDates.length === 0) {
-      return NextResponse.json({ error: 'Missing month dates' }, { status: 400 })
     }
 
     const sunSign = getSunSign(birthDate || '')
@@ -377,33 +357,26 @@ export async function POST(req: NextRequest) {
       language || 'en',
     )
 
-    const transitBlock = buildTransitBlock(monthDates)
-
-    let userPrompt: string
-    let maxTokens = 4096
-
-    if (part === 3 && allMonthsSummary) {
-      // Compute eclipse/retro summary for part 3
+    // ── Year Overview call (no months) ──
+    if (overview && allMonthsSummary) {
       const eclipseRetroSummary = allMonthDates
         ? computeEclipseRetroSummary(allMonthDates)
         : ''
-      userPrompt = buildFinalPrompt(transitBlock, allMonthsSummary, eclipseRetroSummary)
-      maxTokens = 5000 // Part 3 has more content (year overview + eclipses)
-    } else {
-      userPrompt = buildMonthsPrompt(transitBlock, narrativeThread || undefined)
-    }
+      const userPrompt = buildOverviewPrompt(allMonthsSummary, eclipseRetroSummary)
 
-    console.log(`[cosmic-blueprint] Part ${part}: generating narrative for ${monthDates.length} months (prompt ${userPrompt.length} chars)`)
+      console.log(`[cosmic-blueprint] Part ${part} (overview): prompt ${userPrompt.length} chars`)
 
-    const rawText = await callClaude(apiKey, systemPrompt, userPrompt, maxTokens)
+      const { text: rawText, stopReason } = await callClaude(apiKey, systemPrompt, userPrompt, 4096)
 
-    if (part === 3) {
+      if (stopReason === 'max_tokens') {
+        console.error(`[cosmic-blueprint] Part ${part} (overview): TRUNCATED`)
+        // Still attempt to parse — extractJSON handles truncation salvage
+      }
+
       const result = extractJSON<{
-        months: BlueprintMonthNarrative[]
         year_overview: BlueprintYearOverview & { eclipses_and_retrogrades?: BlueprintEclipseRetroData }
-      }>(rawText, `Part ${part}`)
+      }>(rawText, `Part ${part} (overview)`)
 
-      // Extract eclipses_and_retrogrades from year_overview if present
       const yearOverview = result.year_overview || null
       let eclipseRetroData: BlueprintEclipseRetroData | undefined
       if (yearOverview?.eclipses_and_retrogrades) {
@@ -411,19 +384,36 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({
-        months: result.months || [],
         year_overview: yearOverview,
         eclipseRetroData: eclipseRetroData || null,
       })
-    } else {
-      const result = extractJSON<{
-        months: BlueprintMonthNarrative[]
-      }>(rawText, `Part ${part}`)
-
-      return NextResponse.json({
-        months: result.months || [],
-      })
     }
+
+    // ── Monthly narrative call (2 months per call) ──
+    if (!monthDates || !Array.isArray(monthDates) || monthDates.length === 0) {
+      return NextResponse.json({ error: 'Missing month dates' }, { status: 400 })
+    }
+
+    const transitBlock = buildTransitBlock(monthDates)
+    const userPrompt = buildMonthsPrompt(transitBlock, narrativeThread || undefined)
+    const maxTokens = 4096
+
+    console.log(`[cosmic-blueprint] Part ${part}: generating narrative for ${monthDates.length} months (prompt ${userPrompt.length} chars)`)
+
+    const { text: rawText, stopReason } = await callClaude(apiKey, systemPrompt, userPrompt, maxTokens)
+
+    if (stopReason === 'max_tokens') {
+      console.error(`[cosmic-blueprint] Part ${part}: TRUNCATED at ${maxTokens} tokens`)
+      // Still attempt to parse — extractJSON handles truncation salvage
+    }
+
+    const result = extractJSON<{
+      months: BlueprintMonthNarrative[]
+    }>(rawText, `Part ${part}`)
+
+    return NextResponse.json({
+      months: result.months || [],
+    })
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error'
     console.error('[cosmic-blueprint] Error:', msg)
