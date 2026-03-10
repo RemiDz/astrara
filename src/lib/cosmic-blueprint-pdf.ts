@@ -7,8 +7,10 @@ import type {
 } from '@/types/cosmic-blueprint'
 import { BLUEPRINT_CATEGORY_KEYS, PLANET_FREQUENCIES } from '@/types/cosmic-blueprint'
 import { getPlanetPositions } from './astronomy'
-import { calculateAspects } from './aspects'
+// aspects are now handled by the SVG NatalChartWheel component
 import { ZODIAC_SIGNS } from './zodiac'
+import { PLANETS as PLANET_META } from './planets'
+import { renderNatalWheelPng } from './renderNatalWheel'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Colour Palette — Print-Optimised Luxury
@@ -99,118 +101,7 @@ const PLANET_RGB: Record<string, RGB> = {
   Saturn: [90, 90, 140], Uranus: [60, 160, 145], Neptune: [100, 80, 170], Pluto: [140, 60, 80],
 }
 
-const PLANET_ABBREV: Record<string, string> = {
-  Sun: 'Su', Moon: 'Mo', Mercury: 'Me', Venus: 'Ve', Mars: 'Ma',
-  Jupiter: 'Ju', Saturn: 'Sa', Uranus: 'Ur', Neptune: 'Ne', Pluto: 'Pl',
-}
 
-const ASPECT_LINE_RGB: Record<string, RGB> = {
-  trine: [60, 100, 200], sextile: [60, 160, 80],
-  square: [200, 60, 60], opposition: [200, 60, 60], conjunction: [200, 180, 60],
-}
-
-// Cover wheel natal data
-interface CoverWheelData {
-  planets: { name: string; eclipticLon: number }[]
-  aspects: { lon1: number; lon2: number; type: string; orb: number }[]
-}
-
-// ─── Premium cover wheel palette (ASTRARA-BLUEPRINT-COVER-WHEEL.md) ───
-const COVER_GOLD: RGB = [201, 168, 76]     // #C9A84C
-const COVER_ELEM: RGB[] = [
-  [224, 122, 95],   // Fire  #E07A5F (terracotta)
-  [129, 178, 154],  // Earth #81B29A (sage)
-  [157, 180, 192],  // Air   #9DB4C0 (silver-blue)
-  [94, 124, 226],   // Water #5E7CE2 (indigo)
-]
-const COVER_PLANET_RGB: Record<string, RGB> = {
-  Sun: [212, 160, 23], Moon: [200, 200, 208], Mercury: [32, 178, 170],
-  Venus: [219, 112, 147], Mars: [205, 92, 92], Jupiter: [232, 144, 58],
-  Saturn: [184, 134, 11], Uranus: [65, 105, 225], Neptune: [106, 90, 205],
-  Pluto: [155, 89, 182],
-}
-const COVER_ASPECT_RGB: Record<string, RGB> = {
-  sextile: [129, 178, 154], square: [224, 122, 95],
-  trine: [94, 124, 226], opposition: [224, 122, 95],
-}
-
-// Wheel angle: 0° Aries at 9 o'clock (LEFT), counter-clockwise
-function wAngle(eclipticLon: number): number {
-  return (180 + eclipticLon) * Math.PI / 180
-}
-
-// Draw simplified zodiac glyph at (x,y) with half-size s
-function drawZodiacGlyph(doc: jsPDF, x: number, y: number, sign: number, color: RGB, s: number) {
-  doc.setDrawColor(...color)
-  doc.setFillColor(...color)
-  doc.setLineWidth(0.3)
-  switch (sign) {
-    case 0: // Aries — V horns
-      doc.line(x, y + s * 0.5, x - s * 0.7, y - s)
-      doc.line(x, y + s * 0.5, x + s * 0.7, y - s)
-      doc.line(x, y + s * 0.5, x, y + s)
-      break
-    case 1: // Taurus — circle + horns
-      doc.circle(x, y + s * 0.2, s * 0.5, 'S')
-      doc.line(x - s * 0.5, y - s * 0.3, x - s * 0.8, y - s)
-      doc.line(x + s * 0.5, y - s * 0.3, x + s * 0.8, y - s)
-      break
-    case 2: // Gemini — parallel lines
-      doc.line(x - s * 0.4, y - s, x - s * 0.4, y + s)
-      doc.line(x + s * 0.4, y - s, x + s * 0.4, y + s)
-      doc.line(x - s * 0.7, y - s, x + s * 0.7, y - s)
-      doc.line(x - s * 0.7, y + s, x + s * 0.7, y + s)
-      break
-    case 3: // Cancer — two opposing curves (circles)
-      doc.circle(x - s * 0.2, y - s * 0.15, s * 0.45, 'S')
-      doc.circle(x + s * 0.2, y + s * 0.15, s * 0.45, 'S')
-      break
-    case 4: // Leo — circle + tail
-      doc.circle(x + s * 0.15, y + s * 0.2, s * 0.4, 'S')
-      doc.line(x - s * 0.2, y + s * 0.2, x - s * 0.7, y - s * 0.8)
-      break
-    case 5: // Virgo — M shape + tail
-      doc.line(x - s * 0.8, y + s, x - s * 0.4, y - s)
-      doc.line(x - s * 0.4, y - s, x, y + s * 0.3)
-      doc.line(x, y + s * 0.3, x + s * 0.4, y - s)
-      doc.line(x + s * 0.4, y - s, x + s * 0.8, y + s)
-      break
-    case 6: // Libra — horizontal lines + arc
-      doc.line(x - s * 0.8, y + s * 0.4, x + s * 0.8, y + s * 0.4)
-      doc.line(x - s * 0.8, y - s * 0.1, x + s * 0.8, y - s * 0.1)
-      doc.circle(x, y - s * 0.6, s * 0.35, 'S')
-      break
-    case 7: // Scorpio — M + arrow
-      doc.line(x - s * 0.8, y + s, x - s * 0.4, y - s)
-      doc.line(x - s * 0.4, y - s, x, y + s * 0.3)
-      doc.line(x, y + s * 0.3, x + s * 0.4, y - s)
-      doc.line(x + s * 0.4, y - s, x + s * 0.8, y + s * 0.2)
-      doc.triangle(x + s * 0.8, y + s * 0.2, x + s, y - s * 0.1, x + s * 0.5, y + s * 0.5, 'F')
-      break
-    case 8: // Sagittarius — arrow
-      doc.line(x - s * 0.8, y + s, x + s * 0.8, y - s)
-      doc.line(x + s * 0.8, y - s, x + s * 0.2, y - s * 0.8)
-      doc.line(x + s * 0.8, y - s, x + s * 0.6, y - s * 0.2)
-      break
-    case 9: // Capricorn — V + loop
-      doc.line(x - s * 0.5, y - s, x, y + s * 0.3)
-      doc.line(x, y + s * 0.3, x + s * 0.3, y - s * 0.3)
-      doc.circle(x + s * 0.5, y + s * 0.3, s * 0.35, 'S')
-      break
-    case 10: // Aquarius — two zigzag lines
-      for (const dy of [-s * 0.3, s * 0.3]) {
-        doc.line(x - s * 0.8, y + dy, x - s * 0.3, y + dy - s * 0.35)
-        doc.line(x - s * 0.3, y + dy - s * 0.35, x + s * 0.3, y + dy + s * 0.35)
-        doc.line(x + s * 0.3, y + dy + s * 0.35, x + s * 0.8, y + dy)
-      }
-      break
-    case 11: // Pisces — two arcs + line
-      doc.circle(x - s * 0.5, y, s * 0.5, 'S')
-      doc.circle(x + s * 0.5, y, s * 0.5, 'S')
-      doc.line(x - s * 0.8, y, x + s * 0.8, y)
-      break
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Translation
@@ -515,272 +406,19 @@ function needsNewPage(doc: jsPDF, y: number, needed: number): boolean {
 function drawCover(
   doc: jsPDF, f: FontSet, clientName: string, birthDate: string,
   birthTime: string, dateRange: string, lang: Lang,
-  wheelData?: CoverWheelData | null,
+  wheelPngDataUrl?: string | null,
 ) {
   // Warm cream background
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
 
-  // ═══ Premium Natal Chart Wheel — 4-layer precision instrument ═══
-  const cx = PW / 2, cy = 90, wr = 46
-  // Layer radii
-  const nameOuter = wr, nameInner = wr - 7        // Layer 1: sign names (7mm)
-  const glyphOuter = wr - 8.5, glyphInner = wr - 15 // Layer 2: zodiac glyphs (6.5mm)
-  const tickOuter = glyphInner, tickInner = wr - 17.5 // Layer 3: degree ticks (2.5mm)
-  const fieldR = tickInner                             // Layer 4: planet field boundary
-  const signLabels = ['ARIES', 'TAURUS', 'GEMINI', 'CANCER', 'LEO', 'VIRGO',
-                      'LIBRA', 'SCORPIO', 'SAGITTARIUS', 'CAPRICORN', 'AQUARIUS', 'PISCES']
-  const signAbbr3 = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
-
-  // Spotlight background glow
-  doc.setFillColor(...COVER_GOLD)
-  doc.setGState(doc.GState({ opacity: 0.03 }))
-  doc.circle(cx, cy, wr + 8, 'F')
-  doc.setGState(doc.GState({ opacity: 0.015 }))
-  doc.circle(cx, cy, wr + 16, 'F')
-  doc.setGState(doc.GState({ opacity: 1 }))
-
-  // ── Layer 1: Sign Name Ring ──
-  // Element-tinted segment wedges
-  for (let i = 0; i < 12; i++) {
-    const ec = COVER_ELEM[i % 4]
-    const a0 = wAngle(i * 30), a1 = wAngle((i + 1) * 30)
-    doc.setFillColor(...ec)
-    doc.setGState(doc.GState({ opacity: 0.06 }))
-    for (let s = 0; s < 6; s++) {
-      const sa = a0 + (a1 - a0) * s / 6, ea = a0 + (a1 - a0) * (s + 1) / 6
-      doc.triangle(cx, cy, cx + nameOuter * Math.cos(sa), cy + nameOuter * Math.sin(sa),
-                   cx + nameOuter * Math.cos(ea), cy + nameOuter * Math.sin(ea), 'F')
-    }
-    // Divider line
-    doc.setDrawColor(...COVER_GOLD)
-    doc.setGState(doc.GState({ opacity: 0.25 }))
-    doc.setLineWidth(0.5)
-    doc.line(cx + nameInner * Math.cos(a0), cy + nameInner * Math.sin(a0),
-             cx + nameOuter * Math.cos(a0), cy + nameOuter * Math.sin(a0))
-  }
-  // Clip inner + draw ring borders
-  doc.setFillColor(...P.paperRGB)
-  doc.setGState(doc.GState({ opacity: 1 }))
-  doc.circle(cx, cy, nameInner + 0.2, 'F')
-  doc.setDrawColor(...COVER_GOLD)
-  doc.setGState(doc.GState({ opacity: 0.6 }))
-  doc.setLineWidth(0.75)
-  doc.circle(cx, cy, nameOuter, 'S')
-  doc.setGState(doc.GState({ opacity: 0.4 }))
-  doc.setLineWidth(0.5)
-  doc.circle(cx, cy, nameInner, 'S')
-  // Sign name text
-  for (let i = 0; i < 12; i++) {
-    const ec = COVER_ELEM[i % 4]
-    const midA = wAngle(i * 30 + 15)
-    const lr = (nameOuter + nameInner) / 2
-    doc.setTextColor(...ec)
-    doc.setGState(doc.GState({ opacity: 0.7 }))
-    setBody(doc, f, 5, true)
-    const lx = cx + lr * Math.cos(midA), ly = cy + lr * Math.sin(midA)
-    const tw = doc.getTextWidth(signLabels[i])
-    doc.text(signLabels[i], lx - tw / 2, ly + 1)
-  }
-
-  // ── Layer 2: Zodiac Glyph Ring ──
-  // Element-coloured segment backgrounds
-  for (let i = 0; i < 12; i++) {
-    const ec = COVER_ELEM[i % 4]
-    const a0 = wAngle(i * 30), a1 = wAngle((i + 1) * 30)
-    doc.setFillColor(...ec)
-    doc.setGState(doc.GState({ opacity: 0.08 }))
-    for (let s = 0; s < 6; s++) {
-      const sa = a0 + (a1 - a0) * s / 6, ea = a0 + (a1 - a0) * (s + 1) / 6
-      doc.triangle(cx, cy, cx + glyphOuter * Math.cos(sa), cy + glyphOuter * Math.sin(sa),
-                   cx + glyphOuter * Math.cos(ea), cy + glyphOuter * Math.sin(ea), 'F')
-    }
-  }
-  // Clip inner + draw ring borders
-  doc.setFillColor(...P.paperRGB)
-  doc.setGState(doc.GState({ opacity: 1 }))
-  doc.circle(cx, cy, glyphInner + 0.2, 'F')
-  doc.setDrawColor(...COVER_GOLD)
-  doc.setGState(doc.GState({ opacity: 0.4 }))
-  doc.setLineWidth(0.5)
-  doc.circle(cx, cy, glyphOuter, 'S')
-  doc.circle(cx, cy, glyphInner, 'S')
-  // Draw zodiac glyphs (simplified vector symbols)
-  for (let i = 0; i < 12; i++) {
-    const ec = COVER_ELEM[i % 4]
-    const midA = wAngle(i * 30 + 15)
-    const gr = (glyphOuter + glyphInner) / 2
-    doc.setGState(doc.GState({ opacity: 0.9 }))
-    drawZodiacGlyph(doc, cx + gr * Math.cos(midA), cy + gr * Math.sin(midA), i, ec, 2.2)
-  }
-
-  // ── Layer 3: Degree Tick Ring ──
-  for (let deg = 0; deg < 360; deg++) {
-    const a = wAngle(deg)
-    const isBound = deg % 30 === 0, isMajor = deg % 10 === 0
-    const tLen = isBound ? 2.5 : (isMajor ? 1.5 : 0.6)
-    doc.setDrawColor(...COVER_GOLD)
-    doc.setGState(doc.GState({ opacity: isBound ? 0.35 : (isMajor ? 0.25 : 0.12) }))
-    doc.setLineWidth(isBound ? 0.25 : 0.12)
-    doc.line(cx + tickOuter * Math.cos(a), cy + tickOuter * Math.sin(a),
-             cx + (tickOuter - tLen) * Math.cos(a), cy + (tickOuter - tLen) * Math.sin(a))
-  }
-  // Planet field inner boundary
-  doc.setDrawColor(...COVER_GOLD)
-  doc.setGState(doc.GState({ opacity: 0.3 }))
-  doc.setLineWidth(0.5)
-  doc.circle(cx, cy, fieldR, 'S')
-
-  // ── Layer 4: Planet Field ──
-  if (wheelData && wheelData.planets.length > 0) {
-    const sorted = [...wheelData.planets].sort((a, b) => a.eclipticLon - b.eclipticLon)
-    // Cluster planets within 12° for overlap avoidance
-    const clusters: number[][] = []
-    let curCluster: number[] = [0]
-    for (let i = 1; i < sorted.length; i++) {
-      const diff = sorted[i].eclipticLon - sorted[curCluster[curCluster.length - 1]].eclipticLon
-      if (diff < 12) { curCluster.push(i) }
-      else { clusters.push([...curCluster]); curCluster = [i] }
-    }
-    clusters.push([...curCluster])
-    // Wrap-around check
-    if (clusters.length > 1) {
-      const lastP = sorted[clusters[clusters.length - 1][clusters[clusters.length - 1].length - 1]]
-      const firstP = sorted[clusters[0][0]]
-      if ((firstP.eclipticLon + 360) - lastP.eclipticLon < 12) {
-        clusters[0] = [...clusters[clusters.length - 1], ...clusters[0]]
-        clusters.pop()
-      }
-    }
-    // Assign radial positions (55%–75% of fieldR, nominal 65%)
-    const pRadii: number[] = new Array(sorted.length)
-    for (const cl of clusters) {
-      if (cl.length === 1) { pRadii[cl[0]] = fieldR * 0.65 }
-      else {
-        for (let ci = 0; ci < cl.length; ci++) {
-          const t = cl.length > 1 ? ci / (cl.length - 1) : 0.5
-          pRadii[cl[ci]] = fieldR * 0.55 + t * fieldR * 0.2
-        }
-      }
-    }
-
-    // ── Aspect lines (behind planets, capped at 8, sorted by tightest orb) ──
-    const drawableAspects = wheelData.aspects
-      .filter(a => a.type !== 'conjunction')
-      .sort((a, b) => a.orb - b.orb)
-      .slice(0, 8)
-    for (const asp of drawableAspects) {
-      const ac = COVER_ASPECT_RGB[asp.type] || COVER_GOLD
-      const op = asp.type === 'sextile' ? 0.25 : asp.type === 'trine' ? 0.30 : asp.type === 'square' ? 0.30 : 0.35
-      const lw = asp.type === 'sextile' ? 0.4 : 0.5
-      doc.setDrawColor(...ac)
-      doc.setGState(doc.GState({ opacity: op }))
-      doc.setLineWidth(lw)
-      // Use planet radii for endpoint positions
-      const p1i = sorted.findIndex(p => Math.abs(p.eclipticLon - asp.lon1) < 0.5)
-      const p2i = sorted.findIndex(p => Math.abs(p.eclipticLon - asp.lon2) < 0.5)
-      const r1 = p1i >= 0 ? pRadii[p1i] : fieldR * 0.65
-      const r2 = p2i >= 0 ? pRadii[p2i] : fieldR * 0.65
-      const aa1 = wAngle(asp.lon1), aa2 = wAngle(asp.lon2)
-      if (asp.type === 'opposition') {
-        const x1 = cx + r1 * Math.cos(aa1), y1 = cy + r1 * Math.sin(aa1)
-        const x2 = cx + r2 * Math.cos(aa2), y2 = cy + r2 * Math.sin(aa2)
-        const ddx = x2 - x1, ddy = y2 - y1, len = Math.sqrt(ddx * ddx + ddy * ddy)
-        let d = 0
-        while (d < len) {
-          const t1 = d / len, t2 = Math.min((d + 2) / len, 1)
-          doc.line(x1 + ddx * t1, y1 + ddy * t1, x1 + ddx * t2, y1 + ddy * t2)
-          d += 3.5
-        }
-      } else {
-        doc.line(cx + r1 * Math.cos(aa1), cy + r1 * Math.sin(aa1),
-                 cx + r2 * Math.cos(aa2), cy + r2 * Math.sin(aa2))
-      }
-    }
-
-    // ── Pointer lines (planet to tick ring) — drawn before planets ──
-    for (let pi = 0; pi < sorted.length; pi++) {
-      const planet = sorted[pi]
-      const ang = wAngle(planet.eclipticLon)
-      const r = pRadii[pi]
-      const pc = COVER_PLANET_RGB[planet.name] || COVER_GOLD
-      doc.setDrawColor(...pc)
-      doc.setGState(doc.GState({ opacity: 0.3 }))
-      doc.setLineWidth(0.3)
-      doc.line(cx + (r + 2.5) * Math.cos(ang), cy + (r + 2.5) * Math.sin(ang),
-               cx + tickOuter * Math.cos(ang), cy + tickOuter * Math.sin(ang))
-    }
-
-    // ── Planet glyphs + labels ──
-    for (let pi = 0; pi < sorted.length; pi++) {
-      const planet = sorted[pi]
-      const ang = wAngle(planet.eclipticLon)
-      const r = pRadii[pi]
-      const px = cx + r * Math.cos(ang), py = cy + r * Math.sin(ang)
-      const pc = COVER_PLANET_RGB[planet.name] || COVER_GOLD
-
-      // Halo glow
-      doc.setFillColor(...pc)
-      doc.setGState(doc.GState({ opacity: 0.25 }))
-      doc.circle(px, py, 3.5, 'F')
-      // Solid dot
-      doc.setGState(doc.GState({ opacity: 0.9 }))
-      doc.circle(px, py, 2.2, 'F')
-      // Abbreviation inside
-      doc.setTextColor(...P.white)
-      doc.setGState(doc.GState({ opacity: 1 }))
-      setBody(doc, f, 5.5, true)
-      const abbr = PLANET_ABBREV[planet.name] || planet.name.substring(0, 2)
-      const atw = doc.getTextWidth(abbr)
-      doc.text(abbr, px - atw / 2, py + 1.3)
-
-      // Full planet name (outward from glyph)
-      const nmR = r + 5.5
-      const nx = cx + nmR * Math.cos(ang), ny = cy + nmR * Math.sin(ang)
-      doc.setTextColor(...pc)
-      doc.setGState(doc.GState({ opacity: 0.6 }))
-      setBody(doc, f, 5)
-      const nmW = doc.getTextWidth(planet.name)
-      doc.text(planet.name, nx - nmW / 2, ny + 1)
-
-      // Position label (inward): "23° GEM"
-      const si = Math.floor(planet.eclipticLon / 30)
-      const dg = Math.floor(planet.eclipticLon % 30)
-      const posLbl = `${dg} ${signAbbr3[si]}`
-      const prR = r - 5
-      const prx = cx + prR * Math.cos(ang), pry = cy + prR * Math.sin(ang)
-      doc.setTextColor(...P.coverText)
-      doc.setGState(doc.GState({ opacity: 0.4 }))
-      setBody(doc, f, 4.5)
-      const plw = doc.getTextWidth(posLbl)
-      doc.text(posLbl, prx - plw / 2, pry + 1)
-    }
-  } else {
-    // Fallback decorative dots
-    doc.setGState(doc.GState({ opacity: 0.2 }))
-    doc.setFillColor(...COVER_GOLD)
-    const rng = (seed: number) => { const x = Math.sin(seed) * 10000; return x - Math.floor(x) }
-    for (let i = 0; i < 8; i++) {
-      const ang = [15, 67, 112, 148, 195, 238, 280, 320][i] * Math.PI / 180
-      const pr = fieldR * (0.3 + rng(i * 73 + 11) * 0.6)
-      doc.circle(cx + pr * Math.cos(ang), cy + pr * Math.sin(ang), 0.8 + rng(i * 37) * 0.6, 'F')
-    }
-  }
-
-  // ── Centre element — star + birth date ──
-  doc.setGState(doc.GState({ opacity: 0.5 }))
-  doc.setFillColor(...COVER_GOLD)
-  doc.circle(cx, cy, 2, 'F')
-  doc.setGState(doc.GState({ opacity: 1 }))
-  if (birthDate) {
-    doc.setTextColor(...COVER_GOLD)
-    doc.setGState(doc.GState({ opacity: 0.5 }))
-    setBody(doc, f, 5)
-    let centreText = birthDate
-    if (birthTime) centreText += ` · ${birthTime}`
-    const ctW = doc.getTextWidth(centreText)
-    doc.text(centreText, cx - ctW / 2, cy + 5.5)
-    doc.setGState(doc.GState({ opacity: 1 }))
+  // ═══ SVG Natal Chart Wheel (rendered as PNG image) ═══
+  if (wheelPngDataUrl) {
+    // Wheel image: centred, 92mm wide (covers most of page width nicely)
+    const wheelSize = 92 // mm
+    const wheelX = PW / 2 - wheelSize / 2
+    const wheelY = 42  // top margin for wheel
+    doc.addImage(wheelPngDataUrl, 'PNG', wheelX, wheelY, wheelSize, wheelSize)
   }
 
   // ─── Title block ───
@@ -2349,7 +1987,7 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
 
   // ─── Compute natal data from birth date ───
   let natalPlacements: NatalPlacement[] | null = null
-  let coverWheelData: CoverWheelData | null = null
+  let wheelPngDataUrl: string | null = null
   if (birthDate) {
     try {
       const bd = new Date(birthDate)
@@ -2365,33 +2003,34 @@ export async function generateBlueprintPdf(params: BlueprintPdfParams) {
             return { name: p.name, sign: signName, degree: p.degreeInSign }
           })
 
-        // Cover wheel data — all planets with ecliptic longitude
+        // Build planet positions for SVG wheel
         const wheelPlanets = positions.map(p => {
+          const meta = PLANET_META.find(m => m.id === p.id)
           const signIdx = ZODIAC_SIGNS.findIndex(z => z.id === p.zodiacSign)
+          const signObj = ZODIAC_SIGNS[signIdx >= 0 ? signIdx : 0]
           const eclipticLon = (signIdx >= 0 ? signIdx : 0) * 30 + p.degreeInSign
-          return { name: p.name, eclipticLon }
+          return {
+            name: p.name,
+            symbol: meta?.glyph ?? p.glyph,
+            longitude: eclipticLon,
+            sign: signObj.name,
+            degree: p.degreeInSign,
+            isRetrograde: p.isRetrograde,
+          }
         })
 
-        // Compute aspects for cover wheel (with orb for sorting/capping)
-        const aspects = calculateAspects(positions)
-        const wheelAspects = aspects
-          .filter(a => a.orb < 8)
-          .map(a => {
-            const p1 = wheelPlanets.find(p => p.name === a.planet1)
-            const p2 = wheelPlanets.find(p => p.name === a.planet2)
-            return p1 && p2
-              ? { lon1: p1.eclipticLon, lon2: p2.eclipticLon, type: a.type, orb: a.orb }
-              : null
-          })
-          .filter((a): a is { lon1: number; lon2: number; type: string; orb: number } => a !== null)
-
-        coverWheelData = { planets: wheelPlanets, aspects: wheelAspects }
+        // Render SVG natal wheel off-screen and capture as PNG
+        try {
+          wheelPngDataUrl = await renderNatalWheelPng(wheelPlanets, birthDate, birthTime, 800)
+        } catch (err) {
+          console.warn('[blueprint] SVG wheel render failed, cover will have no wheel:', err)
+        }
       }
     } catch { /* natal calculation failed, continue without */ }
   }
 
   // ─── Page 1: Cover ───
-  drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language, coverWheelData)
+  drawCover(doc, f, clientName, birthDate, birthTime, dateRange, language, wheelPngDataUrl)
 
   // ─── Page 2: Table of Contents (blank placeholder — filled after rendering) ───
   doc.addPage()
