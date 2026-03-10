@@ -207,7 +207,7 @@ function ZodiacSignButton({ sign, gx, gz, index, sceneReady, onSignTap, glyphRef
         style={{
           background: 'transparent',
           border: 'none',
-          fontSize: '32px',
+          fontSize: '26px',
           color: impactScore >= 0.7 ? '#FF4444'
             : impactScore >= 0.4 ? '#FF8C00'
             : impactScore >= 0.2 ? '#FFD700'
