@@ -408,7 +408,7 @@ function pageFooter(doc: jsPDF, f: FontSet, pageNum: number, clientName: string,
 }
 
 function needsNewPage(doc: jsPDF, y: number, needed: number): boolean {
-  return y + needed > PH - MB - 10
+  return y + needed > PH - MB - 30 // 30pt footer protection zone
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -424,119 +424,179 @@ function drawCover(
   doc.setFillColor(...P.paperRGB)
   doc.rect(0, 0, PW, PH, 'F')
 
-  // Zodiac wheel — personalised natal chart
-  const cx = PW / 2, cy = 90, wr = 38
-  const planetR = wr - 18 // radius for planet dots
+  // Zodiac wheel — personalised natal chart (redesigned Phase 3)
+  const cx = PW / 2, cy = 92, wr = 42
+  const zodiacBandW = 9
+  const innerR = wr - zodiacBandW
+  const planetR = innerR - 7
 
-  // Outer ring
-  doc.setDrawColor(...P.gold)
-  doc.setGState(doc.GState({ opacity: 0.4 }))
-  doc.setLineWidth(0.5)
-  doc.circle(cx, cy, wr, 'S')
-  doc.setLineWidth(0.3)
-  doc.circle(cx, cy, wr - 7, 'S')
-  doc.setLineWidth(0.15)
-  doc.setGState(doc.GState({ opacity: 0.2 }))
-  doc.circle(cx, cy, wr - 14, 'S')
+  // Subtle spotlight background
+  doc.setFillColor(...P.gold)
+  doc.setGState(doc.GState({ opacity: 0.04 }))
+  doc.circle(cx, cy, wr + 6, 'F')
+  doc.setGState(doc.GState({ opacity: 0.02 }))
+  doc.circle(cx, cy, wr + 12, 'F')
+  doc.setGState(doc.GState({ opacity: 1 }))
 
-  // 12 spoke lines coloured by element
-  doc.setLineWidth(0.3)
+  // Sign names and element index (Fire=0, Earth=1, Air=2, Water=3)
+  const signNames = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+                     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+
+  // Draw 12 zodiac segment wedges with element-tinted backgrounds
   for (let i = 0; i < 12; i++) {
     const elemColor = ELEMENT_RGB[i % 4]
+    const startAng = (i * 30 - 90) * Math.PI / 180
+    const endAng = ((i + 1) * 30 - 90) * Math.PI / 180
+
+    // Filled segment wedge (element tint at 15% opacity)
+    doc.setFillColor(...elemColor)
+    doc.setGState(doc.GState({ opacity: 0.15 }))
+    const arcSteps = 6
+    for (let s = 0; s < arcSteps; s++) {
+      const a1 = startAng + (endAng - startAng) * s / arcSteps
+      const a2 = startAng + (endAng - startAng) * (s + 1) / arcSteps
+      doc.triangle(cx, cy, cx + wr * Math.cos(a1), cy + wr * Math.sin(a1),
+                   cx + wr * Math.cos(a2), cy + wr * Math.sin(a2), 'F')
+    }
+
+    // Divider line at segment boundary
     doc.setDrawColor(...elemColor)
     doc.setGState(doc.GState({ opacity: 0.3 }))
-    const angle = (i * 30 - 90) * Math.PI / 180
-    const x1 = cx + (wr - 7) * Math.cos(angle)
-    const y1 = cy + (wr - 7) * Math.sin(angle)
-    const x2 = cx + wr * Math.cos(angle)
-    const y2 = cy + wr * Math.sin(angle)
-    doc.line(x1, y1, x2, y2)
+    doc.setLineWidth(0.2)
+    doc.line(cx + innerR * Math.cos(startAng), cy + innerR * Math.sin(startAng),
+             cx + wr * Math.cos(startAng), cy + wr * Math.sin(startAng))
   }
 
-  // 3-letter zodiac abbreviations coloured by element
-  const signs = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
-  setBody(doc, f, 5)
+  // Clip inner area with paper-coloured circle
+  doc.setFillColor(...P.paperRGB)
+  doc.setGState(doc.GState({ opacity: 1 }))
+  doc.circle(cx, cy, innerR + 0.3, 'F')
+
+  // Ring outlines
+  doc.setDrawColor(...P.gold)
+  doc.setGState(doc.GState({ opacity: 0.5 }))
+  doc.setLineWidth(0.6)
+  doc.circle(cx, cy, wr, 'S')
+  doc.setLineWidth(0.3)
+  doc.circle(cx, cy, innerR, 'S')
+  doc.setGState(doc.GState({ opacity: 0.15 }))
+  doc.setLineWidth(0.15)
+  doc.circle(cx, cy, planetR, 'S')
+
+  // Full sign names centred in each segment
   for (let i = 0; i < 12; i++) {
     const elemColor = ELEMENT_RGB[i % 4]
-    doc.setGState(doc.GState({ opacity: 0.6 }))
-    const angle = ((i * 30) + 15 - 90) * Math.PI / 180
-    const lr = wr - 3.5
-    const lx = cx + lr * Math.cos(angle)
-    const ly = cy + lr * Math.sin(angle)
+    const midAng = ((i * 30 + 15) - 90) * Math.PI / 180
+    const labelR = (wr + innerR) / 2
+
     doc.setTextColor(...elemColor)
-    const ltw = doc.getTextWidth(signs[i])
-    doc.text(signs[i], lx - ltw / 2, ly + 1.2)
-  }
-
-  // Small element-coloured indicator dots in zodiac band
-  doc.setLineWidth(0)
-  for (let i = 0; i < 12; i++) {
-    const elemColor = ELEMENT_RGB[i % 4]
-    doc.setFillColor(...elemColor)
-    doc.setGState(doc.GState({ opacity: 0.2 }))
-    const angle = ((i * 30) + 15 - 90) * Math.PI / 180
-    const ir = wr - 10.5
-    doc.circle(cx + ir * Math.cos(angle), cy + ir * Math.sin(angle), 1.2, 'F')
+    doc.setGState(doc.GState({ opacity: 0.85 }))
+    setBody(doc, f, 5.5, true)
+    const lx = cx + labelR * Math.cos(midAng)
+    const ly = cy + labelR * Math.sin(midAng)
+    const tw = doc.getTextWidth(signNames[i])
+    doc.text(signNames[i], lx - tw / 2, ly + 1.2)
   }
 
   if (wheelData && wheelData.planets.length > 0) {
-    // ─── Aspect lines between natal planets ───
-    doc.setLineWidth(0.3)
+    // ─── Aspect lines (refined) ───
+    doc.setLineWidth(0.4)
     for (const asp of wheelData.aspects) {
+      if (asp.type === 'conjunction') continue // cluster glyphs, no line
       const aspColor = ASPECT_LINE_RGB[asp.type] || P.gold
       doc.setDrawColor(...aspColor)
-      const opacity = asp.type === 'conjunction' ? 0.4 : 0.2
+      const opacity = asp.type === 'sextile' ? 0.25 : 0.35
       doc.setGState(doc.GState({ opacity }))
       const a1 = (asp.lon1 - 90) * Math.PI / 180
       const a2 = (asp.lon2 - 90) * Math.PI / 180
-      const r = planetR - 1
-      doc.line(cx + r * Math.cos(a1), cy + r * Math.sin(a1), cx + r * Math.cos(a2), cy + r * Math.sin(a2))
+      if (asp.type === 'opposition') {
+        // Dashed line for opposition
+        const x1 = cx + planetR * Math.cos(a1), y1 = cy + planetR * Math.sin(a1)
+        const x2 = cx + planetR * Math.cos(a2), y2 = cy + planetR * Math.sin(a2)
+        const ddx = x2 - x1, ddy = y2 - y1
+        const len = Math.sqrt(ddx * ddx + ddy * ddy)
+        let d = 0
+        while (d < len) {
+          const t1 = d / len, t2 = Math.min((d + 2) / len, 1)
+          doc.line(x1 + ddx * t1, y1 + ddy * t1, x1 + ddx * t2, y1 + ddy * t2)
+          d += 3.5
+        }
+      } else {
+        doc.line(cx + planetR * Math.cos(a1), cy + planetR * Math.sin(a1),
+                 cx + planetR * Math.cos(a2), cy + planetR * Math.sin(a2))
+      }
     }
 
-    // ─── Natal planet dots + labels ───
-    for (const planet of wheelData.planets) {
+    // ─── Planet positions with halo glow + full name labels ───
+    const sortedPlanets = [...wheelData.planets].sort((a, b) => a.eclipticLon - b.eclipticLon)
+    for (let pi = 0; pi < sortedPlanets.length; pi++) {
+      const planet = sortedPlanets[pi]
       const ang = (planet.eclipticLon - 90) * Math.PI / 180
-      const px = cx + planetR * Math.cos(ang)
-      const py = cy + planetR * Math.sin(ang)
+      // Collision avoidance — offset radially if another planet within 8°
+      let rOff = 0
+      for (let pj = 0; pj < sortedPlanets.length; pj++) {
+        if (pi === pj) continue
+        const diff = Math.abs(planet.eclipticLon - sortedPlanets[pj].eclipticLon)
+        if (Math.min(diff, 360 - diff) < 8) { rOff = (pi % 2 === 0) ? 3 : -3; break }
+      }
+      const r = planetR + rOff
+      const px = cx + r * Math.cos(ang), py = cy + r * Math.sin(ang)
       const pColor = PLANET_RGB[planet.name] || P.gold
-      const abbr = PLANET_ABBREV[planet.name] || planet.name.substring(0, 2)
 
-      // Planet dot
+      // Halo glow (soft circle in planet colour)
       doc.setFillColor(...pColor)
-      doc.setGState(doc.GState({ opacity: 0.85 }))
-      doc.circle(px, py, 1.3, 'F')
+      doc.setGState(doc.GState({ opacity: 0.18 }))
+      doc.circle(px, py, 3.5, 'F')
+      // Solid planet dot
+      doc.setGState(doc.GState({ opacity: 0.9 }))
+      doc.circle(px, py, 2, 'F')
+      // Abbreviation inside dot
+      doc.setTextColor(...P.white)
+      doc.setGState(doc.GState({ opacity: 1 }))
+      setBody(doc, f, 5, true)
+      const abbr = PLANET_ABBREV[planet.name] || planet.name.substring(0, 2)
+      const atw = doc.getTextWidth(abbr)
+      doc.text(abbr, px - atw / 2, py + 1.2)
 
-      // Label (offset outward slightly)
-      const labelR = planetR + 3
-      const lx = cx + labelR * Math.cos(ang)
-      const ly = cy + labelR * Math.sin(ang)
+      // Full planet name label (offset outward)
+      const labelR2 = r + 5.5
+      const lx = cx + labelR2 * Math.cos(ang)
+      const ly = cy + labelR2 * Math.sin(ang)
       doc.setTextColor(...pColor)
       doc.setGState(doc.GState({ opacity: 0.7 }))
-      setBody(doc, f, 4.5, true)
-      const tw = doc.getTextWidth(abbr)
-      doc.text(abbr, lx - tw / 2, ly + 1)
+      setBody(doc, f, 5.5)
+      const nw = doc.getTextWidth(planet.name)
+      doc.text(planet.name, lx - nw / 2, ly + 1.2)
     }
   } else {
     // Fallback: decorative dots when no birth data
     doc.setGState(doc.GState({ opacity: 0.2 }))
     doc.setFillColor(...P.gold)
     const rng = (seed: number) => { const x = Math.sin(seed) * 10000; return x - Math.floor(x) }
-    const planetAngles = [15, 67, 112, 148, 195, 238, 280, 320]
-    for (let i = 0; i < planetAngles.length; i++) {
-      const ang = planetAngles[i] * Math.PI / 180
-      const pr = (wr - 14) * (0.3 + rng(i * 73 + 11) * 0.6)
-      doc.circle(cx + pr * Math.cos(ang), cy + pr * Math.sin(ang), 0.6 + rng(i * 37) * 0.5, 'F')
+    const fallbackAngles = [15, 67, 112, 148, 195, 238, 280, 320]
+    for (let i = 0; i < fallbackAngles.length; i++) {
+      const ang = fallbackAngles[i] * Math.PI / 180
+      const pr = innerR * (0.3 + rng(i * 73 + 11) * 0.6)
+      doc.circle(cx + pr * Math.cos(ang), cy + pr * Math.sin(ang), 0.8 + rng(i * 37) * 0.6, 'F')
     }
   }
 
-  // Centre label
-  doc.setGState(doc.GState({ opacity: 0.35 }))
+  // Centre — star dot + birth date at the heart of the chart
+  doc.setGState(doc.GState({ opacity: 0.5 }))
   doc.setFillColor(...P.gold)
-  doc.circle(cx, cy, 1.2, 'F')
+  doc.circle(cx, cy, 1.5, 'F')
   doc.setGState(doc.GState({ opacity: 1 }))
+  if (birthDate) {
+    doc.setTextColor(...P.gold)
+    doc.setGState(doc.GState({ opacity: 0.55 }))
+    setBody(doc, f, 5.5)
+    const bdW = doc.getTextWidth(birthDate)
+    doc.text(birthDate, cx - bdW / 2, cy + 4.5)
+    doc.setGState(doc.GState({ opacity: 1 }))
+  }
 
   // ─── Title block ───
-  let y = 152
+  let y = 155
 
   doc.setTextColor(...P.navy)
   setDisplay(doc, f, 32, 'bold')
@@ -653,46 +713,70 @@ function drawIntroPage(
   y = wrapDraw(doc, tr('introMethod', lang), ML, y, CW, 4.5)
   y += 4
 
-  // ─── Your Natal Blueprint ───
+  // ─── Your Natal Blueprint — styled card ───
   if (natalPlacements && natalPlacements.length > 0) {
     y += 4
     goldLine(doc, y, 40)
     y += 8
 
+    // Card background with subtle border
+    const cardTop = y - 4
+    const cardH = 10 + natalPlacements.length * 6 + (birthTime ? 0 : 8) + 8
+    doc.setFillColor(...P.gold)
+    doc.setGState(doc.GState({ opacity: 0.04 }))
+    doc.roundedRect(ML, cardTop, CW, cardH, 3, 3, 'F')
+    doc.setGState(doc.GState({ opacity: 0.2 }))
+    doc.setDrawColor(...P.gold)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(ML, cardTop, CW, cardH, 3, 3, 'S')
+    doc.setGState(doc.GState({ opacity: 1 }))
+
     doc.setTextColor(...P.gold)
     setDisplay(doc, f, 14, 'normal')
-    doc.text(lang === 'lt' ? 'Jusu Gimimo Planas' : 'Your Natal Blueprint', ML, y)
+    doc.text(lang === 'lt' ? 'Jusu Gimimo Planas' : 'Your Natal Blueprint', ML + 6, y)
     y += 7
 
-    // Birth data line
+    // Born: line
     doc.setTextColor(...P.grey)
     setBody(doc, f, 9)
-    let birthInfo = birthDate || ''
-    if (birthTime) birthInfo += `  |  ${birthTime}`
-    if (birthInfo) {
-      doc.text(birthInfo, ML, y)
-      y += 5
+    let bornLine = lang === 'lt' ? 'Gimimo data: ' : 'Born: '
+    bornLine += birthDate || ''
+    if (birthTime) bornLine += `  ·  ${birthTime}`
+    doc.text(bornLine, ML + 6, y)
+    y += 6
+
+    // Element colour map for sign names
+    const signElemMap: Record<string, RGB> = {
+      Aries: ELEMENT_RGB[0], Leo: ELEMENT_RGB[0], Sagittarius: ELEMENT_RGB[0],
+      Taurus: ELEMENT_RGB[1], Virgo: ELEMENT_RGB[1], Capricorn: ELEMENT_RGB[1],
+      Gemini: ELEMENT_RGB[2], Libra: ELEMENT_RGB[2], Aquarius: ELEMENT_RGB[2],
+      Cancer: ELEMENT_RGB[3], Scorpio: ELEMENT_RGB[3], Pisces: ELEMENT_RGB[3],
     }
 
-    // Natal placements table
+    // Natal placements with planet + element colours
     for (const p of natalPlacements) {
-      doc.setTextColor(...P.navy)
-      setBody(doc, f, 9, true)
-      doc.text(p.name, ML + 2, y)
+      const pColor = PLANET_RGB[p.name] || P.navy
+      const sColor = signElemMap[p.sign] || P.grey
 
-      doc.setTextColor(...P.grey)
-      setBody(doc, f, 9)
+      // Planet name in planet colour
+      doc.setTextColor(...pColor)
+      setBody(doc, f, 9.5, true)
+      doc.text(p.name, ML + 8, y)
+
+      // Sign name in element colour + degree
+      doc.setTextColor(...sColor)
+      setBody(doc, f, 9.5)
       const degMin = Math.floor(p.degree)
       const arcMin = Math.round((p.degree - degMin) * 60)
-      doc.text(`${p.sign} ${degMin}°${String(arcMin).padStart(2, '0')}'`, ML + 30, y)
-      y += 5
+      doc.text(`${p.sign} ${degMin}°${String(arcMin).padStart(2, '0')}'`, ML + 35, y)
+      y += 6
     }
 
     if (!birthTime) {
-      y += 2
+      y += 1
       doc.setTextColor(...P.mutedGrey)
       setBody(doc, f, 7.5)
-      doc.text(lang === 'lt' ? 'Ascendentas reikalauja tikslaus gimimo laiko.' : 'Ascendant requires exact birth time.', ML, y)
+      doc.text(lang === 'lt' ? 'Ascendentas reikalauja tikslaus gimimo laiko.' : 'Ascendant requires exact birth time.', ML + 6, y)
       y += 4
     }
     y += 4
@@ -765,30 +849,36 @@ function drawYearGlance(
   doc.text(tr('impactTimeline', lang), ML, y)
   y += 7
 
-  // Bar chart — 12 bars
+  // Bar chart — 12 bars with score-based colour coding
   const barH = 40
   const barAreaW = CW
   const segW = barAreaW / 12
+  const barW = segW - 4 // consistent bar width with gaps
 
-  // Find max score for proportional heights
-  const maxScore = Math.max(...months.map(m => m.overall_score), 1)
+  // Score-based colour: 5-6 sage green, 7 amber, 8 orange, 9-10 rich purple
+  function getBarRGB(score: number): RGB {
+    if (score <= 6) return [107, 203, 119]  // sage green #6BCB77
+    if (score <= 7) return [245, 176, 65]   // warm amber #F5B041
+    if (score <= 8) return [232, 144, 58]   // warm orange #E8903A
+    return [155, 89, 182]                    // rich purple #9B59B6
+  }
 
   for (let i = 0; i < months.length; i++) {
     const m = months[i]
     const score = m.overall_score
     const h = (score / 10) * barH
-    const color = getImpactRGB(score)
+    const color = getBarRGB(score)
 
-    // Bar
+    // Bar with rounded corners
     doc.setFillColor(...color)
-    doc.roundedRect(ML + i * segW + 1, y + barH - h, segW - 2, h, 1, 1, 'F')
+    doc.roundedRect(ML + i * segW + (segW - barW) / 2, y + barH - h, barW, h, 1, 1, 'F')
 
-    // Score inside bar
-    doc.setTextColor(...P.white)
+    // Score number ABOVE bar
+    doc.setTextColor(...color)
     setBody(doc, f, 7, true)
     const numTxt = String(score)
     const nw = doc.getTextWidth(numTxt)
-    doc.text(numTxt, ML + i * segW + segW / 2 - nw / 2, y + barH - h + 5)
+    doc.text(numTxt, ML + i * segW + segW / 2 - nw / 2, y + barH - h - 2)
   }
   y += barH + 3
 
@@ -914,11 +1004,13 @@ function drawMonthPage(
     const reading = month[cat]
     if (!reading) continue
 
-    // Check if we need a new page
-    if (needsNewPage(doc, y, 45)) {
+    // Check if we need a new page — keep header + body together
+    if (needsNewPage(doc, y, 50)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
+      doc.setFillColor(...P.paperRGB)
+      doc.rect(0, 0, PW, PH, 'F')
       y = MT
     }
 
@@ -993,7 +1085,7 @@ function drawMonthPage(
       doc.setTextColor(...P.navy)
       setBody(doc, f, 8.5)
       doc.text(sanitizeForPDF(month.month_sonic_focus), ML + 4 + labelW, y, { maxWidth: CW - 8 - labelW })
-      y += 6
+      y += 12 // 12pt clear spacing after Focus Frequency
     }
 
     // Category sonic prescriptions
@@ -1010,11 +1102,12 @@ function drawMonthPage(
         y = MT
       }
 
+      y += 3 // 8pt spacing above each per-area prescription header (3 + 5 from label)
       const rgb = CAT_RGB[cat]
       doc.setTextColor(...rgb)
       setBody(doc, f, 7.5, true)
       doc.text(catLabel(cat, lang).toUpperCase(), ML + 4, y)
-      y += 4
+      y += 5
 
       doc.setTextColor(...P.grey)
       setDisplayItalic(doc, f, 9)
@@ -1024,9 +1117,9 @@ function drawMonthPage(
     y += 2
   }
 
-  // Month synthesis
+  // Month synthesis + affirmation — keep together
   if (month.month_synthesis) {
-    if (needsNewPage(doc, y, 25)) {
+    if (needsNewPage(doc, y, 55)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -1060,9 +1153,14 @@ function drawMonthPage(
     doc.setGState(doc.GState({ opacity: 1 }))
   }
 
-  // ─── Monthly Affirmation — centred pull quote ───
+  // ─── Monthly Affirmation — centred pull quote (complete, never truncated) ───
   if (month.affirmation) {
-    if (needsNewPage(doc, y, 30)) {
+    // Ensure affirmation fits — push to next page if needed
+    setDisplayItalic(doc, f, 12)
+    const affLines = doc.splitTextToSize(sanitizeForPDF(month.affirmation), CW - 24)
+    const affTotalH = affLines.length * 6.5 + 20
+
+    if (needsNewPage(doc, y, affTotalH)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -1074,9 +1172,7 @@ function drawMonthPage(
     y += 8
 
     // Subtle background tint for affirmation
-    setDisplayItalic(doc, f, 12)
-    const affLines = doc.splitTextToSize(sanitizeForPDF(month.affirmation), CW - 24)
-    const affH = Math.min(affLines.length, 2) * 6.5 + 10
+    const affH = affLines.length * 6.5 + 10
     doc.setFillColor(...P.gold)
     doc.setGState(doc.GState({ opacity: 0.04 }))
     doc.roundedRect(ML + 8, y - 4, CW - 16, affH, 3, 3, 'F')
@@ -1087,8 +1183,8 @@ function drawMonthPage(
 
     doc.setTextColor(...P.navy)
     setDisplayItalic(doc, f, 12)
-    // Max 2 lines — affirmations should be memorisable
-    for (const line of affLines.slice(0, 2)) {
+    // Render ALL lines — never truncate the affirmation
+    for (const line of affLines) {
       const lw = doc.getTextWidth(line)
       doc.text(line, PW / 2 - lw / 2, y)
       y += 6.5
@@ -1208,7 +1304,11 @@ function drawClosingPage(
   y += 8
 
   for (const m of months) {
-    if (needsNewPage(doc, y, 14)) {
+    // Estimate height: month name line + summary paragraph (up to ~3 wrapped lines)
+    const firstSentence = m.opening.split(/[.!?]/)[0]?.trim()
+    const estH = 18
+
+    if (needsNewPage(doc, y, estH)) {
       pageFooter(doc, f, pageNum, clientName, lang)
       doc.addPage()
       pageNum++
@@ -1217,21 +1317,22 @@ function drawClosingPage(
       y = MT
     }
 
+    // Impact dot + bold month name on its own line
     doc.setFillColor(...getImpactRGB(m.overall_score))
     doc.circle(ML + 3, y + 0.5, 2, 'F')
 
     doc.setTextColor(...P.navy)
-    setBody(doc, f, 10, true)
+    setBody(doc, f, 10.5, true)
     doc.text(m.month, ML + 9, y + 2)
+    y += 6
 
-    // Extract first sentence of opening as key theme summary
-    const firstSentence = m.opening.split(/[.!?]/)[0]?.trim()
+    // Summary paragraph below with 4pt indent
     if (firstSentence) {
       doc.setTextColor(...P.grey)
       setBody(doc, f, 9)
-      doc.text(sanitizeForPDF(`${firstSentence}.`), ML + 9, y + 7, { maxWidth: CW - 12 })
+      y = wrapDraw(doc, `${firstSentence}.`, ML + 13, y, CW - 16, 4.2)
     }
-    y += 13
+    y += 12 // 12pt vertical spacing between entries
   }
 
   // Growth trajectory as final reflection
@@ -1767,37 +1868,56 @@ function drawSonicToolkit(
   doc.text(tr('sonicFrequencies', lang), ML, y)
   y += 7
 
-  // Compact table: Planet | Hz | Note | Chakra
-  // Table header
+  // Frequency table: Planet | Hz | Note | Chakra | Instrument
+  // Column positions (wider instrument column)
+  const colX = { planet: ML + 2, hz: ML + 26, note: ML + 50, chakra: ML + 64, inst: ML + 94 }
+
+  // Table header with background
+  doc.setFillColor(...P.gold)
+  doc.setGState(doc.GState({ opacity: 0.1 }))
+  doc.roundedRect(ML, y - 3, CW, 5, 1, 1, 'F')
+  doc.setGState(doc.GState({ opacity: 1 }))
+
   doc.setTextColor(...P.gold)
   setBody(doc, f, 7.5, true)
-  doc.text('Planet', ML + 2, y)
-  doc.text('Frequency', ML + 28, y)
-  doc.text('Note', ML + 55, y)
-  doc.text('Chakra', ML + 70, y)
-  doc.text('Instrument', ML + 100, y)
+  doc.text('Planet', colX.planet, y)
+  doc.text('Frequency', colX.hz, y)
+  doc.text('Note', colX.note, y)
+  doc.text('Chakra', colX.chakra, y)
+  doc.text('Instrument', colX.inst, y)
   y += 2
   goldLineFull(doc, y)
   y += 4
 
-  for (const p of toolkit.primaryPlanets) {
-    doc.setTextColor(...P.navy)
+  for (let ri = 0; ri < toolkit.primaryPlanets.length; ri++) {
+    const p = toolkit.primaryPlanets[ri]
+
+    // Alternating row shading
+    if (ri % 2 === 1) {
+      doc.setFillColor(...P.navy)
+      doc.setGState(doc.GState({ opacity: 0.03 }))
+      doc.rect(ML, y - 3.5, CW, 5.5, 'F')
+      doc.setGState(doc.GState({ opacity: 1 }))
+    }
+
+    const pColor = PLANET_RGB[p.planet] || P.navy
+    doc.setTextColor(...pColor)
     setBody(doc, f, 8, true)
-    doc.text(p.planet, ML + 2, y)
+    doc.text(p.planet, colX.planet, y)
 
     doc.setTextColor(...P.gold)
     setBody(doc, f, 8.5, true)
-    doc.text(`${p.hz} Hz`, ML + 28, y)
+    doc.text(`${p.hz} Hz`, colX.hz, y)
 
     doc.setTextColor(...P.grey)
     setBody(doc, f, 8)
-    doc.text(p.note, ML + 55, y)
-    doc.text(p.chakra, ML + 70, y)
+    doc.text(p.note, colX.note, y)
+    doc.text(p.chakra, colX.chakra, y)
 
-    // Truncate instrument to fit
+    // Instrument — wider column with truncation at 35 chars
     setBody(doc, f, 7)
-    const instShort = p.instrument.length > 30 ? p.instrument.substring(0, 28) + '...' : p.instrument
-    doc.text(instShort, ML + 100, y)
+    const instShort = p.instrument.length > 35 ? p.instrument.substring(0, 33) + '...' : p.instrument
+    doc.text(instShort, colX.inst, y)
     y += 5.5
   }
 
