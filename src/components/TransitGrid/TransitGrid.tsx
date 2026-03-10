@@ -7,9 +7,41 @@ import TransitCard from './TransitCard'
 import OverviewCard from './OverviewCard'
 import { useTranslation } from '@/i18n/useTranslation'
 
+/* ── Impact color: green → amber → red ── */
+function lerpColor(
+  r1: number, g1: number, b1: number,
+  r2: number, g2: number, b2: number,
+  t: number,
+): string {
+  const r = Math.round(r1 + (r2 - r1) * t)
+  const g = Math.round(g1 + (g2 - g1) * t)
+  const b = Math.round(b1 + (b2 - b1) * t)
+  return `rgb(${r},${g},${b})`
+}
+
 function getImpactColor(score: number): string {
-  const hue = 120 - ((score - 1) / 9) * 120
-  return `hsl(${hue}, 80%, 50%)`
+  // 1-3 green #2D8E4E, 4-6 amber #D4960F, 7-10 red #C44536
+  if (score <= 3) {
+    const t = (score - 1) / 2
+    return lerpColor(0x2D, 0x8E, 0x4E, 0xD4, 0x96, 0x0F, t)
+  }
+  if (score <= 6) {
+    const t = (score - 4) / 2
+    return lerpColor(0xD4, 0x96, 0x0F, 0xC4, 0x45, 0x36, t)
+  }
+  // 7-10: stay red
+  const t = (score - 7) / 3
+  return lerpColor(0xC4, 0x45, 0x36, 0x9E, 0x2A, 0x22, t)
+}
+
+/* ── Category colors ── */
+const CATEGORY_COLORS: Record<CategoryKey | 'monthly_summary', string> = {
+  finance: '#9B7D2E',
+  relationships: '#B85C6F',
+  career: '#3A5088',
+  health: '#2A7B52',
+  spiritual: '#6B4D8A',
+  monthly_summary: '#7A6F5E',
 }
 
 const CATEGORY_LABELS: Record<CategoryKey | 'monthly_summary', { en: string; lt: string }> = {
@@ -18,7 +50,7 @@ const CATEGORY_LABELS: Record<CategoryKey | 'monthly_summary', { en: string; lt:
   career: { en: 'Career & Purpose', lt: 'Karjera ir Paskirtis' },
   health: { en: 'Health & Wellbeing', lt: 'Sveikata ir Gerovė' },
   spiritual: { en: 'Spiritual Growth', lt: 'Dvasinis Augimas' },
-  monthly_summary: { en: 'Monthly Summary', lt: 'Mėnesio Santrauka' },
+  monthly_summary: { en: 'Monthly Summary', lt: 'Menesio Santrauka' },
 }
 
 interface TransitGridProps {
@@ -62,87 +94,143 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
   }, [months])
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-x-auto" style={{ background: '#FAF9F6' }}>
       <div
-        className="grid gap-2 min-w-[1600px]"
+        className="grid min-w-[1600px]"
         style={{
           gridTemplateColumns: '140px repeat(6, 1fr)',
-          gridTemplateRows: 'auto',
+          gap: '12px',
+          padding: '16px',
         }}
       >
-        {/* Empty top-left cell */}
+        {/* ── Empty top-left cell ── */}
         <div />
 
-        {/* Column headers */}
+        {/* ── Column headers ── */}
         {allCategories.map((cat) => {
           const avg = columnAverages[cat]
-          const color = avg > 0 ? getImpactColor(avg) : 'rgba(255,255,255,0.3)'
+          const catColor = CATEGORY_COLORS[cat]
+          const impactColor = avg > 0 ? getImpactColor(avg) : '#AAA'
+          const isSummaryCol = cat === 'monthly_summary'
+
           return (
             <div
               key={cat}
-              className="p-3 rounded-xl border text-center sticky top-0 z-10"
+              className="rounded-xl text-center relative"
               style={{
-                background: 'rgba(13,13,26,0.95)',
-                borderColor: avg > 0 ? `${color}33` : 'rgba(255,255,255,0.05)',
-                backdropFilter: 'blur(8px)',
+                background: isSummaryCol
+                  ? 'linear-gradient(180deg, rgba(155,125,46,0.03) 0%, #FFFFFF 20%)'
+                  : '#FFFFFF',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                borderTop: `3px solid ${catColor}`,
+                padding: '16px 12px 14px',
               }}
             >
-              <div className="text-sm mb-1">{CATEGORY_ICONS[cat]}</div>
-              <div className="text-[11px] font-medium text-white/70 mb-1">
-                {CATEGORY_LABELS[cat][lang]}
+              {/* Category icon + name */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px' }}>{CATEGORY_ICONS[cat]}</span>
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: catColor,
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  {CATEGORY_LABELS[cat][lang]}
+                </span>
               </div>
-              {avg > 0 && (
+
+              {/* Yearly average score */}
+              {avg > 0 ? (
                 <div
-                  className="text-[10px] font-bold mx-auto w-fit px-2 py-0.5 rounded-full"
-                  style={{ background: `${color}22`, color }}
+                  style={{
+                    fontSize: '28px',
+                    fontWeight: 700,
+                    color: impactColor,
+                    lineHeight: 1.1,
+                  }}
                 >
                   {avg}
                 </div>
+              ) : (
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#D0CEC8', lineHeight: 1.1 }}>
+                  --
+                </div>
               )}
+
+              <div style={{ fontSize: '10px', color: '#6B6880', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {lang === 'lt' ? 'Metinis vid.' : 'Yearly Avg'}
+              </div>
             </div>
           )
         })}
 
-        {/* Month rows */}
+        {/* ── Month rows ── */}
         {monthLabels.map((label, rowIdx) => {
           const monthData = months[rowIdx]
           const rowAvg = rowAverages[rowIdx]
-          const rowColor = rowAvg > 0 ? getImpactColor(rowAvg) : 'rgba(255,255,255,0.3)'
+          const rowImpactColor = rowAvg > 0 ? getImpactColor(rowAvg) : '#AAA'
           const isLoadingRow = !monthData && loading
           const rowError = monthErrors?.[rowIdx] ?? null
           const isRetrying = currentMonth === rowIdx && !loading
 
           return (
             <div key={label} className="contents">
-              {/* Row header (month label) */}
+              {/* Row header (month label) — sticky left */}
               <div
-                className="p-3 rounded-xl border flex flex-col justify-center sticky left-0 z-10"
+                className="rounded-xl flex flex-col justify-center"
                 style={{
-                  background: rowError
-                    ? 'rgba(248,113,113,0.04)'
-                    : 'rgba(13,13,26,0.95)',
-                  borderColor: rowError
-                    ? 'rgba(248,113,113,0.2)'
-                    : rowAvg > 0 ? `${rowColor}33` : 'rgba(255,255,255,0.05)',
-                  backdropFilter: 'blur(8px)',
+                  background: rowError ? '#FFF5F5' : '#F2F0EC',
+                  padding: '14px 12px',
+                  position: 'sticky',
+                  left: 0,
+                  zIndex: 10,
+                  borderLeft: rowError ? '3px solid #E5A0A0' : 'none',
                 }}
               >
-                <div className="text-xs font-medium text-white/70">{label}</div>
+                <div
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#1A1A2E',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {label}
+                </div>
+
                 {rowAvg > 0 && (
                   <div
-                    className="text-[10px] font-bold mt-1 w-fit px-2 py-0.5 rounded-full"
-                    style={{ background: `${rowColor}22`, color: rowColor }}
+                    style={{
+                      fontSize: '24px',
+                      fontWeight: 700,
+                      color: rowImpactColor,
+                      lineHeight: 1.1,
+                      marginTop: '4px',
+                    }}
                   >
                     {rowAvg}
                   </div>
                 )}
+
                 {rowError && onRetryMonth && (
                   <button
                     onClick={() => onRetryMonth(rowIdx)}
                     disabled={isRetrying}
-                    className="mt-1.5 text-[9px] text-red-400/80 hover:text-red-300 cursor-pointer disabled:opacity-40"
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '11px',
+                      color: '#C44536',
+                      background: 'none',
+                      border: 'none',
+                      cursor: isRetrying ? 'default' : 'pointer',
+                      opacity: isRetrying ? 0.4 : 0.8,
+                      padding: 0,
+                      textAlign: 'left',
+                    }}
                   >
-                    {isRetrying ? '...' : '↻ Retry'}
+                    {isRetrying ? '...' : '\u21BB Retry'}
                   </button>
                 )}
               </div>
@@ -172,22 +260,32 @@ export default function TransitGrid({ months, overview, monthLabels, loading, co
           )
         })}
 
-        {/* Overview row */}
+        {/* ── Overview row ── */}
         <div className="contents">
           {/* Overview row header */}
           <div
-            className="p-3 rounded-xl border flex flex-col justify-center sticky left-0 z-10"
+            className="rounded-xl flex flex-col justify-center"
             style={{
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(13,13,26,0.95))',
-              borderColor: 'rgba(139,92,246,0.2)',
-              backdropFilter: 'blur(8px)',
+              background: '#F5F3EE',
+              padding: '18px 12px',
+              position: 'sticky',
+              left: 0,
+              zIndex: 10,
+              borderLeft: '3px solid #6B4D8A',
             }}
           >
-            <div className="text-xs font-medium text-white/80">
-              {lang === 'lt' ? '12 Mėnesių Apžvalga' : '12-Month Overview'}
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#1A1A2E',
+                lineHeight: 1.2,
+              }}
+            >
+              {lang === 'lt' ? '12 Menesiu Apzvalga' : '12-Month Overview'}
             </div>
-            <div className="text-[9px] text-white/30 mt-0.5">
-              {lang === 'lt' ? 'Metų sintezė' : 'Year synthesis'}
+            <div style={{ fontSize: '11px', color: '#6B6880', marginTop: '3px' }}>
+              {lang === 'lt' ? 'Metu sinteze' : 'Year synthesis'}
             </div>
           </div>
 

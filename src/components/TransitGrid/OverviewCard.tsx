@@ -5,20 +5,23 @@ import type { OverviewCategory, CategoryKey } from '@/types/transit-grid'
 import { CATEGORY_ICONS } from '@/types/transit-grid'
 import { useTranslation } from '@/i18n/useTranslation'
 
+/* ─── Impact color (bright backgrounds) ─── */
+
 function getImpactColor(score: number): string {
-  const hue = 120 - ((score - 1) / 9) * 120
-  return `hsl(${hue}, 80%, 50%)`
+  if (score <= 3) return '#2D8E4E'
+  if (score <= 6) return '#D4960F'
+  return '#C44536'
 }
 
-function getImpactBg(score: number): string {
-  const hue = 120 - ((score - 1) / 9) * 120
-  return `hsla(${hue}, 80%, 50%, 0.06)`
+function getImpactBgLight(score: number): string {
+  const base = getImpactColor(score)
+  // Return a very light tint of the impact color for pill backgrounds
+  if (score <= 3) return '#E8F5EC'
+  if (score <= 6) return '#FDF3E0'
+  return '#FDEAE8'
 }
 
-function getImpactBorder(score: number): string {
-  const hue = 120 - ((score - 1) / 9) * 120
-  return `hsla(${hue}, 80%, 50%, 0.2)`
-}
+/* ─── Category labels ─── */
 
 const CATEGORY_LABELS: Record<CategoryKey | 'monthly_summary' | 'grand_summary', { en: string; lt: string }> = {
   finance: { en: 'Finance & Abundance', lt: 'Finansai ir Perteklius' },
@@ -30,45 +33,105 @@ const CATEGORY_LABELS: Record<CategoryKey | 'monthly_summary' | 'grand_summary',
   grand_summary: { en: 'Year Overview', lt: 'Metų Apžvalga' },
 }
 
+/* ─── Props ─── */
+
 interface OverviewCardProps {
   data: OverviewCategory | null
   categoryKey: CategoryKey | 'grand_summary'
   isLoading: boolean
 }
 
+/* ═══════════════════════════════════════════
+   OverviewCard
+   ═══════════════════════════════════════════ */
+
 export default function OverviewCard({ data, categoryKey, isLoading }: OverviewCardProps) {
   const [expanded, setExpanded] = useState(false)
   const { lang } = useTranslation()
 
+  /* ─── Skeleton state ─── */
   if (isLoading || !data) {
     return (
       <div
-        className="rounded-xl border p-3 min-h-[140px] animate-pulse"
         style={{
-          background: 'rgba(255,255,255,0.03)',
-          borderColor: 'rgba(255,255,255,0.06)',
+          background: '#FFFFFF',
+          border: '1px solid #E8E6E2',
+          borderRadius: 12,
+          padding: 20,
+          minHeight: 160,
         }}
       >
-        <div className="flex justify-between items-start mb-2">
-          <div className="h-3 w-24 rounded bg-white/5" />
-          <div className="h-6 w-6 rounded-full bg-white/5" />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div
+            style={{
+              height: 14,
+              width: 120,
+              borderRadius: 6,
+              background: '#E8E6E2',
+              animation: 'overviewPulse 1.8s ease-in-out infinite',
+            }}
+          />
+          <div
+            style={{
+              height: 32,
+              width: 32,
+              borderRadius: '50%',
+              background: '#E8E6E2',
+              animation: 'overviewPulse 1.8s ease-in-out infinite',
+              animationDelay: '0.2s',
+            }}
+          />
         </div>
-        <div className="space-y-2 mt-3">
-          <div className="h-2 w-full rounded bg-white/5" />
-          <div className="h-2 w-3/4 rounded bg-white/5" />
-          <div className="h-2 w-1/2 rounded bg-white/5" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+          <div
+            style={{
+              height: 10,
+              width: '100%',
+              borderRadius: 4,
+              background: '#E8E6E2',
+              animation: 'overviewPulse 1.8s ease-in-out infinite',
+              animationDelay: '0.3s',
+            }}
+          />
+          <div
+            style={{
+              height: 10,
+              width: '75%',
+              borderRadius: 4,
+              background: '#E8E6E2',
+              animation: 'overviewPulse 1.8s ease-in-out infinite',
+              animationDelay: '0.4s',
+            }}
+          />
+          <div
+            style={{
+              height: 10,
+              width: '50%',
+              borderRadius: 4,
+              background: '#E8E6E2',
+              animation: 'overviewPulse 1.8s ease-in-out infinite',
+              animationDelay: '0.5s',
+            }}
+          />
         </div>
+        <style>{`
+          @keyframes overviewPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+          }
+        `}</style>
       </div>
     )
   }
 
+  /* ─── Resolved data ─── */
   const score = data.impact_score
   const color = getImpactColor(score)
   const isGrand = categoryKey === 'grand_summary'
   const label = CATEGORY_LABELS[categoryKey]?.[lang] ?? CATEGORY_LABELS[categoryKey]?.en ?? ''
   const icon = isGrand ? '🌟' : CATEGORY_ICONS[categoryKey as CategoryKey]
 
-  // For grand_summary the data shape is different
+  // grand_summary has a slightly different shape
   const dataAny = data as unknown as Record<string, unknown>
   const hasYearTrend = 'year_trend' in dataAny && typeof dataAny.year_trend === 'string'
 
@@ -83,50 +146,111 @@ export default function OverviewCard({ data, categoryKey, isLoading }: OverviewC
     <>
       <div
         onClick={() => setExpanded(true)}
-        className="rounded-xl border p-3 min-h-[140px] cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
         style={{
-          background: getImpactBg(score),
-          borderColor: getImpactBorder(score),
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05)`,
+          background: '#FFFFFF',
+          border: '1px solid #E8E6E2',
+          borderLeft: `3px solid ${color}`,
+          borderRadius: 12,
+          padding: 20,
+          minHeight: 160,
+          cursor: 'pointer',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+          position: 'relative',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-1px)'
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)'
         }}
       >
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-[10px]">{icon}</span>
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-            style={{
-              background: `${color}22`,
-              color: color,
-              border: `1.5px solid ${color}66`,
-            }}
-          >
-            {score}
+        {/* Header row: icon + label on left, score on right */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>{icon}</span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#6B6880',
+              }}
+            >
+              {label}
+            </span>
+          </div>
+
+          {/* Score: top-right, 28pt bold */}
+          <div style={{ textAlign: 'right', lineHeight: 1 }}>
+            <span
+              style={{
+                fontSize: 28,
+                fontWeight: 700,
+                color: color,
+                lineHeight: 1,
+              }}
+            >
+              {score}
+            </span>
+            <div style={{ fontSize: 11, color: '#6B6880', marginTop: 2 }}>/10</div>
           </div>
         </div>
 
-        <p className="text-[11px] leading-[1.4] text-white/70 line-clamp-3 mb-2">
+        {/* Summary text */}
+        <p
+          style={{
+            fontSize: 12,
+            lineHeight: 1.6,
+            color: '#1A1A2E',
+            margin: '0 0 10px 0',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
           {summaryText}
         </p>
 
+        {/* Trajectory badge */}
         {trajectory && (
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-[9px] uppercase tracking-wider text-white/25">Trajectory:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6B6880' }}>
+              Trajectory
+            </span>
             <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-              style={{ background: `${color}15`, color: `${color}cc` }}
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                padding: '3px 10px',
+                borderRadius: 999,
+                background: getImpactBgLight(score),
+                color: color,
+              }}
             >
               {trajectory}
             </span>
           </div>
         )}
 
+        {/* Peak month pills */}
         {peakMonths.length > 0 && (
-          <div className="flex gap-1 flex-wrap mt-1.5">
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {peakMonths.slice(0, 3).map((m, i) => (
               <span
                 key={i}
-                className="text-[9px] px-1.5 py-0.5 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}
+                style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: '#F2F0EC',
+                  color: '#6B6880',
+                  fontWeight: 500,
+                }}
               >
                 {m}
               </span>
@@ -135,6 +259,7 @@ export default function OverviewCard({ data, categoryKey, isLoading }: OverviewC
         )}
       </div>
 
+      {/* Expanded modal */}
       {expanded && (
         <OverviewModal
           data={data}
@@ -148,6 +273,10 @@ export default function OverviewCard({ data, categoryKey, isLoading }: OverviewC
     </>
   )
 }
+
+/* ═══════════════════════════════════════════
+   OverviewModal (bright redesign)
+   ═══════════════════════════════════════════ */
 
 function OverviewModal({
   data, categoryKey, label, icon, color, onClose
@@ -170,90 +299,190 @@ function OverviewModal({
   }, [onClose])
 
   const score = data.impact_score
+  const impactColor = getImpactColor(score)
   const hasYearTrend = 'year_trend' in data
   const hasFullReading = 'full_reading' in data
 
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(0,0,0,0.4)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}
     >
       <div
-        className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border p-6 sm:p-8"
         style={{
-          background: 'rgba(13,13,26,0.95)',
-          borderColor: `${color}33`,
-          boxShadow: `0 0 40px ${color}15`,
+          width: '100%',
+          maxWidth: 640,
+          maxHeight: '85vh',
+          overflowY: 'auto',
+          borderRadius: 16,
+          border: '1px solid #E8E6E2',
+          background: '#FFFFFF',
+          padding: 32,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.06)',
         }}
       >
-        <div className="flex items-start justify-between mb-6">
+        {/* ─── Modal header ─── */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{icon}</span>
-              <h2 className="text-lg font-semibold text-white/90">{label}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 20 }}>{icon}</span>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1A1A2E', margin: 0 }}>{label}</h2>
             </div>
-            <p className="text-sm text-white/40">12-Month Overview</p>
+            <p style={{ fontSize: 13, color: '#6B6880', margin: 0 }}>12-Month Overview</p>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {/* Score circle */}
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold"
               style={{
-                background: `${color}22`,
-                color: color,
-                border: `2px solid ${color}66`,
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#FFFFFF',
+                border: `2.5px solid ${impactColor}`,
               }}
             >
-              {score}
+              <span style={{ fontSize: 18, fontWeight: 700, color: impactColor, lineHeight: 1 }}>{score}</span>
+              <span style={{ fontSize: 9, color: '#6B6880', lineHeight: 1, marginTop: 1 }}>/10</span>
             </div>
+
+            {/* Close button */}
             <button
               onClick={onClose}
-              className="text-white/30 hover:text-white/60 transition-colors text-xl leading-none cursor-pointer"
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 22,
+                lineHeight: 1,
+                color: '#A8A5B5',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: 6,
+                transition: 'color 0.15s ease, background 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#1A1A2E'
+                e.currentTarget.style.background = '#F2F0EC'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#A8A5B5'
+                e.currentTarget.style.background = 'none'
+              }}
             >
               ×
             </button>
           </div>
         </div>
 
-        <div className="space-y-5">
+        {/* ─── Modal body ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Year trend / dominant theme */}
           {hasYearTrend && data.year_trend && (
             <div
-              className="p-4 rounded-xl border"
-              style={{ background: `${color}08`, borderColor: `${color}15` }}
+              style={{
+                padding: 16,
+                borderRadius: 10,
+                background: getImpactBgLight(score),
+                border: `1px solid ${impactColor}20`,
+              }}
             >
-              <p className="text-sm text-white/80 leading-relaxed">{data.year_trend}</p>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: '#1A1A2E', margin: 0 }}>{data.year_trend}</p>
             </div>
           )}
 
+          {/* Full reading */}
           {hasFullReading && data.full_reading && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-white/30 mb-2">Detailed Reading</h3>
-              <p className="text-sm text-white/70 leading-relaxed">{data.full_reading}</p>
+              <h3
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#6B6880',
+                  margin: '0 0 8px 0',
+                }}
+              >
+                Detailed Reading
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: '#1A1A2E', margin: 0 }}>{data.full_reading}</p>
             </div>
           )}
 
+          {/* Trajectory */}
           {data.trajectory && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-white/30 mb-2">Trajectory</h3>
+              <h3
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#6B6880',
+                  margin: '0 0 8px 0',
+                }}
+              >
+                Trajectory
+              </h3>
               <span
-                className="text-sm px-3 py-1 rounded-full inline-block"
-                style={{ background: `${color}15`, color: `${color}cc` }}
+                style={{
+                  display: 'inline-block',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: '5px 14px',
+                  borderRadius: 999,
+                  background: getImpactBgLight(score),
+                  color: impactColor,
+                }}
               >
                 {data.trajectory}
               </span>
             </div>
           )}
 
+          {/* Peak months */}
           {data.peak_months && data.peak_months.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-white/30 mb-2">Peak Months</h3>
-              <div className="flex gap-2 flex-wrap">
+              <h3
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#6B6880',
+                  margin: '0 0 8px 0',
+                }}
+              >
+                Peak Months
+              </h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {data.peak_months.map((m, i) => (
                   <span
                     key={i}
-                    className="text-xs px-3 py-1 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      padding: '5px 14px',
+                      borderRadius: 999,
+                      background: '#F2F0EC',
+                      color: '#1A1A2E',
+                    }}
                   >
                     {m}
                   </span>
@@ -262,10 +491,24 @@ function OverviewModal({
             </div>
           )}
 
+          {/* Key events */}
           {data.key_events && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-white/30 mb-2">Key Events</h3>
-              <p className="text-sm text-white/65 leading-relaxed">{data.key_events}</p>
+              <h3
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#6B6880',
+                  margin: '0 0 8px 0',
+                }}
+              >
+                Key Events
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: '#1A1A2E', opacity: 0.8, margin: 0 }}>
+                {data.key_events}
+              </p>
             </div>
           )}
         </div>

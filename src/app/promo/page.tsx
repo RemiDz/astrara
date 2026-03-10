@@ -76,20 +76,22 @@ function BlueprintModal({
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}
     >
       <div
         className="relative w-full max-w-md mx-4 p-8 rounded-2xl border"
         style={{
-          background: 'linear-gradient(180deg, #0D0D1A 0%, #12122A 100%)',
-          borderColor: 'rgba(196,162,101,0.2)',
+          background: '#FFFFFF',
+          borderColor: '#E8E6E2',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
         }}
       >
         {/* Close button (only when done or error) */}
         {(stage === 'done' || stage === 'error') && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-white/30 hover:text-white/60 text-lg cursor-pointer"
+            className="absolute top-4 right-4 text-lg cursor-pointer"
+            style={{ color: '#6B6880' }}
           >
             ✕
           </button>
@@ -103,18 +105,18 @@ function BlueprintModal({
         {/* Title */}
         <h3
           className="text-center text-lg font-semibold mb-2 tracking-wide"
-          style={{ color: 'rgba(196,162,101,0.9)' }}
+          style={{ color: '#C4A265' }}
         >
           Crafting your Cosmic Blueprint
         </h3>
 
         {/* Stage label */}
-        <p className="text-center text-sm text-white/50 mb-6">
+        <p className="text-center text-sm mb-6" style={{ color: '#6B6880' }}>
           {stageLabels[stage]}
         </p>
 
         {/* Progress bar */}
-        <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: '#E8E6E2' }}>
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{
@@ -125,15 +127,15 @@ function BlueprintModal({
         </div>
 
         {/* Three stage indicators */}
-        <div className="flex justify-between text-[10px] text-white/30 mb-4">
-          <span className={stage === 'transits' ? 'text-white/70' : ''}>Transits</span>
-          <span className={stage === 'narrative' ? 'text-white/70' : ''}>Narrative</span>
-          <span className={stage === 'pdf' || stage === 'done' ? 'text-white/70' : ''}>Design</span>
+        <div className="flex justify-between text-[10px] mb-4" style={{ color: '#6B6880' }}>
+          <span style={stage === 'transits' ? { color: '#1A1A2E', fontWeight: 600 } : undefined}>Transits</span>
+          <span style={stage === 'narrative' ? { color: '#1A1A2E', fontWeight: 600 } : undefined}>Narrative</span>
+          <span style={stage === 'pdf' || stage === 'done' ? { color: '#1A1A2E', fontWeight: 600 } : undefined}>Design</span>
         </div>
 
         {/* Error message */}
         {error && (
-          <p className="text-center text-xs text-red-400/70 mt-2">{error}</p>
+          <p className="text-center text-xs mt-2" style={{ color: '#C44536' }}>{error}</p>
         )}
       </div>
     </div>
@@ -534,7 +536,7 @@ function TransitGridPage() {
     : 0
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'var(--bg-deep, #07070F)' }}>
+    <div className="min-h-screen" style={{ background: '#F8F7F4', color: '#1A1A2E', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       {/* Blueprint Progress Modal */}
       {blueprintLoading && (
         <BlueprintModal
@@ -558,17 +560,16 @@ function TransitGridPage() {
       <div
         className="sticky top-0 z-50 border-b px-4 py-3"
         style={{
-          background: 'rgba(7,7,15,0.9)',
-          borderColor: 'rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(12px)',
+          background: '#FFFFFF',
+          borderColor: '#E8E6E2',
         }}
       >
         <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <h1 className="font-[family-name:var(--font-display)] text-lg sm:text-xl font-semibold tracking-wide text-white/90">
-              <span className="text-white/25 mr-1.5">✦</span>
+            <h1 className="font-[family-name:var(--font-display)] text-lg sm:text-xl font-semibold tracking-wide" style={{ color: '#1A1A2E' }}>
+              <span style={{ color: '#6B6880' }} className="mr-1.5">✦</span>
               ASTRARA
-              <span className="text-white/30 font-normal ml-2">
+              <span className="font-normal ml-2" style={{ color: '#6B6880' }}>
                 {t('grid.title')}
               </span>
             </h1>
@@ -581,22 +582,22 @@ function TransitGridPage() {
               placeholder={t('grid.clientName')}
               value={clientName}
               onChange={e => setClientName(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 placeholder-white/20 outline-none focus:border-white/20 w-32"
-              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+              className="text-xs px-3 py-1.5 rounded-lg border outline-none w-32"
+              style={{ borderColor: '#E8E6E2', background: '#FFFFFF', color: '#1A1A2E' }}
             />
             <input
               type="date"
               value={birthDate}
               onChange={e => setBirthDate(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 outline-none focus:border-white/20"
-              style={{ borderColor: 'rgba(255,255,255,0.08)', colorScheme: 'dark' }}
+              className="text-xs px-3 py-1.5 rounded-lg border outline-none"
+              style={{ borderColor: '#E8E6E2', background: '#FFFFFF', color: '#1A1A2E', colorScheme: 'light' }}
             />
             <input
               type="time"
               value={birthTime}
               onChange={e => setBirthTime(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border bg-transparent text-white/70 outline-none focus:border-white/20"
-              style={{ borderColor: 'rgba(255,255,255,0.08)', colorScheme: 'dark' }}
+              className="text-xs px-3 py-1.5 rounded-lg border outline-none"
+              style={{ borderColor: '#E8E6E2', background: '#FFFFFF', color: '#1A1A2E', colorScheme: 'light' }}
             />
 
             <LanguageToggle />
@@ -608,15 +609,15 @@ function TransitGridPage() {
               className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: loading
-                  ? 'rgba(139,92,246,0.1)'
-                  : 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(139,92,246,0.15))',
-                border: '1px solid rgba(139,92,246,0.3)',
-                color: 'rgba(255,255,255,0.85)',
+                  ? 'rgba(123,94,167,0.08)'
+                  : '#7B5EA7',
+                border: '1px solid #7B5EA7',
+                color: loading ? '#7B5EA7' : '#FFFFFF',
               }}
             >
               {loading || overviewLoading ? (
                 <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  <span className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(123,94,167,0.2)', borderTopColor: '#7B5EA7' }} />
                   {completedCount > 0 ? `${completedCount}/12` : t('grid.generating')}
                 </span>
               ) : hasData ? (
@@ -632,12 +633,9 @@ function TransitGridPage() {
               disabled={blueprintLoading}
               className="px-4 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-all cursor-pointer active:scale-[0.97] disabled:cursor-not-allowed"
               style={{
-                background: blueprintLoading
-                  ? 'rgba(196,162,101,0.08)'
-                  : 'linear-gradient(135deg, rgba(196,162,101,0.15), rgba(196,162,101,0.05))',
-                border: '1px solid rgba(196,162,101,0.4)',
-                color: 'rgba(196,162,101,0.9)',
-                backdropFilter: 'blur(8px)',
+                background: blueprintLoading ? 'rgba(196,162,101,0.06)' : 'transparent',
+                border: '1px solid #C4A265',
+                color: '#C4A265',
                 opacity: blueprintLoading ? 0.7 : 1,
               }}
             >
@@ -664,16 +662,16 @@ function TransitGridPage() {
         {(loading || overviewLoading) && (
           <div className="max-w-[1800px] mx-auto mt-2">
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E6E2' }}>
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{
                     width: `${progressPct}%`,
-                    background: 'linear-gradient(90deg, #8B5CF6, #A78BFA)',
+                    background: 'linear-gradient(90deg, #7B5EA7, #9B7DC7)',
                   }}
                 />
               </div>
-              <span className="text-[10px] text-white/40 whitespace-nowrap">
+              <span className="text-[10px] whitespace-nowrap" style={{ color: '#6B6880' }}>
                 {currentMonth !== null && !overviewLoading
                   ? `${monthLabels[currentMonth]} (${completedCount + 1}/13)`
                   : overviewLoading
@@ -688,7 +686,7 @@ function TransitGridPage() {
         {/* Generation complete summary */}
         {generationDone && !loading && !overviewLoading && (
           <div className="max-w-[1800px] mx-auto mt-2">
-            <span className="text-[10px] text-white/30">
+            <span className="text-[10px]" style={{ color: '#6B6880' }}>
               {months.filter(m => m !== null).length}/12 months + {overview ? '1' : '0'} overview generated
             </span>
           </div>
@@ -697,7 +695,7 @@ function TransitGridPage() {
         {/* Language mismatch warning */}
         {isLangMismatch && !loading && (
           <div className="max-w-[1800px] mx-auto mt-2">
-            <div className="flex items-center gap-2 text-[10px] text-amber-400/60">
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#D4960F' }}>
               <span>⚠</span>
               <span>{t('grid.langMismatch')}</span>
             </div>
@@ -709,14 +707,14 @@ function TransitGridPage() {
       <div className="max-w-[1800px] mx-auto px-4 py-6">
         {!hasData && !loading && (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="text-4xl mb-4 opacity-30">✦</div>
-            <h2 className="text-lg text-white/50 mb-2">
+            <div className="text-4xl mb-4" style={{ color: '#E8E6E2' }}>✦</div>
+            <h2 className="text-lg mb-2" style={{ color: '#6B6880' }}>
               {t('grid.emptyTitle')}
             </h2>
-            <p className="text-sm text-white/25 max-w-md mb-6">
+            <p className="text-sm max-w-md mb-6" style={{ color: '#9994AD' }}>
               {t('grid.emptyDesc')}
             </p>
-            <p className="text-xs text-white/15">
+            <p className="text-xs" style={{ color: '#C4C0D0' }}>
               {t('grid.emptyHint')}
             </p>
           </div>
@@ -727,12 +725,12 @@ function TransitGridPage() {
             {/* Client name display */}
             {clientName && (
               <div className="mb-4">
-                <span className="text-xs text-white/30">
+                <span className="text-xs" style={{ color: '#6B6880' }}>
                   {t('grid.readingFor')}
                 </span>
-                <span className="text-sm text-white/60 ml-2">{clientName}</span>
+                <span className="text-sm ml-2" style={{ color: '#1A1A2E' }}>{clientName}</span>
                 {birthDate && (
-                  <span className="text-xs text-white/25 ml-3">
+                  <span className="text-xs ml-3" style={{ color: '#6B6880' }}>
                     ({birthDate}{birthTime ? ` ${birthTime}` : ''})
                   </span>
                 )}
@@ -755,17 +753,17 @@ function TransitGridPage() {
         )}
 
         {error && (
-          <div className="mt-4 p-4 rounded-xl border text-center" style={{ background: 'rgba(248,113,113,0.05)', borderColor: 'rgba(248,113,113,0.2)' }}>
-            <p className="text-sm text-red-400/70">{error}</p>
+          <div className="mt-4 p-4 rounded-xl border text-center" style={{ background: 'rgba(196,69,54,0.04)', borderColor: 'rgba(196,69,54,0.15)' }}>
+            <p className="text-sm" style={{ color: '#C44536' }}>{error}</p>
           </div>
         )}
       </div>
 
-      {/* Pulse glow keyframe */}
+      {/* Allow text selection on this page */}
       <style jsx global>{`
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.5; }
+        .allow-select, .allow-select * {
+          user-select: text !important;
+          -webkit-user-select: text !important;
         }
       `}</style>
     </div>
