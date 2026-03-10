@@ -111,10 +111,21 @@ export function layoutPlanetLabels(
         if (angleDiff > 180) angleDiff = 360 - angleDiff
         const displaced = angleDiff > 1.5
 
-        // Alternate radial offset within cluster for additional separation
-        const radialOffset = cluster.length > 2
-          ? (ci % 2 === 0 ? -defaultRadius * 0.08 : defaultRadius * 0.08)
-          : (ci === 0 ? -defaultRadius * 0.05 : defaultRadius * 0.05)
+        // Determine tightest gap to a neighbour within cluster
+        const prevGap = ci > 0 ? Math.abs(normalizedLons[ci] - normalizedLons[ci - 1]) : Infinity
+        const nextGap = ci < cluster.length - 1 ? Math.abs(normalizedLons[ci + 1] - normalizedLons[ci]) : Infinity
+        const tightest = Math.min(prevGap, nextGap)
+
+        // Aggressive radial offset — stronger for very tight pairs
+        let radialOffset: number
+        if (tightest < 5) {
+          // Very tight pair (e.g., Jupiter 1° / Saturn 3°) — aggressive separation
+          radialOffset = ci % 2 === 0 ? -defaultRadius * 0.18 : defaultRadius * 0.18
+        } else if (cluster.length > 2) {
+          radialOffset = ci % 2 === 0 ? -defaultRadius * 0.12 : defaultRadius * 0.12
+        } else {
+          radialOffset = ci === 0 ? -defaultRadius * 0.10 : defaultRadius * 0.10
+        }
 
         results[idx] = {
           planetName: sorted[idx].name,

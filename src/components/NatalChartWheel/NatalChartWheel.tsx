@@ -63,11 +63,11 @@ const BG = '#05050F'
 
 // Aspect definitions
 const ASPECT_DEFS: { name: string; angle: number; orb: number; color: string; dash?: string; width: number }[] = [
-  { name: 'conjunction', angle: 0, orb: 8, color: '#C9A84C', width: 1.2 },
-  { name: 'sextile', angle: 60, orb: 6, color: '#34D399', dash: '2 4', width: 0.8 },
-  { name: 'square', angle: 90, orb: 7, color: '#F87171', width: 0.8 },
-  { name: 'trine', angle: 120, orb: 8, color: '#5E7CE2', dash: '4 3', width: 1 },
-  { name: 'opposition', angle: 180, orb: 8, color: '#F87171', dash: '3 3', width: 0.8 },
+  { name: 'conjunction', angle: 0, orb: 8, color: '#C9A84C', width: 0 },
+  { name: 'sextile', angle: 60, orb: 6, color: '#4A9E8E', width: 1 },
+  { name: 'square', angle: 90, orb: 7, color: '#C47070', dash: '3 4', width: 1 },
+  { name: 'trine', angle: 120, orb: 8, color: '#4A9E8E', width: 1 },
+  { name: 'opposition', angle: 180, orb: 8, color: '#C47070', dash: '3 4', width: 1 },
 ]
 
 // ═══════════════════════════════════════════════════════════════
@@ -141,7 +141,7 @@ export default function NatalChartWheel({
   const labelPositions = layoutPlanetLabels(
     planets.map(p => ({ name: p.name, longitude: p.longitude })),
     planetRingR,
-    14,
+    15,
   )
 
   // Build lookup: planetName -> labelPosition
@@ -173,6 +173,11 @@ export default function NatalChartWheel({
         {/* Soft glow for gold rings */}
         <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={1.5 * unit} />
+        </filter>
+
+        {/* Glyph glow filter */}
+        <filter id="glyphGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={2 * unit} />
         </filter>
 
         {/* Background stars */}
@@ -237,41 +242,36 @@ export default function NatalChartWheel({
       })}
       {/* Outer ring border */}
       <circle cx={cx} cy={cy} r={signNameOuter} fill="none"
-        stroke={GOLD} strokeWidth={1 * unit} opacity={0.5} />
+        stroke={GOLD} strokeWidth={0.7 * unit} opacity={0.45} />
       <circle cx={cx} cy={cy} r={signNameInner} fill="none"
-        stroke={GOLD} strokeWidth={0.7 * unit} opacity={0.35} />
+        stroke={GOLD} strokeWidth={0.5 * unit} opacity={0.3} />
       {/* Gold ring glow */}
       <circle cx={cx} cy={cy} r={signNameOuter} fill="none"
-        stroke={GOLD} strokeWidth={2 * unit} opacity={0.08} filter="url(#goldGlow)" />
+        stroke={GOLD} strokeWidth={1.5 * unit} opacity={0.06} filter="url(#goldGlow)" />
 
       {/* ═══ Ring 2: Zodiac Glyph Ring ═══ */}
       {SIGN_DATA.map((sign, i) => {
         const elemColor = ELEMENT_COLORS[sign.element]
-        const startDeg = i * 30
-        const endDeg = (i + 1) * 30
-        const midDeg = startDeg + 15
-
-        const [gx1, gy1] = toXY(startDeg, glyphOuter, cx, cy)
-        const [gx2, gy2] = toXY(endDeg, glyphOuter, cx, cy)
-        const [gi1, gi1y] = toXY(startDeg, glyphInner, cx, cy)
-        const [gi2, gi2y] = toXY(endDeg, glyphInner, cx, cy)
+        const midDeg = i * 30 + 15
 
         const glyphR = (glyphOuter + glyphInner) / 2
         const [glx, gly] = toXY(midDeg, glyphR, cx, cy)
 
         return (
           <g key={`glyph-${i}`}>
-            {/* Segment background */}
-            <path
-              d={`M ${gi1} ${gi1y} L ${gx1} ${gy1} A ${glyphOuter} ${glyphOuter} 0 0 1 ${gx2} ${gy2} L ${gi2} ${gi2y} A ${glyphInner} ${glyphInner} 0 0 0 ${gi1} ${gi1y} Z`}
-              fill={elemColor}
-              opacity={0.07}
-            />
+            {/* Subtle element glow behind glyph */}
+            <text x={glx} y={gly}
+              textAnchor="middle" dominantBaseline="central"
+              fill={elemColor} opacity={0.3}
+              fontSize={18 * unit} fontFamily="serif"
+              filter="url(#glyphGlow)">
+              {sign.glyph}
+            </text>
             {/* Zodiac glyph */}
             <text x={glx} y={gly}
               textAnchor="middle" dominantBaseline="central"
               fill={elemColor} opacity={0.85}
-              fontSize={16 * unit} fontFamily="serif">
+              fontSize={18 * unit} fontFamily="serif">
               {sign.glyph}
             </text>
           </g>
@@ -293,24 +293,24 @@ export default function NatalChartWheel({
         const tLen = isBoundary ? 8 * unit : isMajor ? 5 * unit : 3 * unit
         const [x1, y1] = toXY(deg, tickOuter, cx, cy)
         const [x2, y2] = toXY(deg, tickOuter - tLen, cx, cy)
-        const opacity = isBoundary ? 0.4 : isMajor ? 0.25 : 0.12
+        const opacity = isBoundary ? 0.7 : isMajor ? 0.6 : 0.3
+        const strokeW = isBoundary ? 1.5 : isMajor ? 1 : 0.5
 
         return (
           <line key={`tick-${deg}`} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke={GOLD} strokeWidth={(isBoundary ? 0.8 : 0.4) * unit} opacity={opacity} />
+            stroke={GOLD} strokeWidth={strokeW * unit} opacity={opacity} />
         )
       })}
-      {/* Degree numbers at 10° intervals */}
+      {/* Degree numbers at 10° intervals (0, 10, 20) */}
       {Array.from({ length: 36 }, (_, i) => {
         const deg = i * 10
-        if (deg % 30 === 0) return null // skip boundaries (already labelled by sign)
         const degInSign = deg % 30
         const [tx, ty] = toXY(deg, tickOuter - 11 * unit, cx, cy)
         return (
           <text key={`deg-${deg}`} x={tx} y={ty}
             textAnchor="middle" dominantBaseline="central"
-            fill={GOLD} opacity={0.2}
-            fontSize={5 * unit} fontFamily="'Courier New', monospace">
+            fill={GOLD} opacity={0.4}
+            fontSize={5.5 * unit} fontFamily="'Courier New', monospace">
             {degInSign}°
           </text>
         )
@@ -319,7 +319,7 @@ export default function NatalChartWheel({
         stroke={GOLD} strokeWidth={0.5 * unit} opacity={0.25} />
 
       {/* ═══ Ring 4: Aspect Lines ═══ */}
-      {aspects.map((asp, i) => {
+      {aspects.filter(a => a.type !== 'conjunction').map((asp, i) => {
         const p1 = planets[asp.i]
         const p2 = planets[asp.j]
         const [x1, y1] = toXY(p1.longitude, aspectR, cx, cy)
@@ -328,7 +328,7 @@ export default function NatalChartWheel({
           <line key={`asp-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
             stroke={asp.color} strokeWidth={asp.width * unit}
             strokeDasharray={asp.dash || 'none'}
-            opacity={0.22} />
+            opacity={0.18} />
         )
       })}
 
@@ -390,11 +390,11 @@ export default function NatalChartWheel({
               {planet.name}{planet.isRetrograde ? ' \u211E' : ''}
             </text>
 
-            {/* Degree + sign label (inward) */}
+            {/* Degree + sign label (inward, separate layer) */}
             <text x={degX} y={degY}
               textAnchor="middle" dominantBaseline="central"
-              fill="#E0E0E8" opacity={0.5}
-              fontSize={5.5 * unit} fontFamily="'Courier New', monospace">
+              fill="#8899AA" opacity={0.55}
+              fontSize={6.5 * unit} fontFamily="'Courier New', monospace">
               {posLabel}
             </text>
 
